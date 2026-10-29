@@ -1,4 +1,4 @@
-import CoreGraphics
+import AppKit
 import ValloCore
 
 /// «Руки»: стирают, печатают, переключают раскладку.
@@ -18,8 +18,8 @@ enum EventPoster {
                 layouts.select(language)
             case .learn(let word):
                 store.learn(word)
-            case .replaceSelection:
-                break // Task 8
+            case .replaceSelection(let text):
+                replaceSelection(text)
             }
         }
     }
@@ -31,6 +31,18 @@ enum EventPoster {
             e.setIntegerValueField(.eventSourceUserData, value: marker)
             e.post(tap: .cghidEventTap)
         }
+    }
+
+    static let pasteKey: CGKeyCode = 9   // V
+
+    /// Вставляет текст вместо выделения через буфер обмена, потом возвращает буфер как был.
+    static func replaceSelection(_ text: String) {
+        let saved = Clipboard.save()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        postKey(pasteKey, flags: .maskCommand)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { Clipboard.restore(saved) }
     }
 
     /// Печатает текст напрямую символами — не зависит от текущей раскладки.

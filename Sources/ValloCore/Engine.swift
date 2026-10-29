@@ -58,6 +58,9 @@ public final class Engine {
     }
     private var undo: Undo?
 
+    /// Двойной Shift сейчас откатит автоисправление (тогда выделение не читаем).
+    public var canUndo: Bool { undo != nil }
+
     public init(layouts: LayoutPair, judge: Judge, currentLanguage: Language) {
         self.layouts = layouts
         self.judge = judge

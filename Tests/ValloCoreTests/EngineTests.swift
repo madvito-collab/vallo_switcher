@@ -124,6 +124,15 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(out[4] == .consume([.delete(4), .insert("чняз "), .switchLayout(.ru)]))
     }
 
+    @Test func canUndoOnlyRightAfterAutoSwitch() {
+        let engine = makeEngine()
+        #expect(!engine.canUndo)
+        type("ghbdtn ", engine)
+        #expect(engine.canUndo)
+        type("x", engine)
+        #expect(!engine.canUndo)
+    }
+
     @Test func duplicateLayoutNotificationKeepsUndo() {
         // Мак присылает уведомление о смене раскладки дважды — второе не должно стирать откат
         let engine = makeEngine()
