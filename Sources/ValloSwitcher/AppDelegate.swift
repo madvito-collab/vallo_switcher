@@ -18,7 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fail("Не получилось запуститься: \(error)")
             return
         }
-        layouts.onExternalChange = { [weak self] lang in self?.engine.externalLayoutChange(to: lang) }
+        layouts.onExternalChange = { [weak self] lang in
+            log.debug("external layout change → \(lang.rawValue, privacy: .public), reset")
+            self?.engine.externalLayoutChange(to: lang)
+        }
 
         if Permissions.allGranted {
             startTap()

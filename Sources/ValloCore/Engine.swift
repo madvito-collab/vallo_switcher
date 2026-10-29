@@ -200,8 +200,10 @@ public final class Engine {
         startNewWord()
     }
 
-    /// Раскладку сменили не мы.
+    /// Раскладку сменили не мы. Если раскладка та же, что уже стоит, — это эхо нашего же
+    /// переключения (Мак присылает уведомление дважды), память набора не трогаем.
     public func externalLayoutChange(to language: Language) {
+        guard language != currentLanguage else { return }
         reset()
         currentLanguage = language
     }

@@ -124,6 +124,16 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(out[4] == .consume([.delete(4), .insert("чняз "), .switchLayout(.ru)]))
     }
 
+    @Test func duplicateLayoutNotificationKeepsUndo() {
+        // Мак присылает уведомление о смене раскладки дважды — второе не должно стирать откат
+        let engine = makeEngine()
+        type("ghb", engine)
+        engine.externalLayoutChange(to: .ru)
+        type("dtn ", engine)
+        #expect(engine.handleDoubleShift(selection: nil) ==
+                [.delete(7), .insert("ghbdtn "), .switchLayout(.en), .learn("ghbdtn")])
+    }
+
     @Test func externalLayoutChangeResets() {
         let engine = makeEngine(auto: false)
         type("ghbd", engine)

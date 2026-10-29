@@ -39,7 +39,10 @@ final class KeyboardTap {
 
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.engine.reset() }
+        ) { [weak self] _ in
+            log.debug("app activated → reset")
+            self?.engine.reset()
+        }
         return true
     }
 
@@ -57,6 +60,7 @@ final class KeyboardTap {
         case .flagsChanged:
             handleFlags(event)
         default:
+            log.debug("mouse → reset")
             detector.otherInput()
             engine.reset()
         }
@@ -72,6 +76,7 @@ final class KeyboardTap {
         let modified = !flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
         engine.autoSwitchEnabled = store.autoSwitchEnabled
         let output = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: modified))
+        log.debug("key \(stroke.keyCode, privacy: .public) → \(String(describing: output), privacy: .public)")
         guard case .consume(let actions) = output else { return Unmanaged.passUnretained(event) }
         report()
         EventPoster.perform(actions, store: store, layouts: layouts)
@@ -97,6 +102,7 @@ final class KeyboardTap {
 
     private func doubleShift() {
         let actions = engine.handleDoubleShift(selection: nil)
+        log.debug("double shift → \(String(describing: actions), privacy: .public)")
         guard !actions.isEmpty else { return }
         report()
         EventPoster.perform(actions, store: store, layouts: layouts)

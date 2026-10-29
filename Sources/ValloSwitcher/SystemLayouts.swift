@@ -1,6 +1,9 @@
 import Carbon
 import Foundation
+import os
 import ValloCore
+
+let log = Logger(subsystem: "com.vallo.switcher", category: "debug")
 
 /// Настоящая раскладка системы: что даёт клавиша на подключённой сейчас клавиатуре.
 struct SystemKeyLayout: KeyLayout {
@@ -58,6 +61,7 @@ final class SystemLayouts {
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
+            log.debug("TIS notification: current=\(self.current.rawValue, privacy: .public) pending=\(self.selfSwitchPending, privacy: .public)")
             if self.selfSwitchPending {
                 self.selfSwitchPending = false
                 return
