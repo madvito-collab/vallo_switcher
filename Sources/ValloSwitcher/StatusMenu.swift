@@ -13,6 +13,16 @@ final class StatusMenu: NSObject {
     private let menu = NSMenu()
 
     var onOpenSettings: (() -> Void)?
+    var onGivePermissions: (() -> Void)?
+
+    /// Иконка ученика (шаблон: Мак сам красит её под светлую и тёмную строку меню).
+    private static let icon: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "svg"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }()
 
     init(store: SettingsStore) {
         self.store = store
@@ -32,8 +42,12 @@ final class StatusMenu: NSObject {
     }
 
     func set(state: State) {
-        let symbol = state == .needsPermissions ? "exclamationmark.triangle" : "keyboard"
-        item.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Vallo Switcher")
+        if state == .needsPermissions {
+            item.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Vallo Switcher")
+        } else {
+            item.button?.image = StatusMenu.icon
+                ?? NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Vallo Switcher")
+        }
         item.button?.appearsDisabled = state == .blocked
         permissionsItem.isHidden = state != .needsPermissions
     }
@@ -44,7 +58,7 @@ final class StatusMenu: NSObject {
     }
 
     @objc private func toggleAuto() { store.autoSwitchEnabled.toggle() }
-    @objc private func givePermissions() { Permissions.explain() }
+    @objc private func givePermissions() { onGivePermissions?() }
     @objc private func openSettings() { onOpenSettings?() }
 }
 

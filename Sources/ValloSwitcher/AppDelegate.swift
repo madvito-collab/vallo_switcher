@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var layouts: SystemLayouts!
     private var engine: Engine!
     private var tap: KeyboardTap?
-    private var permissionTimer: Timer?
+    private let onboarding = OnboardingWindow()
     private var secureInputTimer: Timer?
     private var settings: SettingsWindow!
 
@@ -33,21 +33,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         layouts.onLayoutsChanged = { [weak self] pair in self?.engine.updateLayouts(pair) }
 
+        menu.onGivePermissions = { [weak self] in self?.onboarding.show() }
+        onboarding.model.onGranted = { [weak self] in self?.startTap() }
         if Permissions.allGranted {
             startTap()
         } else {
             menu.set(state: .needsPermissions)
-            Permissions.explain()
-            // ждём, пока человек поставит галочки
-            permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-                guard Permissions.allGranted else { return }
-                timer.invalidate()
-                self?.startTap()
-            }
+            onboarding.show()
         }
     }
 
     private func startTap() {
+        guard tap == nil else { return }
         let tap = KeyboardTap(engine: engine, store: store, layouts: layouts)
         tap.onDecision = { [weak self] in self?.menu.record(decision: $0) }
         guard tap.start() else {

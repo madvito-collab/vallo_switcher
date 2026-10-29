@@ -7,35 +7,20 @@ enum Permissions {
     static var inputMonitoring: Bool { CGPreflightListenEventAccess() }
     static var allGranted: Bool { accessibility && inputMonitoring }
 
-    /// Добавляет приложение в оба списка в Системных настройках (галочку ставит человек).
-    static func request() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-        _ = CGRequestListenEventAccess()
+    enum Pane: String {
+        case accessibility = "Privacy_Accessibility"
+        case inputMonitoring = "Privacy_ListenEvent"
     }
 
-    static func openSettings() {
-        let pane = accessibility ? "Privacy_ListenEvent" : "Privacy_Accessibility"
-        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)")!)
-    }
-
-    /// Окно первого запуска: что дать и зачем.
-    static func explain() {
-        let alert = NSAlert()
-        alert.messageText = "Vallo Switcher нужны два разрешения"
-        alert.informativeText = """
-        «Универсальный доступ» — чтобы исправлять текст: стирать и печатать заново.
-        «Мониторинг ввода» — чтобы видеть, что ты печатаешь, и ловить двойной Shift.
-
-        Набранный текст никуда не сохраняется и не отправляется.
-        Открой Системные настройки → Конфиденциальность и безопасность и включи Vallo Switcher в обоих списках.
-        """
-        alert.addButton(withTitle: "Открыть настройки")
-        alert.addButton(withTitle: "Позже")
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn {
-            request()
-            openSettings()
+    /// Открывает нужный список в Системных настройках и добавляет туда свитчер (галочку ставит человек).
+    static func open(_ pane: Pane) {
+        switch pane {
+        case .accessibility:
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        case .inputMonitoring:
+            _ = CGRequestListenEventAccess()
         }
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane.rawValue)")!)
     }
 }
