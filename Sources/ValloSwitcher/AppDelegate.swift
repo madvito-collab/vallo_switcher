@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
-            engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current)
+            engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current ?? .en)
         } catch {
             fail("Не получилось запуститься: \(error)")
             return
@@ -27,9 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
 
         layouts.onExternalChange = { [weak self] lang in
-            log.debug("external layout change → \(lang.rawValue), reset")
+            // третья раскладка: просто сбрасываем память, движок молчит, пока не вернутся RU/EN
+            guard let lang else { self?.engine.reset(); return }
             self?.engine.externalLayoutChange(to: lang)
         }
+        layouts.onLayoutsChanged = { [weak self] pair in self?.engine.updateLayouts(pair) }
 
         if Permissions.allGranted {
             startTap()

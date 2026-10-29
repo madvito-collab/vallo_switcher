@@ -15,6 +15,8 @@ public enum Action: Equatable, Sendable {
     case switchLayout(Language)
     case replaceSelection(String)
     case learn(String)
+    /// Нажать клавишу (Enter или Tab, которые мы проглотили, чтобы сначала исправить слово).
+    case pressKey(UInt16)
 }
 
 public enum EngineOutput: Equatable, Sendable {
@@ -27,7 +29,9 @@ public enum EngineOutput: Equatable, Sendable {
 /// Движок: память набора + решения судьи → действия. Без системных API.
 public final class Engine {
     public static let bufferLimit = 200
-    static let resetKeys: Set<UInt16> = [36, 48, 53, 76, 123, 124, 125, 126, 115, 119, 116, 121, 117]
+    static let resetKeys: Set<UInt16> = [53, 123, 124, 125, 126, 115, 119, 116, 121, 117]
+    /// Return, Tab, Enter на цифровой клавиатуре: сначала проверяем слово, потом сбрасываем память.
+    static let lineEndKeys: Set<UInt16> = [36, 48, 76]
     static let backspaceKey: UInt16 = 51
 
     public var autoSwitchEnabled = true
@@ -35,7 +39,7 @@ public final class Engine {
     public private(set) var currentLanguage: Language
     public private(set) var lastDecision: String?
 
-    private let layouts: LayoutPair
+    private var layouts: LayoutPair
 
     /// Нажатие и раскладка, в которой оно сейчас показано на экране.
     private struct Entry {
@@ -81,6 +85,9 @@ public final class Engine {
         if e.hasCommandControlOrOption || Engine.resetKeys.contains(stroke.keyCode) {
             reset()
             return .passThrough
+        }
+        if Engine.lineEndKeys.contains(stroke.keyCode) {
+            return handleLineEnd(stroke.keyCode)
         }
         if stroke.keyCode == Engine.backspaceKey {
             handleBackspace()
@@ -156,6 +163,22 @@ public final class Engine {
         return .consume([.delete(current.count), .insert(inserted), .switchLayout(currentLanguage)])
     }
 
+    /// Enter и Tab: как граница слова, но после них память набора сбрасывается.
+    private func handleLineEnd(_ keyCode: UInt16) -> EngineOutput {
+        defer { reset() }
+        let word = buffer[wordStart...].map(\.stroke)
+        guard autoSwitchEnabled, !wordLocked, autoSwitchedFrom == nil, !word.isEmpty else { return .passThrough }
+        let current = Converter.render(word, in: layouts.layout(currentLanguage))
+        let alternative = Converter.render(word, in: layouts.layout(currentLanguage.other))
+        guard case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
+                                                               currentLanguage: currentLanguage) else {
+            return .passThrough
+        }
+        lastDecision = reason
+        currentLanguage = currentLanguage.other
+        return .consume([.delete(current.count), .insert(alternative), .switchLayout(currentLanguage), .pressKey(keyCode)])
+    }
+
     private func handleBackspace() {
         guard !buffer.isEmpty else { return }
         buffer.removeLast()
@@ -209,6 +232,7 @@ public final class Engine {
         for i in buffer.indices { buffer[i].language = target }
         currentLanguage = target
         wordLocked = true
+        lastDecision = "двойной Shift: всё набранное → \(target.rawValue.uppercased())"
         return [.delete(shown.count), .insert(converted), .switchLayout(target)]
     }
 
@@ -219,6 +243,12 @@ public final class Engine {
         buffer.removeAll()
         undo = nil
         startNewWord()
+    }
+
+    /// Человек выбрал другую раскладку того же языка (например, «Русская — ПК») — новые таблицы.
+    public func updateLayouts(_ pair: LayoutPair) {
+        layouts = pair
+        reset()
     }
 
     /// Раскладку сменили не мы. Если раскладка та же, что уже стоит, — это эхо нашего же

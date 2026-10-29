@@ -46,42 +46,53 @@ struct SystemKeyLayout: KeyLayout {
 
 enum SystemLayoutsError: Error { case missing(String) }
 
-/// Раскладки EN и RU, включённые в системе: чтение, переключение, слежка за сменой.
+/// Раскладки EN и RU: чтение, переключение, слежка за сменой.
+/// Для каждого языка берём ту раскладку, которую человек реально выбирает
+/// (у кого-то «Русская», у кого-то «Русская — ПК»).
 final class SystemLayouts {
     private(set) var pair: LayoutPair
-    private let sources: [Language: TISInputSource]
-    /// Раскладку сменили не мы.
-    /// Своё переключение тоже приходит сюда (и дважды) — движок сам отбрасывает смену на ту же раскладку.
-    var onExternalChange: ((Language) -> Void)?
+    private var sources: [Language: TISInputSource]
+    /// Смена раскладки (своё переключение тоже приходит сюда, и дважды — движок отбрасывает смену на ту же).
+    var onExternalChange: ((Language?) -> Void)?
+    /// Человек выбрал другую раскладку того же языка — нужны новые таблицы.
+    var onLayoutsChanged: ((LayoutPair) -> Void)?
 
     init() throws {
         var sources: [Language: TISInputSource] = [:]
-        var layouts: [Language: SystemKeyLayout] = [:]
         for lang in [Language.en, .ru] {
-            guard let source = SystemLayouts.enabledLayout(for: lang),
-                  let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else {
-                throw SystemLayoutsError.missing(lang.rawValue)
-            }
+            guard let source = SystemLayouts.enabledLayout(for: lang) else { throw SystemLayoutsError.missing(lang.rawValue) }
             sources[lang] = source
-            layouts[lang] = SystemKeyLayout(language: lang,
-                                            data: Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data)
         }
+        // текущая раскладка важнее первой попавшейся
+        let now = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        if let lang = SystemLayouts.language(of: now), SystemLayouts.layoutData(of: now) != nil { sources[lang] = now }
         self.sources = sources
-        pair = LayoutPair(en: layouts[.en]!, ru: layouts[.ru]!)
+        pair = try SystemLayouts.makePair(sources)
 
         DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
             object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            log.debug("TIS notification: current=\(self.current.rawValue)")
-            self.onExternalChange?(self.current)
-        }
+        ) { [weak self] _ in self?.selectionChanged() }
     }
 
-    var current: Language {
-        let source = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-        return SystemLayouts.language(of: source) ?? .en
+    private func selectionChanged() {
+        let now = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        let lang = SystemLayouts.language(of: now)
+        log.debug("TIS notification: current=\(lang?.rawValue ?? "other")")
+        if let lang, SystemLayouts.layoutData(of: now) != nil, SystemLayouts.id(of: now) != SystemLayouts.id(of: sources[lang]!) {
+            sources[lang] = now
+            if let newPair = try? SystemLayouts.makePair(sources) {
+                pair = newPair
+                log.debug("layouts changed: \(lang.rawValue) → \(SystemLayouts.id(of: now))")
+                onLayoutsChanged?(newPair)
+            }
+        }
+        onExternalChange?(lang)
+    }
+
+    /// Текущий язык; nil — стоит третья раскладка (украинская и т.п.), тогда свитчер молчит.
+    var current: Language? {
+        SystemLayouts.language(of: TISCopyCurrentKeyboardInputSource().takeRetainedValue())
     }
 
     func select(_ language: Language) {
@@ -89,8 +100,30 @@ final class SystemLayouts {
         TISSelectInputSource(source)
     }
 
+    private static func makePair(_ sources: [Language: TISInputSource]) throws -> LayoutPair {
+        var layouts: [Language: SystemKeyLayout] = [:]
+        for (lang, source) in sources {
+            guard let data = layoutData(of: source) else { throw SystemLayoutsError.missing(lang.rawValue) }
+            layouts[lang] = SystemKeyLayout(language: lang, data: data)
+        }
+        return LayoutPair(en: layouts[.en]!, ru: layouts[.ru]!)
+    }
+
+    private static func layoutData(of source: TISInputSource) -> Data? {
+        guard let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        return Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
+    }
+
+    private static func id(of source: TISInputSource) -> String {
+        guard let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return "" }
+        return Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+    }
+
+    /// Язык раскладки — только для настоящих раскладок EN и RU (не для IME и прочих).
     private static func language(of source: TISInputSource) -> Language? {
-        guard let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages) else { return nil }
+        guard let typePtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceType),
+              Unmanaged<CFString>.fromOpaque(typePtr).takeUnretainedValue() as String == kTISTypeKeyboardLayout as String,
+              let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages) else { return nil }
         let langs = Unmanaged<CFArray>.fromOpaque(ptr).takeUnretainedValue() as! [String]
         return langs.first.flatMap(Language.init(rawValue:))
     }

@@ -12,6 +12,7 @@ extension Array where Element == Action {
             case .switchLayout(let l): return "switch(\(l.rawValue))"
             case .replaceSelection(let s): return "replaceSelection(\(s.count) chars)"
             case .learn: return "learn"
+            case .pressKey(let k): return "key(\(k))"
             }
         }.joined(separator: ", ")
     }
@@ -36,6 +37,8 @@ enum EventPoster {
                 store.learn(word)
             case .replaceSelection(let text):
                 replaceSelection(text)
+            case .pressKey(let key):
+                postKey(CGKeyCode(key), proxy: proxy)
             }
         }
     }

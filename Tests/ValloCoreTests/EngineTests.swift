@@ -176,6 +176,38 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
                 [.delete(7), .insert("ghbdtn "), .switchLayout(.en)])
     }
 
+    @Test func returnChecksWordEnd() {
+        let judge = Judge(en: Lexicon(words: ["xyzpq"]), ru: Lexicon(words: ["чняз"]), learned: [])
+        let engine = Engine(layouts: ansi, judge: judge, currentLanguage: .en)
+        type("xyzp", engine)
+        let enter = KeyEvent(stroke: KeyStroke(keyCode: 36), hasCommandControlOrOption: false)
+        #expect(engine.handleKey(enter) ==
+                .consume([.delete(4), .insert("чняз"), .switchLayout(.ru), .pressKey(36)]))
+        #expect(!engine.hasTypedText)
+    }
+
+    @Test func returnWithoutSwitchPassesThrough() {
+        let engine = makeEngine(auto: false)
+        type("ghbd", engine)
+        let tab = KeyEvent(stroke: KeyStroke(keyCode: 48), hasCommandControlOrOption: false)
+        #expect(engine.handleKey(tab) == .passThrough)
+        #expect(!engine.hasTypedText)
+    }
+
+    @Test func updateLayoutsResetsBuffer() {
+        let engine = makeEngine(auto: false)
+        type("ghbd", engine)
+        engine.updateLayouts(fixturePair("iso"))
+        #expect(!engine.hasTypedText)
+    }
+
+    @Test func bufferConversionUpdatesDecision() {
+        let engine = makeEngine(auto: false)
+        type("ghbdtn", engine)
+        _ = engine.handleDoubleShift(selection: nil)
+        #expect(engine.lastDecision?.contains("всё набранное") == true)
+    }
+
     @Test func externalLayoutChangeResets() {
         let engine = makeEngine(auto: false)
         type("ghbd", engine)

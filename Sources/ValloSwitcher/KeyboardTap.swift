@@ -84,7 +84,11 @@ final class KeyboardTap {
         if store.debugMode { ContextGuard.dumpFocusedElement() }
         engine.autoSwitchEnabled = store.autoSwitchEnabled && ContextGuard.autoSwitchAllowed(store: store)
         // уведомления о смене раскладки иногда не приходят — сверяемся с Маком перед каждой клавишей
-        let actual = layouts.current
+        guard let actual = layouts.current else {
+            // третья раскладка (украинская, японская…) — свитчер молчит
+            engine.reset()
+            return Unmanaged.passUnretained(event)
+        }
         if actual != engine.currentLanguage {
             log.debug("layout drift: engine=\(self.engine.currentLanguage.rawValue) actual=\(actual.rawValue)")
             engine.externalLayoutChange(to: actual)
