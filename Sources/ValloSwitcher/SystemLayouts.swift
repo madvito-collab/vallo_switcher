@@ -38,8 +38,8 @@ final class SystemLayouts {
     private(set) var pair: LayoutPair
     private let sources: [Language: TISInputSource]
     /// Раскладку сменили не мы.
+    /// Своё переключение тоже приходит сюда (и дважды) — движок сам отбрасывает смену на ту же раскладку.
     var onExternalChange: ((Language) -> Void)?
-    private var selfSwitchPending = false
 
     init() throws {
         var sources: [Language: TISInputSource] = [:]
@@ -61,11 +61,7 @@ final class SystemLayouts {
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            log.debug("TIS notification: current=\(self.current.rawValue, privacy: .public) pending=\(self.selfSwitchPending, privacy: .public)")
-            if self.selfSwitchPending {
-                self.selfSwitchPending = false
-                return
-            }
+            log.debug("TIS notification: current=\(self.current.rawValue, privacy: .public)")
             self.onExternalChange?(self.current)
         }
     }
@@ -77,7 +73,6 @@ final class SystemLayouts {
 
     func select(_ language: Language) {
         guard language != current, let source = sources[language] else { return }
-        selfSwitchPending = true
         TISSelectInputSource(source)
     }
 

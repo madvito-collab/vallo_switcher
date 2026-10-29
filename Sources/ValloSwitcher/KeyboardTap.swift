@@ -75,6 +75,12 @@ final class KeyboardTap {
                                capsLock: flags.contains(.maskAlphaShift))
         let modified = !flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
         engine.autoSwitchEnabled = store.autoSwitchEnabled
+        // уведомления о смене раскладки иногда не приходят — сверяемся с Маком перед каждой клавишей
+        let actual = layouts.current
+        if actual != engine.currentLanguage {
+            log.debug("layout drift: engine=\(self.engine.currentLanguage.rawValue, privacy: .public) actual=\(actual.rawValue, privacy: .public)")
+            engine.externalLayoutChange(to: actual)
+        }
         let output = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: modified))
         log.debug("key \(stroke.keyCode, privacy: .public) → \(String(describing: output), privacy: .public)")
         guard case .consume(let actions) = output else { return Unmanaged.passUnretained(event) }

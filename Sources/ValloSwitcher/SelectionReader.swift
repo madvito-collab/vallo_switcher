@@ -8,10 +8,35 @@ enum SelectionReader {
     /// Сначала через Accessibility. Если приложение его не отдаёт (Figma, Electron) — через Cmd+C.
     /// Буфер обмена после Cmd+C возвращается как был.
     static func selectedText() -> String? {
-        switch accessibilitySelection() {
-        case .text(let s): return s.isEmpty ? nil : s
+        enableAccessibilityInFrontApp()
+        var result = accessibilitySelection()
+        if case .text("") = result {
+            // Chrome и Electron строят дерево Accessibility не сразу после включения
+            usleep(50_000)
+            result = accessibilitySelection()
+        }
+        log.debug("AX selection: \(String(describing: result), privacy: .public)")
+        switch result {
+        case .text(let s) where !s.isEmpty: return s
+        // пустой ответ Chrome/Electron не означает «нет выделения» — спрашиваем через Cmd+C
+        case .text: return isChromium() ? copySelection() : nil
         case .unavailable: return copySelection()
         }
+    }
+
+    /// Chrome и Electron-приложения отдают текст через Accessibility, только если их попросить.
+    private static func enableAccessibilityInFrontApp() {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    }
+
+    /// Браузеры и приложения на движке Chromium (у них внутри Electron/Chromium Framework).
+    private static func isChromium() -> Bool {
+        guard let url = NSWorkspace.shared.frontmostApplication?.bundleURL else { return false }
+        let frameworks = url.appendingPathComponent("Contents/Frameworks")
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: frameworks.path)) ?? []
+        return names.contains { $0.contains("Electron Framework") || $0.contains("Chromium") || $0.contains("Chrome Framework") }
     }
 
     private enum AXResult { case text(String), unavailable }
