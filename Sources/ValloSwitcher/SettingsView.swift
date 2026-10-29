@@ -88,7 +88,7 @@ struct SettingsView: View {
 
             Section("Запомненные слова") {
                 if model.learned.isEmpty {
-                    Text("Пока пусто. Слово попадает сюда, когда ты откатываешь его двойным Shift.")
+                    Text("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его двойным Shift.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(model.learned, id: \.self) { word in

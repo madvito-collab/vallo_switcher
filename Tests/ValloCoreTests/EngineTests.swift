@@ -34,18 +34,39 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
     @Test func undoRightAfterAutoSwitch() {
         let engine = makeEngine()
         type("ghbdtn ", engine)
+        // первый откат — только вернуть слово, не запоминать (вдруг Shift нажат случайно)
+        #expect(engine.handleDoubleShift(selection: nil) ==
+                [.delete(7), .insert("ghbdtn "), .switchLayout(.en)])
+        #expect(engine.currentLanguage == .en)
+    }
+
+    @Test func secondUndoOfSameWordLearns() {
+        let engine = makeEngine()
+        type("ghbdtn ", engine)
+        _ = engine.handleDoubleShift(selection: nil)
+        // не запомнено — второй раз снова исправляется
+        let again = type("ghbdtn ", engine)
+        #expect(again[2] == .consume([.delete(2), .insert("при"), .switchLayout(.ru)]))
         #expect(engine.handleDoubleShift(selection: nil) ==
                 [.delete(7), .insert("ghbdtn "), .switchLayout(.en), .learn("ghbdtn")])
-        #expect(engine.currentLanguage == .en)
-        // слово выучено — второй раз не трогаем
+        // запомнено — третий раз не трогаем
         #expect(type("ghbdtn", engine).allSatisfy { $0 == .passThrough })
+    }
+
+    @Test func undoOfDifferentWordDoesNotLearn() {
+        let engine = makeEngine()
+        type("ghbdtn ", engine)
+        _ = engine.handleDoubleShift(selection: nil)
+        type("ghbd ", engine)
+        #expect(engine.handleDoubleShift(selection: nil) ==
+                [.delete(5), .insert("ghbd "), .switchLayout(.en)])
     }
 
     @Test func undoWhileStillTypingWord() {
         let engine = makeEngine()
         type("ghbd", engine)
         #expect(engine.handleDoubleShift(selection: nil) ==
-                [.delete(4), .insert("ghbd"), .switchLayout(.en), .learn("ghbd")])
+                [.delete(4), .insert("ghbd"), .switchLayout(.en)])
     }
 
     @Test func undoExpiresOnNextWord() {
@@ -140,7 +161,7 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         engine.externalLayoutChange(to: .ru)
         type("dtn ", engine)
         #expect(engine.handleDoubleShift(selection: nil) ==
-                [.delete(7), .insert("ghbdtn "), .switchLayout(.en), .learn("ghbdtn")])
+                [.delete(7), .insert("ghbdtn "), .switchLayout(.en)])
     }
 
     @Test func externalLayoutChangeResets() {

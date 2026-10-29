@@ -58,6 +58,10 @@ public final class Engine {
     }
     private var undo: Undo?
 
+    /// Слова, откаченные один раз. Запоминаем навсегда только со второго отката того же слова —
+    /// первый мог быть случайным нажатием. Живёт только в памяти, до перезапуска.
+    private var undoneOnce: Set<String> = []
+
     /// Двойной Shift сейчас откатит автоисправление (тогда выделение не читаем).
     public var canUndo: Bool { undo != nil }
 
@@ -88,8 +92,11 @@ public final class Engine {
     }
 
     private func handleLetter(_ stroke: KeyStroke) -> EngineOutput {
-        // первая буква нового слова — откат прошлого слова больше не доступен
-        if wordStart == buffer.count { undo = nil }
+        // первая буква нового слова: откат прошлого больше не доступен, блокировка прошлого слова снята
+        if wordStart == buffer.count {
+            undo = nil
+            startNewWord()
+        }
         let previous = display(wordStart..<buffer.count).count
         buffer.append(Entry(stroke: stroke, language: currentLanguage))
 
@@ -164,14 +171,22 @@ public final class Engine {
             let range = u.start..<buffer.count
             let shown = display(range)
             let original = Converter.render(buffer[range].map(\.stroke), in: layouts.layout(u.from))
-            let learned = Lexicon.normalize(Judge.core(original))
-            judge.learned.insert(learned)
+            let word = Lexicon.normalize(Judge.core(original))
             for i in range { buffer[i].language = u.from }
             currentLanguage = u.from
             wordLocked = true
             undo = nil
-            lastDecision = "откат: «\(shown)» → «\(original)», запомнил «\(learned)»"
-            return [.delete(shown.count), .insert(original), .switchLayout(u.from), .learn(learned)]
+            var actions: [Action] = [.delete(shown.count), .insert(original), .switchLayout(u.from)]
+            if undoneOnce.contains(word) {
+                judge.learned.insert(word)
+                undoneOnce.remove(word)
+                actions.append(.learn(word))
+                lastDecision = "откат: «\(shown)» → «\(original)», второй раз — запомнил «\(word)»"
+            } else {
+                undoneOnce.insert(word)
+                lastDecision = "откат: «\(shown)» → «\(original)», запомню, если откатишь ещё раз"
+            }
+            return actions
         }
 
         if let selection, !selection.isEmpty {
