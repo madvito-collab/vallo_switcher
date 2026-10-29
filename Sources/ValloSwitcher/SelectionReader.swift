@@ -31,10 +31,21 @@ enum SelectionReader {
     }
 
     /// Chrome и Electron-приложения отдают текст через Accessibility, только если их попросить.
-    private static func enableAccessibilityInFrontApp() {
-        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return }
-        let app = AXUIElementCreateApplication(pid)
+    /// Обычные браузеры на Chromium: им нужен другой флаг, чем Electron-приложениям.
+    static let chromiumBrowsers: Set<String> = [
+        "com.google.Chrome", "com.google.Chrome.canary", "org.chromium.Chromium", "ru.yandex.desktop.yandex-browser",
+        "com.microsoft.edgemac", "com.brave.Browser", "company.thebrowser.Browser", "com.vivaldi.Vivaldi",
+    ]
+
+    static func enableAccessibilityInFrontApp() {
+        guard let front = NSWorkspace.shared.frontmostApplication else { return }
+        let app = AXUIElementCreateApplication(front.processIdentifier)
         AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        // Chrome строит дерево полей только для «экранного диктора»; флаг ставим лишь браузерам —
+        // в других приложениях он мешает анимации окон
+        if let id = front.bundleIdentifier, chromiumBrowsers.contains(id) {
+            AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+        }
     }
 
     /// Браузеры и приложения на движке Chromium (у них внутри Electron/Chromium Framework).
@@ -48,12 +59,9 @@ enum SelectionReader {
     private enum AXResult { case text(String), unavailable }
 
     private static func accessibilitySelection() -> AXResult {
-        let system = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let element = focused else { return .unavailable }
+        guard let element = ContextGuard.focusedElement() else { return .unavailable }
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSelectedTextAttribute as CFString, &value) == .success,
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &value) == .success,
               let text = value as? String else { return .unavailable }
         return .text(text)
     }

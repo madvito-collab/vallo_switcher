@@ -33,6 +33,7 @@ final class KeyboardTap {
                                           eventsOfInterest: mask, callback: callback,
                                           userInfo: Unmanaged.passUnretained(self).toOpaque()) else { return false }
         self.tap = tap
+        SelectionReader.enableAccessibilityInFrontApp()
         let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
@@ -42,6 +43,9 @@ final class KeyboardTap {
         ) { [weak self] _ in
             log.debug("app activated → reset")
             self?.engine.reset()
+            // Chrome и Electron отдают поля через Accessibility, только если попросить, — просим сразу,
+            // иначе охранник не видит, что курсор в поле e-mail или телефона
+            SelectionReader.enableAccessibilityInFrontApp()
         }
         return true
     }

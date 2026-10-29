@@ -20,18 +20,26 @@ enum ContextGuard {
         return true
     }
 
-    private static func focusedElement() -> AXUIElement? {
+    /// Поле, где сейчас курсор. Chrome не отвечает на вопрос, заданный всей системе, —
+    /// тогда спрашиваем у активного приложения напрямую.
+    static func focusedElement() -> AXUIElement? {
+        if let element = focused(in: AXUIElementCreateSystemWide()) { return element }
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
+        return focused(in: AXUIElementCreateApplication(pid))
+    }
+
+    private static func focused(in root: AXUIElement) -> AXUIElement? {
         var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString,
-                                            &focused) == .success, let focused else { return nil }
+        guard AXUIElementCopyAttributeValue(root, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let focused else { return nil }
         return (focused as! AXUIElement)
     }
 
     /// Тип поля на сайте. Отдельного атрибута браузеры не дают (разведка Task 9), но пишут тип
-    /// в описание поля на языке системы: «поле e-mail», «поле номера телефона», «Поле URL».
+    /// в описание поля на языке системы: «поле e-mail» (Safari), «электронная почта» (Chrome), «поле номера телефона», «Поле URL».
     private static func inputType(of element: AXUIElement) -> String? {
         guard let description = string(element, kAXRoleDescriptionAttribute)?.lowercased() else { return nil }
-        if description.contains("mail") { return "email" }
+        if description.contains("mail") || description.contains("почт") { return "email" }
         if description.contains("телефон") || description.contains("phone") { return "tel" }
         if description.contains("url") { return "url" }
         if description.contains("парол") || description.contains("password") { return "password" }
@@ -46,7 +54,10 @@ enum ContextGuard {
 
     /// Разведка: все атрибуты фокусного поля в журнал (только в режиме отладки).
     static func dumpFocusedElement() {
-        guard let element = focusedElement() else { return }
+        guard let element = focusedElement() else {
+            log.debug("AX focused: none (\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?", privacy: .public))")
+            return
+        }
         var names: CFArray?
         AXUIElementCopyAttributeNames(element, &names)
         let list = (names as? [String]) ?? []
