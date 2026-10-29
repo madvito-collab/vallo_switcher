@@ -1,0 +1,1613 @@
+{
+  "language" : "en",
+  "entries" : [
+    {
+      "keyCode" : 0,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "a"
+    },
+    {
+      "keyCode" : 0,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "A"
+    },
+    {
+      "keyCode" : 0,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "A"
+    },
+    {
+      "keyCode" : 0,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "A"
+    },
+    {
+      "keyCode" : 1,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "s"
+    },
+    {
+      "keyCode" : 1,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "S"
+    },
+    {
+      "keyCode" : 1,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "S"
+    },
+    {
+      "keyCode" : 1,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "S"
+    },
+    {
+      "keyCode" : 2,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "d"
+    },
+    {
+      "keyCode" : 2,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "D"
+    },
+    {
+      "keyCode" : 2,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "D"
+    },
+    {
+      "keyCode" : 2,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "D"
+    },
+    {
+      "keyCode" : 3,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "f"
+    },
+    {
+      "keyCode" : 3,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "F"
+    },
+    {
+      "keyCode" : 3,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "F"
+    },
+    {
+      "keyCode" : 3,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "F"
+    },
+    {
+      "keyCode" : 4,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "h"
+    },
+    {
+      "keyCode" : 4,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "H"
+    },
+    {
+      "keyCode" : 4,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "H"
+    },
+    {
+      "keyCode" : 4,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "H"
+    },
+    {
+      "keyCode" : 5,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "g"
+    },
+    {
+      "keyCode" : 5,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "G"
+    },
+    {
+      "keyCode" : 5,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "G"
+    },
+    {
+      "keyCode" : 5,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "G"
+    },
+    {
+      "keyCode" : 6,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "z"
+    },
+    {
+      "keyCode" : 6,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "Z"
+    },
+    {
+      "keyCode" : 6,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "Z"
+    },
+    {
+      "keyCode" : 6,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "Z"
+    },
+    {
+      "keyCode" : 7,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "x"
+    },
+    {
+      "keyCode" : 7,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "X"
+    },
+    {
+      "keyCode" : 7,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "X"
+    },
+    {
+      "keyCode" : 7,
+      "shift" : true,
+      "capsLock" : true,
+      "char" : "X"
+    },
+    {
+      "keyCode" : 8,
+      "shift" : false,
+      "capsLock" : false,
+      "char" : "c"
+    },
+    {
+      "keyCode" : 8,
+      "shift" : false,
+      "capsLock" : true,
+      "char" : "C"
+    },
+    {
+      "keyCode" : 8,
+      "shift" : true,
+      "capsLock" : false,
+      "char" : "C"
+    },
+    {
+      "char" : "C",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 8
+    },
+    {
+      "char" : "v",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 9
+    },
+    {
+      "char" : "V",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 9
+    },
+    {
+      "char" : "V",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 9
+    },
+    {
+      "char" : "V",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 9
+    },
+    {
+      "char" : "§",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 10
+    },
+    {
+      "char" : "§",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 10
+    },
+    {
+      "char" : "±",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 10
+    },
+    {
+      "char" : "±",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 10
+    },
+    {
+      "char" : "b",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 11
+    },
+    {
+      "char" : "B",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 11
+    },
+    {
+      "char" : "B",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 11
+    },
+    {
+      "char" : "B",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 11
+    },
+    {
+      "char" : "q",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 12
+    },
+    {
+      "char" : "Q",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 12
+    },
+    {
+      "char" : "Q",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 12
+    },
+    {
+      "char" : "Q",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 12
+    },
+    {
+      "char" : "w",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 13
+    },
+    {
+      "char" : "W",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 13
+    },
+    {
+      "char" : "W",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 13
+    },
+    {
+      "char" : "W",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 13
+    },
+    {
+      "char" : "e",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 14
+    },
+    {
+      "char" : "E",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 14
+    },
+    {
+      "char" : "E",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 14
+    },
+    {
+      "char" : "E",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 14
+    },
+    {
+      "char" : "r",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 15
+    },
+    {
+      "char" : "R",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 15
+    },
+    {
+      "char" : "R",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 15
+    },
+    {
+      "char" : "R",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 15
+    },
+    {
+      "char" : "y",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 16
+    },
+    {
+      "char" : "Y",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 16
+    },
+    {
+      "char" : "Y",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 16
+    },
+    {
+      "char" : "Y",
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 16
+    },
+    {
+      "char" : "t",
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 17
+    },
+    {
+      "char" : "T",
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 17
+    },
+    {
+      "char" : "T",
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 17
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 17,
+      "char" : "T"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 18,
+      "char" : "1"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 18,
+      "char" : "1"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 18,
+      "char" : "!"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 18,
+      "char" : "!"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 19,
+      "char" : "2"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 19,
+      "char" : "2"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 19,
+      "char" : "@"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 19,
+      "char" : "@"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 20,
+      "char" : "3"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 20,
+      "char" : "3"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 20,
+      "char" : "#"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 20,
+      "char" : "#"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 21,
+      "char" : "4"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 21,
+      "char" : "4"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 21,
+      "char" : "$"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 21,
+      "char" : "$"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 22,
+      "char" : "6"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 22,
+      "char" : "6"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 22,
+      "char" : "^"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 22,
+      "char" : "^"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 23,
+      "char" : "5"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 23,
+      "char" : "5"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 23,
+      "char" : "%"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 23,
+      "char" : "%"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 24,
+      "char" : "="
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 24,
+      "char" : "="
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 24,
+      "char" : "+"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 24,
+      "char" : "+"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 25,
+      "char" : "9"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 25,
+      "char" : "9"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 25,
+      "char" : "("
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 25,
+      "char" : "("
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 26,
+      "char" : "7"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 26,
+      "char" : "7"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 26,
+      "char" : "&"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 26,
+      "capsLock" : true,
+      "char" : "&"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 27,
+      "capsLock" : false,
+      "char" : "-"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 27,
+      "capsLock" : true,
+      "char" : "-"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 27,
+      "capsLock" : false,
+      "char" : "_"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 27,
+      "capsLock" : true,
+      "char" : "_"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 28,
+      "capsLock" : false,
+      "char" : "8"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 28,
+      "capsLock" : true,
+      "char" : "8"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 28,
+      "capsLock" : false,
+      "char" : "*"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 28,
+      "capsLock" : true,
+      "char" : "*"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 29,
+      "capsLock" : false,
+      "char" : "0"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 29,
+      "capsLock" : true,
+      "char" : "0"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 29,
+      "capsLock" : false,
+      "char" : ")"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 29,
+      "capsLock" : true,
+      "char" : ")"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 30,
+      "capsLock" : false,
+      "char" : "]"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 30,
+      "capsLock" : true,
+      "char" : "]"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 30,
+      "capsLock" : false,
+      "char" : "}"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 30,
+      "capsLock" : true,
+      "char" : "}"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 31,
+      "capsLock" : false,
+      "char" : "o"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 31,
+      "capsLock" : true,
+      "char" : "O"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 31,
+      "capsLock" : false,
+      "char" : "O"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 31,
+      "capsLock" : true,
+      "char" : "O"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 32,
+      "capsLock" : false,
+      "char" : "u"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 32,
+      "capsLock" : true,
+      "char" : "U"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 32,
+      "capsLock" : false,
+      "char" : "U"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 32,
+      "capsLock" : true,
+      "char" : "U"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 33,
+      "capsLock" : false,
+      "char" : "["
+    },
+    {
+      "shift" : false,
+      "keyCode" : 33,
+      "capsLock" : true,
+      "char" : "["
+    },
+    {
+      "shift" : true,
+      "keyCode" : 33,
+      "capsLock" : false,
+      "char" : "{"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 33,
+      "capsLock" : true,
+      "char" : "{"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 34,
+      "capsLock" : false,
+      "char" : "i"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 34,
+      "capsLock" : true,
+      "char" : "I"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 34,
+      "capsLock" : false,
+      "char" : "I"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 34,
+      "capsLock" : true,
+      "char" : "I"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 35,
+      "capsLock" : false,
+      "char" : "p"
+    },
+    {
+      "shift" : false,
+      "keyCode" : 35,
+      "capsLock" : true,
+      "char" : "P"
+    },
+    {
+      "shift" : true,
+      "keyCode" : 35,
+      "capsLock" : false,
+      "char" : "P"
+    },
+    {
+      "char" : "P",
+      "shift" : true,
+      "keyCode" : 35,
+      "capsLock" : true
+    },
+    {
+      "char" : "l",
+      "shift" : false,
+      "keyCode" : 37,
+      "capsLock" : false
+    },
+    {
+      "char" : "L",
+      "shift" : false,
+      "keyCode" : 37,
+      "capsLock" : true
+    },
+    {
+      "char" : "L",
+      "shift" : true,
+      "keyCode" : 37,
+      "capsLock" : false
+    },
+    {
+      "char" : "L",
+      "shift" : true,
+      "keyCode" : 37,
+      "capsLock" : true
+    },
+    {
+      "char" : "j",
+      "shift" : false,
+      "keyCode" : 38,
+      "capsLock" : false
+    },
+    {
+      "char" : "J",
+      "shift" : false,
+      "keyCode" : 38,
+      "capsLock" : true
+    },
+    {
+      "char" : "J",
+      "shift" : true,
+      "keyCode" : 38,
+      "capsLock" : false
+    },
+    {
+      "char" : "J",
+      "shift" : true,
+      "keyCode" : 38,
+      "capsLock" : true
+    },
+    {
+      "char" : "'",
+      "shift" : false,
+      "keyCode" : 39,
+      "capsLock" : false
+    },
+    {
+      "char" : "'",
+      "shift" : false,
+      "keyCode" : 39,
+      "capsLock" : true
+    },
+    {
+      "char" : "\"",
+      "shift" : true,
+      "keyCode" : 39,
+      "capsLock" : false
+    },
+    {
+      "char" : "\"",
+      "shift" : true,
+      "keyCode" : 39,
+      "capsLock" : true
+    },
+    {
+      "char" : "k",
+      "shift" : false,
+      "keyCode" : 40,
+      "capsLock" : false
+    },
+    {
+      "char" : "K",
+      "shift" : false,
+      "keyCode" : 40,
+      "capsLock" : true
+    },
+    {
+      "char" : "K",
+      "shift" : true,
+      "keyCode" : 40,
+      "capsLock" : false
+    },
+    {
+      "char" : "K",
+      "shift" : true,
+      "keyCode" : 40,
+      "capsLock" : true
+    },
+    {
+      "char" : ";",
+      "shift" : false,
+      "keyCode" : 41,
+      "capsLock" : false
+    },
+    {
+      "char" : ";",
+      "shift" : false,
+      "keyCode" : 41,
+      "capsLock" : true
+    },
+    {
+      "char" : ":",
+      "shift" : true,
+      "keyCode" : 41,
+      "capsLock" : false
+    },
+    {
+      "char" : ":",
+      "shift" : true,
+      "keyCode" : 41,
+      "capsLock" : true
+    },
+    {
+      "char" : "\\",
+      "shift" : false,
+      "keyCode" : 42,
+      "capsLock" : false
+    },
+    {
+      "char" : "\\",
+      "shift" : false,
+      "keyCode" : 42,
+      "capsLock" : true
+    },
+    {
+      "char" : "|",
+      "shift" : true,
+      "keyCode" : 42,
+      "capsLock" : false
+    },
+    {
+      "char" : "|",
+      "shift" : true,
+      "keyCode" : 42,
+      "capsLock" : true
+    },
+    {
+      "char" : ",",
+      "shift" : false,
+      "keyCode" : 43,
+      "capsLock" : false
+    },
+    {
+      "char" : ",",
+      "shift" : false,
+      "keyCode" : 43,
+      "capsLock" : true
+    },
+    {
+      "char" : "<",
+      "shift" : true,
+      "keyCode" : 43,
+      "capsLock" : false
+    },
+    {
+      "char" : "<",
+      "shift" : true,
+      "keyCode" : 43,
+      "capsLock" : true
+    },
+    {
+      "char" : "\/",
+      "shift" : false,
+      "keyCode" : 44,
+      "capsLock" : false
+    },
+    {
+      "char" : "\/",
+      "shift" : false,
+      "keyCode" : 44,
+      "capsLock" : true
+    },
+    {
+      "char" : "?",
+      "shift" : true,
+      "keyCode" : 44,
+      "capsLock" : false
+    },
+    {
+      "char" : "?",
+      "shift" : true,
+      "keyCode" : 44,
+      "capsLock" : true
+    },
+    {
+      "char" : "n",
+      "shift" : false,
+      "keyCode" : 45,
+      "capsLock" : false
+    },
+    {
+      "char" : "N",
+      "shift" : false,
+      "keyCode" : 45,
+      "capsLock" : true
+    },
+    {
+      "char" : "N",
+      "shift" : true,
+      "keyCode" : 45,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "N",
+      "keyCode" : 45,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : "m",
+      "keyCode" : 46,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : "M",
+      "keyCode" : 46,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "M",
+      "keyCode" : 46,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "M",
+      "keyCode" : 46,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : ".",
+      "keyCode" : 47,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : ".",
+      "keyCode" : 47,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : ">",
+      "keyCode" : 47,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : ">",
+      "keyCode" : 47,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : " ",
+      "keyCode" : 49,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : " ",
+      "keyCode" : 49,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : " ",
+      "keyCode" : 49,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : " ",
+      "keyCode" : 49,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : "`",
+      "keyCode" : 50,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : "`",
+      "keyCode" : 50,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "~",
+      "keyCode" : 50,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "~",
+      "keyCode" : 50,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : ".",
+      "keyCode" : 65,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : ".",
+      "keyCode" : 65,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : ".",
+      "keyCode" : 65,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : ".",
+      "keyCode" : 65,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "*",
+      "keyCode" : 66,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "*",
+      "keyCode" : 66,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : "*",
+      "keyCode" : 67,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : "*",
+      "keyCode" : 67,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "*",
+      "keyCode" : 67,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "*",
+      "keyCode" : 67,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : "+",
+      "keyCode" : 69,
+      "capsLock" : false
+    },
+    {
+      "shift" : false,
+      "char" : "+",
+      "keyCode" : 69,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "+",
+      "keyCode" : 69,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "+",
+      "keyCode" : 69,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "+",
+      "keyCode" : 70,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "+",
+      "keyCode" : 70,
+      "capsLock" : true
+    },
+    {
+      "shift" : true,
+      "char" : "=",
+      "keyCode" : 72,
+      "capsLock" : false
+    },
+    {
+      "shift" : true,
+      "char" : "=",
+      "keyCode" : 72,
+      "capsLock" : true
+    },
+    {
+      "shift" : false,
+      "char" : "\/",
+      "keyCode" : 75,
+      "capsLock" : false
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 75,
+      "char" : "\/"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 75,
+      "char" : "\/"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 75,
+      "char" : "\/"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 77,
+      "char" : "\/"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 77,
+      "char" : "\/"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 78,
+      "char" : "-"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 78,
+      "char" : "-"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 78,
+      "char" : "-"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 78,
+      "char" : "-"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 81,
+      "char" : "="
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 81,
+      "char" : "="
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 81,
+      "char" : "="
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 81,
+      "char" : "="
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 82,
+      "char" : "0"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 82,
+      "char" : "0"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 82,
+      "char" : "0"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 82,
+      "char" : "0"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 83,
+      "char" : "1"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 83,
+      "char" : "1"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 83,
+      "char" : "1"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 83,
+      "char" : "1"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 84,
+      "char" : "2"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 84,
+      "char" : "2"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 84,
+      "char" : "2"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 84,
+      "char" : "2"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 85,
+      "char" : "3"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 85,
+      "char" : "3"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 85,
+      "char" : "3"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 85,
+      "char" : "3"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 86,
+      "char" : "4"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 86,
+      "char" : "4"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 86,
+      "char" : "4"
+    },
+    {
+      "capsLock" : true,
+      "shift" : true,
+      "keyCode" : 86,
+      "char" : "4"
+    },
+    {
+      "capsLock" : false,
+      "shift" : false,
+      "keyCode" : 87,
+      "char" : "5"
+    },
+    {
+      "capsLock" : true,
+      "shift" : false,
+      "keyCode" : 87,
+      "char" : "5"
+    },
+    {
+      "capsLock" : false,
+      "shift" : true,
+      "keyCode" : 87,
+      "char" : "5"
+    },
+    {
+      "keyCode" : 87,
+      "shift" : true,
+      "char" : "5",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 88,
+      "shift" : false,
+      "char" : "6",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 88,
+      "shift" : false,
+      "char" : "6",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 88,
+      "shift" : true,
+      "char" : "6",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 88,
+      "shift" : true,
+      "char" : "6",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 89,
+      "shift" : false,
+      "char" : "7",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 89,
+      "shift" : false,
+      "char" : "7",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 89,
+      "shift" : true,
+      "char" : "7",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 89,
+      "shift" : true,
+      "char" : "7",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 91,
+      "shift" : false,
+      "char" : "8",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 91,
+      "shift" : false,
+      "char" : "8",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 91,
+      "shift" : true,
+      "char" : "8",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 91,
+      "shift" : true,
+      "char" : "8",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 92,
+      "shift" : false,
+      "char" : "9",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 92,
+      "shift" : false,
+      "char" : "9",
+      "capsLock" : true
+    },
+    {
+      "keyCode" : 92,
+      "shift" : true,
+      "char" : "9",
+      "capsLock" : false
+    },
+    {
+      "keyCode" : 92,
+      "shift" : true,
+      "char" : "9",
+      "capsLock" : true
+    }
+  ]
+}
