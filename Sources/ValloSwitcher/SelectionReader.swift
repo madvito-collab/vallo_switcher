@@ -5,22 +5,28 @@ import ApplicationServices
 enum SelectionReader {
     static let copyKey: CGKeyCode = 8   // C
 
-    /// Сначала через Accessibility. Если приложение его не отдаёт (Figma, Electron) — через Cmd+C.
+    /// Сначала через Accessibility. Если приложение его не отдаёт (Chrome, Figma, Electron) — через Cmd+C.
     /// Буфер обмена после Cmd+C возвращается как был.
-    static func selectedText() -> String? {
+    /// Ответ асинхронный: пока ждём, главный поток должен быть свободен — через него идёт наш же тап,
+    /// и заблокированный поток задержал бы само нажатие Cmd+C.
+    static func selectedText(completion: @escaping (String?) -> Void) {
         enableAccessibilityInFrontApp()
-        var result = accessibilitySelection()
-        if case .text("") = result {
+        let first = accessibilitySelection()
+        if case .text("") = first {
             // Chrome и Electron строят дерево Accessibility не сразу после включения
-            usleep(50_000)
-            result = accessibilitySelection()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { decide(accessibilitySelection(), completion) }
+        } else {
+            decide(first, completion)
         }
+    }
+
+    private static func decide(_ result: AXResult, _ completion: @escaping (String?) -> Void) {
         log.debug("AX selection: \(String(describing: result), privacy: .public)")
         switch result {
-        case .text(let s) where !s.isEmpty: return s
+        case .text(let s) where !s.isEmpty: completion(s)
         // пустой ответ Chrome/Electron не означает «нет выделения» — спрашиваем через Cmd+C
-        case .text: return isChromium() ? copySelection() : nil
-        case .unavailable: return copySelection()
+        case .text: isChromium() ? copySelection(completion) : completion(nil)
+        case .unavailable: copySelection(completion)
         }
     }
 
@@ -52,21 +58,27 @@ enum SelectionReader {
         return .text(text)
     }
 
-    private static func copySelection() -> String? {
+    private static func copySelection(_ completion: @escaping (String?) -> Void) {
         let pasteboard = NSPasteboard.general
         let saved = Clipboard.save()
         let before = pasteboard.changeCount
         EventPoster.postKey(copyKey, flags: .maskCommand)
-        // ждём, пока приложение положит выделение в буфер (до 300 мс)
-        var waited = 0
-        while pasteboard.changeCount == before && waited < 300 {
-            usleep(10_000)
-            waited += 10
+
+        // ждём, пока приложение положит выделение в буфер (до 300 мс), не блокируя поток
+        func poll(_ waited: Int) {
+            if pasteboard.changeCount != before {
+                let text = pasteboard.string(forType: .string)
+                Clipboard.restore(saved)
+                log.debug("Cmd+C: got \(text?.count ?? 0, privacy: .public) chars after \(waited, privacy: .public) ms")
+                completion(text?.isEmpty == false ? text : nil)
+            } else if waited >= 300 {
+                log.debug("Cmd+C: nothing copied")
+                completion(nil)
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { poll(waited + 20) }
+            }
         }
-        guard pasteboard.changeCount != before else { return nil }
-        let text = pasteboard.string(forType: .string)
-        Clipboard.restore(saved)
-        return text?.isEmpty == false ? text : nil
+        poll(0)
     }
 }
 

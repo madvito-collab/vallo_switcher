@@ -108,8 +108,14 @@ final class KeyboardTap {
 
     private func doubleShift() {
         // откат важнее выделения; выделение читаем, только если откатывать нечего
-        let selection = engine.canUndo ? nil : SelectionReader.selectedText()
-        let actions = engine.handleDoubleShift(selection: selection)
+        if engine.canUndo {
+            run(engine.handleDoubleShift(selection: nil))
+        } else {
+            SelectionReader.selectedText { [self] selection in run(engine.handleDoubleShift(selection: selection)) }
+        }
+    }
+
+    private func run(_ actions: [Action]) {
         log.debug("double shift → \(String(describing: actions), privacy: .public)")
         guard !actions.isEmpty else { return }
         report()
