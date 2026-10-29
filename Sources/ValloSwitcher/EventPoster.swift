@@ -2,18 +2,34 @@ import AppKit
 import ValloCore
 
 /// «Руки»: стирают, печатают, переключают раскладку.
+extension Array where Element == Action {
+    /// Для журнала: виды действий без самого текста.
+    var summary: String {
+        map { action -> String in
+            switch action {
+            case .delete(let n): return "delete(\(n))"
+            case .insert(let s): return "insert(\(s.count) chars)"
+            case .switchLayout(let l): return "switch(\(l.rawValue))"
+            case .replaceSelection(let s): return "replaceSelection(\(s.count) chars)"
+            case .learn: return "learn"
+            }
+        }.joined(separator: ", ")
+    }
+}
+
 enum EventPoster {
     /// Метка своих событий («VALL»), чтобы тап их пропускал.
     static let marker: Int64 = 0x56414C4C
     static let backspaceKey: CGKeyCode = 51
 
-    static func perform(_ actions: [Action], store: SettingsStore, layouts: SystemLayouts) {
+    /// `proxy` — когда вызываем из колбэка тапа: события встают сразу за текущей клавишей.
+    static func perform(_ actions: [Action], store: SettingsStore, layouts: SystemLayouts, proxy: CGEventTapProxy? = nil) {
         for action in actions {
             switch action {
             case .delete(let n):
-                for _ in 0..<n { postKey(backspaceKey) }
+                for _ in 0..<n { postKey(backspaceKey, proxy: proxy) }
             case .insert(let text):
-                insert(text)
+                insert(text, proxy: proxy)
             case .switchLayout(let language):
                 layouts.select(language)
             case .learn(let word):
@@ -24,13 +40,17 @@ enum EventPoster {
         }
     }
 
-    static func postKey(_ key: CGKeyCode, flags: CGEventFlags = []) {
+    static func postKey(_ key: CGKeyCode, flags: CGEventFlags = [], proxy: CGEventTapProxy? = nil) {
         for down in [true, false] {
             guard let e = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: down) else { continue }
             e.flags = flags
-            e.setIntegerValueField(.eventSourceUserData, value: marker)
-            e.post(tap: .cghidEventTap)
+            post(e, proxy: proxy)
         }
+    }
+
+    private static func post(_ e: CGEvent, proxy: CGEventTapProxy?) {
+        e.setIntegerValueField(.eventSourceUserData, value: marker)
+        if let proxy { e.tapPostEvent(proxy) } else { e.post(tap: .cghidEventTap) }
     }
 
     static let pasteKey: CGKeyCode = 9   // V
@@ -41,12 +61,18 @@ enum EventPoster {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+        // временная запись: менеджеры буфера (Paste, Maccy) её не сохраняют
+        pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
+        let ours = pasteboard.changeCount
         postKey(pasteKey, flags: .maskCommand)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { Clipboard.restore(saved) }
+        // Electron и Figma читают буфер не сразу; и не затираем то, что человек успел скопировать сам
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            if pasteboard.changeCount == ours { Clipboard.restore(saved) }
+        }
     }
 
     /// Печатает текст напрямую символами — не зависит от текущей раскладки.
-    static func insert(_ text: String) {
+    static func insert(_ text: String, proxy: CGEventTapProxy? = nil) {
         let units = Array(text.utf16)
         var i = 0
         while i < units.count {
@@ -57,10 +83,8 @@ enum EventPoster {
             down.flags = []
             up.flags = []
             down.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: chunk)
-            down.setIntegerValueField(.eventSourceUserData, value: marker)
-            up.setIntegerValueField(.eventSourceUserData, value: marker)
-            down.post(tap: .cghidEventTap)
-            up.post(tap: .cghidEventTap)
+            post(down, proxy: proxy)
+            post(up, proxy: proxy)
         }
     }
 }

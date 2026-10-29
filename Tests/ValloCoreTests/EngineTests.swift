@@ -145,6 +145,16 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(out[4] == .consume([.delete(4), .insert("чняз "), .switchLayout(.ru)]))
     }
 
+    @Test func hasTypedTextTracksBuffer() {
+        // есть набранное — значит, свежего выделения быть не может (клик и стрелки сбрасывают буфер)
+        let engine = makeEngine(auto: false)
+        #expect(!engine.hasTypedText)
+        type("ghb", engine)
+        #expect(engine.hasTypedText)
+        engine.reset()
+        #expect(!engine.hasTypedText)
+    }
+
     @Test func canUndoOnlyRightAfterAutoSwitch() {
         let engine = makeEngine()
         #expect(!engine.canUndo)

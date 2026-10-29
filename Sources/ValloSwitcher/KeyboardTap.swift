@@ -25,9 +25,9 @@ final class KeyboardTap {
     func start() -> Bool {
         let mask: CGEventMask = [CGEventType.keyDown, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown]
             .reduce(0) { $0 | (1 << $1.rawValue) }
-        let callback: CGEventTapCallBack = { _, type, event, info in
+        let callback: CGEventTapCallBack = { proxy, type, event, info in
             let me = Unmanaged<KeyboardTap>.fromOpaque(info!).takeUnretainedValue()
-            return me.handle(type: type, event: event)
+            return me.handle(proxy: proxy, type: type, event: event)
         }
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
                                           eventsOfInterest: mask, callback: callback,
@@ -50,9 +50,12 @@ final class KeyboardTap {
         return true
     }
 
-    private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handle(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            // пока тап был выключен, мы не видели клавиш — память набора врёт
+            engine.reset()
+            detector.otherInput()
             return Unmanaged.passUnretained(event)
         }
         if event.getIntegerValueField(.eventSourceUserData) == EventPoster.marker {
@@ -60,7 +63,7 @@ final class KeyboardTap {
         }
         switch type {
         case .keyDown:
-            return handleKeyDown(event)
+            return handleKeyDown(event, proxy: proxy)
         case .flagsChanged:
             handleFlags(event)
         default:
@@ -71,7 +74,7 @@ final class KeyboardTap {
         return Unmanaged.passUnretained(event)
     }
 
-    private func handleKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleKeyDown(_ event: CGEvent, proxy: CGEventTapProxy) -> Unmanaged<CGEvent>? {
         detector.otherInput()
         let flags = event.flags
         let stroke = KeyStroke(keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
@@ -83,14 +86,15 @@ final class KeyboardTap {
         // уведомления о смене раскладки иногда не приходят — сверяемся с Маком перед каждой клавишей
         let actual = layouts.current
         if actual != engine.currentLanguage {
-            log.debug("layout drift: engine=\(self.engine.currentLanguage.rawValue, privacy: .public) actual=\(actual.rawValue, privacy: .public)")
+            log.debug("layout drift: engine=\(self.engine.currentLanguage.rawValue) actual=\(actual.rawValue)")
             engine.externalLayoutChange(to: actual)
         }
         let output = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: modified))
-        log.debug("key \(stroke.keyCode, privacy: .public) → \(String(describing: output), privacy: .public)")
+        log.debug("key → \(output == .passThrough ? "pass" : "consume")")
         guard case .consume(let actions) = output else { return Unmanaged.passUnretained(event) }
         report()
-        EventPoster.perform(actions, store: store, layouts: layouts)
+        // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
+        EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)
         return nil
     }
 
@@ -115,7 +119,9 @@ final class KeyboardTap {
         // пока Мак закрыл клавиатуру (поле пароля), ничего не делаем
         guard !ContextGuard.secureInputActive else { return }
         // откат важнее выделения; выделение читаем, только если откатывать нечего
-        if engine.canUndo {
+        // есть откат или свежий набор — выделения быть не может, Cmd+C не нужен
+        // (в VS Code Cmd+C без выделения копирует всю строку)
+        if engine.canUndo || engine.hasTypedText {
             run(engine.handleDoubleShift(selection: nil))
         } else {
             SelectionReader.selectedText { [self] selection in run(engine.handleDoubleShift(selection: selection)) }
@@ -123,7 +129,7 @@ final class KeyboardTap {
     }
 
     private func run(_ actions: [Action]) {
-        log.debug("double shift → \(String(describing: actions), privacy: .public)")
+        log.debug("double shift → \(actions.summary)")
         guard !actions.isEmpty else { return }
         report()
         EventPoster.perform(actions, store: store, layouts: layouts)

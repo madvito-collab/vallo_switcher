@@ -9,7 +9,12 @@ final class SettingsModel: ObservableObject {
     var onLearnedChanged: (([String]) -> Void)?
 
     @Published var autoSwitch: Bool { didSet { store.autoSwitchEnabled = autoSwitch } }
-    @Published var debugMode: Bool { didSet { store.debugMode = debugMode } }
+    @Published var debugMode: Bool {
+        didSet {
+            store.debugMode = debugMode
+            DebugLog.enabled = debugMode
+        }
+    }
     @Published var excluded: [String] { didSet { store.excludedBundleIDs = excluded } }
     @Published var learned: [String] {
         didSet {
@@ -23,7 +28,7 @@ final class SettingsModel: ObservableObject {
             do {
                 if launchAtLogin { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             } catch {
-                log.debug("launch at login: \(error.localizedDescription, privacy: .public)")
+                log.debug("launch at login: \(error.localizedDescription)")
             }
         }
     }

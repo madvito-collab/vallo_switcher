@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menu = StatusMenu(store: store)
+        DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
             engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current)
@@ -26,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
 
         layouts.onExternalChange = { [weak self] lang in
-            log.debug("external layout change → \(lang.rawValue, privacy: .public), reset")
+            log.debug("external layout change → \(lang.rawValue), reset")
             self?.engine.externalLayoutChange(to: lang)
         }
 

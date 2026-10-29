@@ -3,7 +3,20 @@ import Foundation
 import os
 import ValloCore
 
-let log = Logger(subsystem: "com.vallo.switcher", category: "debug")
+/// Журнал отладки. Пишет только при включённом режиме отладки и никогда — набранный текст:
+/// только виды действий, длины и состояния.
+enum DebugLog {
+    nonisolated(unsafe) static var enabled = false
+    private static let logger = Logger(subsystem: "com.vallo.switcher", category: "debug")
+
+    static func debug(_ message: @autoclosure () -> String) {
+        guard enabled else { return }
+        let text = message()
+        logger.debug("\(text)")
+    }
+}
+
+let log = DebugLog.self
 
 /// Настоящая раскладка системы: что даёт клавиша на подключённой сейчас клавиатуре.
 struct SystemKeyLayout: KeyLayout {
@@ -61,7 +74,7 @@ final class SystemLayouts {
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            log.debug("TIS notification: current=\(self.current.rawValue, privacy: .public)")
+            log.debug("TIS notification: current=\(self.current.rawValue)")
             self.onExternalChange?(self.current)
         }
     }

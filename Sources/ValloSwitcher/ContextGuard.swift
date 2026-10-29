@@ -28,11 +28,17 @@ enum ContextGuard {
         return focused(in: AXUIElementCreateApplication(pid))
     }
 
+    /// Если приложение подвисло, не ждём его дольше 50 мс — иначе встанет клавиатура всей системы.
+    static let axTimeout: Float = 0.05
+
     private static func focused(in root: AXUIElement) -> AXUIElement? {
+        AXUIElementSetMessagingTimeout(root, axTimeout)
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(root, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let focused else { return nil }
-        return (focused as! AXUIElement)
+        let element = focused as! AXUIElement
+        AXUIElementSetMessagingTimeout(element, axTimeout)
+        return element
     }
 
     /// Тип поля на сайте. Отдельного атрибута браузеры не дают (разведка Task 9), но пишут тип
@@ -55,7 +61,7 @@ enum ContextGuard {
     /// Разведка: все атрибуты фокусного поля в журнал (только в режиме отладки).
     static func dumpFocusedElement() {
         guard let element = focusedElement() else {
-            log.debug("AX focused: none (\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?", privacy: .public))")
+            log.debug("AX focused: none (\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"))")
             return
         }
         var names: CFArray?
@@ -64,10 +70,12 @@ enum ContextGuard {
         let values = list.map { name -> String in
             var v: CFTypeRef?
             AXUIElementCopyAttributeValue(element, name as CFString, &v)
+            // содержимое поля (набранный текст) в журнал не пишем
+            if name == kAXValueAttribute || name == kAXSelectedTextAttribute { return name }
             if let s = v as? String { return "\(name)=\(s.prefix(40))" }
             if let a = v as? [Any] { return "\(name)=[\(a.prefix(5).map { "\($0)" }.joined(separator: ","))]" }
             return name
         }
-        log.debug("AX focused: \(values.joined(separator: " | "), privacy: .public)")
+        log.debug("AX focused: \(values.joined(separator: " | "))")
     }
 }

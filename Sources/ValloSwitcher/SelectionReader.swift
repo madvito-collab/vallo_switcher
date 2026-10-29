@@ -21,7 +21,10 @@ enum SelectionReader {
     }
 
     private static func decide(_ result: AXResult, _ completion: @escaping (String?) -> Void) {
-        log.debug("AX selection: \(String(describing: result), privacy: .public)")
+        switch result {
+        case .text(let s): log.debug("AX selection: \(s.count) chars")
+        case .unavailable: log.debug("AX selection: unavailable")
+        }
         switch result {
         case .text(let s) where !s.isEmpty: completion(s)
         // пустой ответ Chrome/Electron не означает «нет выделения» — спрашиваем через Cmd+C
@@ -75,9 +78,12 @@ enum SelectionReader {
         // ждём, пока приложение положит выделение в буфер (до 300 мс), не блокируя поток
         func poll(_ waited: Int) {
             if pasteboard.changeCount != before {
-                let text = pasteboard.string(forType: .string)
+                // VS Code без выделения копирует всю строку и помечает это в своих данных
+                let vscode = pasteboard.string(forType: NSPasteboard.PasteboardType("vscode-editor-data")) ?? ""
+                let emptySelection = vscode.contains("\"isFromEmptySelection\":true")
+                let text = emptySelection ? nil : pasteboard.string(forType: .string)
                 Clipboard.restore(saved)
-                log.debug("Cmd+C: got \(text?.count ?? 0, privacy: .public) chars after \(waited, privacy: .public) ms")
+                log.debug("Cmd+C: got \(text?.count ?? 0) chars after \(waited) ms, emptySelection=\(emptySelection)")
                 completion(text?.isEmpty == false ? text : nil)
             } else if waited >= 300 {
                 log.debug("Cmd+C: nothing copied")

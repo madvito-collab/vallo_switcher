@@ -62,6 +62,9 @@ public final class Engine {
     /// первый мог быть случайным нажатием. Живёт только в памяти, до перезапуска.
     private var undoneOnce: Set<String> = []
 
+    /// В памяти набора что-то есть. Тогда свежего выделения быть не может: клик, стрелки и Cmd+A сбрасывают буфер.
+    public var hasTypedText: Bool { !buffer.isEmpty }
+
     /// Двойной Shift сейчас откатит автоисправление (тогда выделение не читаем).
     public var canUndo: Bool { undo != nil }
 
