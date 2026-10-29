@@ -32,7 +32,21 @@ let smallJudge = Judge(en: Lexicon(words: ["hello", "help", "the"]),
     @Test func wordEndDecisions() {
         #expect(isSwitch(smallJudge.wordEnd(current: "ghbdtn", alternative: "привет", currentLanguage: .en)))
         #expect(smallJudge.wordEnd(current: "hello", alternative: "руддщ", currentLanguage: .en) == .keep)
-        #expect(smallJudge.wordEnd(current: "z", alternative: "я", currentLanguage: .en) == .keep)
+    }
+
+    @Test func shortWordsFromList() {
+        // 1–2 буквы исправляем только по списку частых слов, и только на конце слова
+        #expect(isSwitch(smallJudge.wordEnd(current: "jr", alternative: "ок", currentLanguage: .en)))
+        #expect(isSwitch(smallJudge.wordEnd(current: "z", alternative: "я", currentLanguage: .en)))
+        #expect(isSwitch(smallJudge.wordEnd(current: "щл", alternative: "ok", currentLanguage: .ru)))
+        #expect(isSwitch(smallJudge.wordEnd(current: "Ш", alternative: "I", currentLanguage: .ru)))
+        // настоящее короткое слово текущего языка не трогаем
+        #expect(smallJudge.wordEnd(current: "ok", alternative: "щл", currentLanguage: .en) == .keep)
+        #expect(smallJudge.wordEnd(current: "on", alternative: "щт", currentLanguage: .en) == .keep)
+        // нет в списке — не трогаем
+        #expect(smallJudge.wordEnd(current: "xx", alternative: "чч", currentLanguage: .en) == .keep)
+        // посреди слова короткие не решаем
+        #expect(smallJudge.midWord(current: "jr", alternative: "ок", currentLanguage: .en) == .wait)
     }
 
     @Test func learnedWordBlocksSwitch() {

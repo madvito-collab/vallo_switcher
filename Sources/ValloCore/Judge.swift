@@ -12,6 +12,15 @@ public struct Judge: Sendable {
     /// Раньше этой буквы ничего не решаем.
     public static let minLetters = 3
 
+    /// Частые слова из 1–2 букв: их исправляем на конце слова (решение ученика 2026-10-29).
+    /// Остальные короткие слишком легко спутать — только двойным Shift.
+    public static let shortWords: [Language: Set<String>] = [
+        .ru: ["ок", "да", "не", "ну", "ты", "мы", "вы", "он", "на", "по", "за", "до", "то",
+              "я", "и", "в", "с", "а", "о", "у", "к"],
+        .en: ["ok", "hi", "is", "it", "to", "in", "on", "at", "of", "no", "so", "we", "me", "my",
+              "do", "go", "up", "be", "a", "i"],
+    ]
+
     public var learned: Set<String>
     private let en: Lexicon
     private let ru: Lexicon
@@ -43,8 +52,13 @@ public struct Judge: Sendable {
     public func wordEnd(current: String, alternative: String, currentLanguage: Language) -> Verdict {
         let cur = Judge.core(current), alt = Judge.core(alternative)
         if SpecialText.isSpecial(current) || SpecialText.isSpecial(alternative) { return .keep }
-        if cur.count < Judge.minLetters { return .keep }
         if learned.contains(Lexicon.normalize(cur)) { return .keep }
+        if cur.count < Judge.minLetters {
+            let short = Judge.shortWords
+            guard short[currentLanguage.other]!.contains(alt.lowercased()),
+                  !short[currentLanguage]!.contains(cur.lowercased()) else { return .keep }
+            return .switchLanguage(reason: "«\(alt)» — частое короткое слово \(currentLanguage.other.rawValue.uppercased())")
+        }
         let L = lexicon(currentLanguage), A = lexicon(currentLanguage.other)
         if L.isWord(cur) { return .keep }
         if A.isWord(alt) { return .switchLanguage(reason: "«\(alt)» — слово \(currentLanguage.other.rawValue.uppercased()), «\(cur)» — нет") }

@@ -126,9 +126,11 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(engine.handleDoubleShift(selection: nil) == [.delete(6), .insert("привет"), .switchLayout(.ru)])
     }
 
-    @Test func shortWordsNotAuto() {
+    @Test func shortWordsOnlyFromList() {
         let engine = makeEngine()
-        #expect(type("z ", engine).allSatisfy { $0 == .passThrough })
+        #expect(type("xx ", engine).allSatisfy { $0 == .passThrough })
+        let out = type("jr ", makeEngine())
+        #expect(out[2] == .consume([.delete(2), .insert("ок "), .switchLayout(.ru)]))
     }
 
     @Test func autoSwitchDisabled() {
