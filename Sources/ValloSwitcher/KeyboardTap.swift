@@ -74,7 +74,8 @@ final class KeyboardTap {
                                shift: flags.contains(.maskShift),
                                capsLock: flags.contains(.maskAlphaShift))
         let modified = !flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
-        engine.autoSwitchEnabled = store.autoSwitchEnabled
+        if store.debugMode { ContextGuard.dumpFocusedElement() }
+        engine.autoSwitchEnabled = store.autoSwitchEnabled && ContextGuard.autoSwitchAllowed(store: store)
         // уведомления о смене раскладки иногда не приходят — сверяемся с Маком перед каждой клавишей
         let actual = layouts.current
         if actual != engine.currentLanguage {
@@ -107,6 +108,8 @@ final class KeyboardTap {
     }
 
     private func doubleShift() {
+        // пока Мак закрыл клавиатуру (поле пароля), ничего не делаем
+        guard !ContextGuard.secureInputActive else { return }
         // откат важнее выделения; выделение читаем, только если откатывать нечего
         if engine.canUndo {
             run(engine.handleDoubleShift(selection: nil))

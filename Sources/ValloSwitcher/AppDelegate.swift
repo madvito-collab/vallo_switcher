@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var engine: Engine!
     private var tap: KeyboardTap?
     private var permissionTimer: Timer?
+    private var secureInputTimer: Timer?
+    private var settings: SettingsWindow!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menu = StatusMenu(store: store)
@@ -18,6 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fail("Не получилось запуститься: \(error)")
             return
         }
+        let model = SettingsModel(store: store)
+        model.onLearnedChanged = { [weak self] words in self?.engine.judge.learned = Set(words) }
+        settings = SettingsWindow(model: model)
+        menu.onOpenSettings = { [weak self] in self?.settings.show() }
+
         layouts.onExternalChange = { [weak self] lang in
             log.debug("external layout change → \(lang.rawValue, privacy: .public), reset")
             self?.engine.externalLayoutChange(to: lang)
@@ -46,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.tap = tap
         menu.set(state: .working)
+        // пока активно поле пароля, Мак закрывает клавиатуру — показываем серую иконку
+        secureInputTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.menu.set(state: ContextGuard.secureInputActive ? .blocked : .working)
+        }
     }
 
     private func loadJudge() throws -> Judge {
