@@ -108,7 +108,7 @@ final class StatusMenu: NSObject {
 /// Строка меню «название слева — переключатель справа», как «Wi-Fi» в меню Wi-Fi.
 final class SwitchRowView: NSView {
     private let label = NSTextField(labelWithString: "")
-    private let toggle = NSSwitch()
+    private let toggle = PillSwitch()
     private let onChange: (Bool) -> Void
 
     init(title: String, onChange: @escaping (Bool) -> Void) {
@@ -116,9 +116,7 @@ final class SwitchRowView: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 34))
         label.stringValue = title
         label.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
-        toggle.controlSize = .small
-        toggle.target = self
-        toggle.action = #selector(changed)
+        toggle.onChange = { [weak self] in self?.onChange($0) }
         for v in [label, toggle] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
@@ -128,6 +126,8 @@ final class SwitchRowView: NSView {
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
             toggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             toggle.centerYAnchor.constraint(equalTo: centerYAnchor),
+            toggle.widthAnchor.constraint(equalToConstant: 32),
+            toggle.heightAnchor.constraint(equalToConstant: 18),
             label.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -12),
         ])
         autoresizingMask = [.width]
@@ -136,11 +136,33 @@ final class SwitchRowView: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     var isOn: Bool {
-        get { toggle.state == .on }
-        set { toggle.state = newValue ? .on : .off }
+        get { toggle.isOn }
+        set { toggle.isOn = newValue }
+    }
+}
+
+/// Свой тумблер: стандартный NSSwitch в меню macOS рисует серым в обоих состояниях
+/// (меню не считается активным окном). Включён — цвет акцента системы, выключен — серый.
+final class PillSwitch: NSView {
+    var onChange: ((Bool) -> Void)?
+    var isOn = false { didSet { needsDisplay = true } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let r = bounds.insetBy(dx: 0.5, dy: 0.5)
+        let track = NSBezierPath(roundedRect: r, xRadius: r.height / 2, yRadius: r.height / 2)
+        (isOn ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+        track.fill()
+        let d = r.height - 4
+        let x = isOn ? r.maxX - d - 2 : r.minX + 2
+        let knob = NSBezierPath(ovalIn: NSRect(x: x, y: r.minY + 2, width: d, height: d))
+        NSColor.white.setFill()
+        knob.fill()
     }
 
-    @objc private func changed() { onChange(isOn) }
+    override func mouseDown(with event: NSEvent) {
+        isOn.toggle()
+        onChange?(isOn)
+    }
 }
 
 extension StatusMenu: NSMenuDelegate {
