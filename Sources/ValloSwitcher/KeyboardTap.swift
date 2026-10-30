@@ -180,7 +180,8 @@ final class KeyboardTap {
         if case .consume(let actions) = output {
             // сначала свитчер; на этом нажатии типографика молчит. Свитчер мог исправить слово посреди —
             // дальше в памяти будет хвост слова
-            live.reset(midWord: true)
+            let typedLetter = layouts.pair.layout(actual).character(for: stroke)?.first?.isLetter ?? false
+            live.reset(midWord: typedLetter)
             report()
             // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
             EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)
