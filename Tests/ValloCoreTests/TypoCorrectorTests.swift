@@ -22,6 +22,15 @@ struct SeededRandom: RandomNumberGenerator {
         #expect(typos.correct("нормалньо") == "нормально")
     }
 
+    @Test func missingSoftSignAtEnd() {
+        #expect(typos.correct("можеш") == "можешь")
+        #expect(typos.correct("будеш") == "будешь")
+        #expect(typos.correct("хочеш") == "хочешь")
+        #expect(typos.correct("Делаеш") == "Делаешь")
+        #expect(typos.correct("можш") == nil)      // два промаха — не трогаем
+        #expect(typos.correct("малыш") == nil)     // настоящее слово на «ш»
+    }
+
     @Test func keepsCase() {
         #expect(typos.correct("Првет") == "Привет")
         #expect(typos.correct("ПРВЕТ") == "ПРИВЕТ")

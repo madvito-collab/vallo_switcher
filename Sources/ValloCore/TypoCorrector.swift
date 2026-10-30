@@ -77,6 +77,11 @@ public struct TypoCorrector: Sendable {
     /// Исправленное слово или nil — не трогать.
     public func correct(_ word: String) -> String? {
         let w = Lexicon.normalize(word)
+        // забытый «ь» в конце: «можеш» → «можешь» (решение ученика) — узкое исключение из «окончания не трогаем»
+        if w.count >= 4, w.hasSuffix("ш"), w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
+           frequency[w] == nil, !ignored.contains(w), isKnown(w + "ь") {
+            return withCase(of: word, (display[w + "ь"] ?? w + "ь"))
+        }
         guard w.count >= TypoCorrector.minLength,
               w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
               !isKnown(w), !ignored.contains(w), !Judge.isSlang(w, .ru) else { return nil }
