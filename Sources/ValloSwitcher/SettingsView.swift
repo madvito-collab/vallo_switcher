@@ -187,22 +187,17 @@ struct GeneralTab: View {
     }
 }
 
-/// Строки приложений с кнопкой «Убрать».
-private struct AppRows: View {
-    @Binding var apps: [String]
-    @ObservedObject var model: SettingsModel
-
+/// Заголовок раздела с описанием под ним.
+private struct SectionHeader: View {
+    let title: String
+    let subtitle: String
     var body: some View {
-        if apps.isEmpty {
-            Text("Нет приложений").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(T(title)).font(.headline)
+            Text(T(subtitle)).font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        ForEach(apps, id: \.self) { id in
-            HStack {
-                Text(model.appName(id))
-                Spacer()
-                Button("Убрать") { apps.removeAll { $0 == id } }
-            }
-        }
+        .textCase(nil)
     }
 }
 
@@ -213,29 +208,41 @@ struct ExclusionsTab: View {
     var body: some View {
         Form {
             Section {
-                AppRows(apps: $model.excluded, model: model)
+                ForEach(model.excluded, id: \.self) { id in row(id, in: \.excluded) }
             } header: {
-                Text("Автопереключение")
+                SectionHeader(title: "Автопереключение",
+                              subtitle: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.")
             } footer: {
-                BelowBlock(hint: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.") {
-                    Button("Добавить приложение…") { add(to: \.excluded) }
-                }
+                addButton(to: \.excluded)
             }
             Section {
-                AppRows(apps: $model.typographyExcluded, model: model)
+                ForEach(model.typographyExcluded, id: \.self) { id in row(id, in: \.typographyExcluded) }
             } header: {
-                Text("Типографика на лету")
+                SectionHeader(title: "Типографика на лету",
+                              subtitle: "Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.")
             } footer: {
-                BelowBlock(hint: "Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.") {
-                    Button("Добавить приложение…") { add(to: \.typographyExcluded) }
-                }
+                addButton(to: \.typographyExcluded)
             }
         }
         .formStyle(.grouped)
     }
 
-    private func add(to list: ReferenceWritableKeyPath<SettingsModel, [String]>) {
-        for id in model.pickApps() where !model[keyPath: list].contains(id) { model[keyPath: list].append(id) }
+    private func row(_ id: String, in list: ReferenceWritableKeyPath<SettingsModel, [String]>) -> some View {
+        HStack {
+            Text(model.appName(id))
+            Spacer()
+            Button("Убрать") { model[keyPath: list].removeAll { $0 == id } }
+        }
+    }
+
+    /// Кнопка справа под блоком, как «Добавить аккаунт…» в системных настройках.
+    private func addButton(to list: ReferenceWritableKeyPath<SettingsModel, [String]>) -> some View {
+        HStack {
+            Spacer()
+            Button("Добавить приложение…") {
+                for id in model.pickApps() where !model[keyPath: list].contains(id) { model[keyPath: list].append(id) }
+            }
+        }
     }
 }
 
