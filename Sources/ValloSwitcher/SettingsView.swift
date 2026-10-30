@@ -436,7 +436,12 @@ struct LearnedTab: View {
                     }
                 }
                 HStack {
-                    TextField("Добавить слово", text: $newWord).onSubmit(add)
+                    // без подписи: иначе форма прижимает поле к правому краю и оно схлопывается
+                    TextField("", text: $newWord, prompt: Text("Новое слово"))
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: .infinity)
+                        .onSubmit(add)
                     Button("Добавить", action: add).disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } header: {
