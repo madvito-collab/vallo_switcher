@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let onboarding = OnboardingWindow()
     private var secureInputTimer: Timer?
     private var settings: SettingsWindow!
+    private var typos: TypoCorrector!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // свитчер уже запущен (например, второй раз из «Программ» или из DMG) — второй экземпляр не нужен:
@@ -26,12 +27,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             layouts = try SystemLayouts()
             engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current ?? .en)
+            typos = try TypoCorrector.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru.txt"),
+                                           ignored: Set(store.typoIgnoredWords))
         } catch {
             fail("Не получилось запуститься: \(error)")
             return
         }
         let model = SettingsModel(store: store)
         model.onLearnedChanged = { [weak self] words in self?.engine.judge.learned = Set(words) }
+        model.onTypoWordsChanged = { [weak self] words in
+            self?.typos.ignored = Set(words.map(Lexicon.normalize))
+            self?.tap?.typos.ignored = Set(words.map(Lexicon.normalize))
+        }
         model.onHotkeysChanged = { [weak self] in self?.tap?.reloadHotkeys() }
         settings = SettingsWindow(model: model)
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
@@ -69,7 +76,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startTap() {
         guard tap == nil else { return }
-        let tap = KeyboardTap(engine: engine, store: store, layouts: layouts)
+        let tap = KeyboardTap(engine: engine, store: store, layouts: layouts, typos: typos)
+        tap.onTypoUndone = { [weak self] word in
+            self?.store.ignoreTypo(word)
+            self?.settings.model.reloadTypoWords()
+        }
         tap.onDecision = { [weak self] in self?.menu.record(decision: $0) }
         tap.onPermissionLost = { [weak self] in self?.checkPermissions() }
         guard tap.start() else {

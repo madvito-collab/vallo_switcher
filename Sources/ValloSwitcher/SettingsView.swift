@@ -8,6 +8,8 @@ final class SettingsModel: ObservableObject {
     private let store: SettingsStore
     /// Список запомненных слов поменялся — движку надо обновить судью.
     var onLearnedChanged: (([String]) -> Void)?
+    /// «Не исправлять» поменялись — исправлятору надо обновить.
+    var onTypoWordsChanged: (([String]) -> Void)?
     /// Сочетания поменялись — перехвату надо перечитать.
     var onHotkeysChanged: (() -> Void)?
 
@@ -20,6 +22,14 @@ final class SettingsModel: ObservableObject {
     }
     @Published var excluded: [String] { didSet { store.excludedBundleIDs = excluded } }
     @Published var typographyLive: Bool { didSet { store.typographyLiveEnabled = typographyLive } }
+    @Published var typoLive: Bool { didSet { store.typoLiveEnabled = typoLive } }
+    @Published var typoCapitalize: Bool { didSet { store.typoCapitalizeEnabled = typoCapitalize } }
+    @Published var typoWords: [String] {
+        didSet {
+            store.typoIgnoredWords = typoWords
+            onTypoWordsChanged?(typoWords)
+        }
+    }
     @Published var typographyHotkey: Bool { didSet { store.typographyHotkeyEnabled = typographyHotkey } }
     @Published var typographyExcluded: [String] { didSet { store.typographyExcludedBundleIDs = typographyExcluded } }
     @Published private(set) var hotkeyConvert: Hotkey
@@ -49,6 +59,9 @@ final class SettingsModel: ObservableObject {
         debugMode = store.debugMode
         excluded = store.excludedBundleIDs
         typographyLive = store.typographyLiveEnabled
+        typoLive = store.typoLiveEnabled
+        typoCapitalize = store.typoCapitalizeEnabled
+        typoWords = store.typoIgnoredWords
         typographyHotkey = store.typographyHotkeyEnabled
         typographyExcluded = store.typographyExcludedBundleIDs
         hotkeyConvert = store.hotkeyConvert
@@ -64,6 +77,18 @@ final class SettingsModel: ObservableObject {
     }
 
     /// Выбрать приложения в «Программах». Возвращает их bundle ID.
+    /// Слово попало в «Не исправлять», пока окно открыто.
+    func reloadTypoWords() {
+        if typoWords != store.typoIgnoredWords { typoWords = store.typoIgnoredWords }
+    }
+
+    /// Добавить слово в «Не исправлять» вручную.
+    func addTypoWord(_ raw: String) {
+        let w = Lexicon.normalize(raw.trimmingCharacters(in: .whitespaces))
+        guard !w.isEmpty, !typoWords.contains(w) else { return }
+        typoWords.append(w)
+    }
+
     func pickApps() -> [String] {
         let panel = NSOpenPanel()
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
@@ -230,8 +255,8 @@ struct ExclusionsTab: View {
                     row(String(key.dropFirst(5)), in: \.typographyExcluded)
                 }
             } header: {
-                SectionHeader(title: "Типографика на лету",
-                              subtitle: "Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.")
+                SectionHeader(title: "Типографика и опечатки на лету",
+                              subtitle: "Здесь тире, кавычки и исправление опечаток не работают. Редакторы JetBrains исключены всегда.")
             } footer: {
                 addButton(to: \.typographyExcluded)
             }
@@ -394,26 +419,76 @@ struct HotkeysTab: View {
 
 struct LearnedTab: View {
     @ObservedObject var model: SettingsModel
+    @State private var newWord = ""
 
     var body: some View {
         Form {
             Section {
-                if model.learned.isEmpty {
-                    Text(T("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его."))
-                        .foregroundStyle(.secondary)
+                if model.typoWords.isEmpty {
+                    Text(T("Пока пусто. Слово попадает сюда, когда ты отменяешь его исправление Backspace.")).foregroundStyle(.secondary)
                 }
-                ForEach(model.learned, id: \.self) { word in
+                ForEach(model.typoWords.map { "typo:" + $0 }, id: \.self) { key in
+                    let word = String(key.dropFirst(5))
+                    HStack {
+                        Text(word)
+                        Spacer()
+                        Button("Удалить") { model.typoWords.removeAll { $0 == word } }
+                    }
+                }
+                HStack {
+                    TextField("Добавить слово", text: $newWord).onSubmit(add)
+                    Button("Добавить", action: add).disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } header: {
+                SectionHeader(title: "Не исправлять", subtitle: "Эти слова исправлятор опечаток и модель запятых не трогают.")
+            }
+            Section {
+                if model.learned.isEmpty {
+                    Text(T("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его двойным Shift.")).foregroundStyle(.secondary)
+                }
+                ForEach(model.learned.map { "learn:" + $0 }, id: \.self) { key in
+                    let word = String(key.dropFirst(6))
                     HStack {
                         Text(word).font(.body.monospaced())
                         Spacer()
                         Button("Удалить") { model.learned.removeAll { $0 == word } }
                     }
                 }
-                if !model.learned.isEmpty {
-                    Button("Очистить всё", role: .destructive) { model.learned.removeAll() }
+            } header: {
+                SectionHeader(title: "Не переключать раскладку", subtitle: "Эти слова свитчер сам не переводит в другую раскладку.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func add() {
+        model.addTypoWord(newWord)
+        newWord = ""
+    }
+}
+
+/// Опечатки (вкладка расширяется в задаче со скачиванием модели).
+struct TyposTab: View {
+    @ObservedObject var model: SettingsModel
+
+    private let examples: [(String, String)] = [
+        ("првет · приввет · привте", "привет"),
+        ("пожалуста", "пожалуйста"),
+        ("ктото · какой то", "кто-то · какой-то"),
+        ("фигма · ща · хз · Сбербанк", "не трогаются"),
+    ]
+
+    var body: some View {
+        Form {
+            Section {
+                SubtitledToggle(title: "Исправлять опечатки на лету",
+                                subtitle: "Лишние, пропущенные и переставленные буквы. Backspace сразу после — вернуть и запомнить слово",
+                                isOn: $model.typoLive)
+            }
+            Section("Что исправляется") {
+                ForEach(examples, id: \.0) { before, after in
+                    LabeledContent(before) { Text(after) }
                 }
-            } footer: {
-                Hint("Эти слова свитчер сам не трогает.")
             }
         }
         .formStyle(.grouped)
@@ -452,7 +527,8 @@ final class SettingsWindow {
         add("Исключения", "nosign", height: 520, ExclusionsTab(model: model))
         add("Типографика", "textformat", height: 600, TypographyTab(model: model))
         add("Сочетания", "keyboard", height: 260, HotkeysTab(model: model))
-        add("Слова", "text.book.closed", height: 340, LearnedTab(model: model))
+        add("Опечатки", "text.badge.checkmark", height: 340, TyposTab(model: model))
+        add("Слова", "text.book.closed", height: 520, LearnedTab(model: model))
 
         let w = NSWindow(contentViewController: tabs)
         w.styleMask = [.titled, .closable]

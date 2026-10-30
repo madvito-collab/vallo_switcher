@@ -25,10 +25,15 @@ final class KeyboardTap {
     /// Какие модификаторы (по keyCode) сейчас зажаты.
     private var modifiersDown: Set<Int64> = []
     private var live = LiveTypographer()
+    /// Исправлятор опечаток; «Мои слова» обновляются снаружи.
+    var typos: TypoCorrector
+    /// Человек отменил исправление опечатки — слово в «Не исправлять».
+    var onTypoUndone: ((String) -> Void)?
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    init(engine: Engine, store: SettingsStore, layouts: SystemLayouts) {
+    init(engine: Engine, store: SettingsStore, layouts: SystemLayouts, typos: TypoCorrector) {
+        self.typos = typos
         self.engine = engine
         self.store = store
         self.layouts = layouts
@@ -140,13 +145,19 @@ final class KeyboardTap {
         if store.debugMode { ContextGuard.dumpFocusedElement() }
         let allowed = ContextGuard.allowed(store: store)
         engine.autoSwitchEnabled = store.autoSwitchEnabled && allowed.autoSwitch
-        let liveAllowed = store.typographyLiveEnabled && allowed.typography
+        // типографика и опечатки на лету — один конвейер; работает, если включено хоть что-то
+        let options = LiveOptions(typography: store.typographyLiveEnabled, typos: store.typoLiveEnabled ? typos : nil)
+        let liveAllowed = (options.typography || options.typos != nil) && allowed.typography
         // ⌥⌫, ⌘⌫ и прочие сочетания меняют текст непредсказуемо — память типографики больше не верна
         if modified || !liveAllowed { live.reset() }
 
         // Backspace сразу после типографской правки — вернуть набранное
         if keyCode == Engine.backspaceKey && !modified {
             if liveAllowed, let edit = live.backspace() {
+                if let word = live.undoneTypoWord {
+                    typos.ignored.insert(word)
+                    DispatchQueue.main.async { [self] in onTypoUndone?(word) }
+                }
                 engine.reset()
                 EventPoster.perform([.delete(edit.delete), .insert(edit.insert)], store: store, layouts: layouts, proxy: proxy)
                 return nil
@@ -182,7 +193,7 @@ final class KeyboardTap {
             live.reset()
             return Unmanaged.passUnretained(event)
         }
-        guard let edit = live.typed(char, hint: actual) else { return Unmanaged.passUnretained(event) }
+        guard let edit = live.typed(char, hint: actual, options: options) else { return Unmanaged.passUnretained(event) }
         log.debug("typography → delete(\(edit.delete)) insert(\(edit.insert.count) chars)")
         // длина текста изменилась (… вместо ...) — память свитчера больше не совпадает с экраном
         if live.lastEditChangedLength { engine.reset() }

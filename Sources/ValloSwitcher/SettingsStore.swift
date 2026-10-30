@@ -12,6 +12,9 @@ final class SettingsStore {
             "learnedWords": [String](),
             "debugMode": false,
             "typographyLiveEnabled": true,
+            "typoLiveEnabled": true,
+            "typoIgnoredWords": [String](),
+            "typoCapitalizeEnabled": false,
             "typographyHotkeyEnabled": true,
             "typographyExcludedBundleIDs": ["com.apple.Terminal", "com.googlecode.iterm2", "com.microsoft.VSCode",
                                             "com.apple.dt.Xcode", "com.todesktop.230313mzl4w4u92"],
@@ -70,6 +73,27 @@ final class SettingsStore {
 
     private func setHotkey(_ value: Hotkey, _ key: String) {
         defaults.set(try? JSONEncoder().encode(value), forKey: key)
+    }
+
+    var typoLiveEnabled: Bool {
+        get { defaults.bool(forKey: "typoLiveEnabled") }
+        set { defaults.set(newValue, forKey: "typoLiveEnabled") }
+    }
+
+    /// «Не исправлять» — слова, исправление которых человек отменил или добавил сам.
+    var typoIgnoredWords: [String] {
+        get { defaults.stringArray(forKey: "typoIgnoredWords") ?? [] }
+        set { defaults.set(newValue, forKey: "typoIgnoredWords") }
+    }
+
+    var typoCapitalizeEnabled: Bool {
+        get { defaults.bool(forKey: "typoCapitalizeEnabled") }
+        set { defaults.set(newValue, forKey: "typoCapitalizeEnabled") }
+    }
+
+    func ignoreTypo(_ word: String) {
+        guard !typoIgnoredWords.contains(word) else { return }
+        typoIgnoredWords.append(word)
     }
 
     func learn(_ word: String) {
