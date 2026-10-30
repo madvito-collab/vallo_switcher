@@ -13,6 +13,18 @@ enum ContextGuard {
     static func autoSwitchAllowed(store: SettingsStore) -> Bool {
         if let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
            store.excludedBundleIDs.contains(id) { return false }
+        return fieldAllowed()
+    }
+
+    /// Типографика на лету: свои исключения (и все редакторы JetBrains), плюс те же поля, что у свитчера.
+    static func typographyAllowed(store: SettingsStore) -> Bool {
+        if let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+           store.typographyExcludedBundleIDs.contains(id) || id.hasPrefix("com.jetbrains.") { return false }
+        return fieldAllowed()
+    }
+
+    /// Не пароль, не e-mail, не телефон, не ссылка, клавиатура не закрыта Маком.
+    private static func fieldAllowed() -> Bool {
         if secureInputActive { return false }
         guard let element = focusedElement() else { return true }
         if string(element, kAXSubroleAttribute) == kAXSecureTextFieldSubrole { return false }

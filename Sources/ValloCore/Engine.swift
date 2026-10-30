@@ -32,7 +32,7 @@ public final class Engine {
     static let resetKeys: Set<UInt16> = [53, 123, 124, 125, 126, 115, 119, 116, 121, 117]
     /// Return, Tab, Enter на цифровой клавиатуре: сначала проверяем слово, потом сбрасываем память.
     static let lineEndKeys: Set<UInt16> = [36, 48, 76]
-    static let backspaceKey: UInt16 = 51
+    public static let backspaceKey: UInt16 = 51
 
     public var autoSwitchEnabled = true
     public var judge: Judge

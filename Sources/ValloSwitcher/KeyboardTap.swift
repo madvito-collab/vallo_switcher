@@ -4,7 +4,8 @@ import ValloCore
 
 /// «Уши»: перехват клавиатуры и мыши во всех приложениях.
 final class KeyboardTap {
-    static let leftShiftKey: Int64 = 56
+    /// Что делать по сочетанию.
+    enum Trigger { case convert, typography }
 
     let engine: Engine
     let store: SettingsStore
@@ -14,8 +15,13 @@ final class KeyboardTap {
     /// Вызывается после каждого решения движка — для меню отладки.
     var onDecision: ((String) -> Void)?
 
-    private var detector = DoubleTapDetector(key: .leftShift)
-    private var shiftDown = false
+    /// Двойные нажатия модификаторов из настроек.
+    private var detectors: [(trigger: Trigger, detector: DoubleTapDetector)] = []
+    /// Свои сочетания из настроек.
+    private var combos: [(trigger: Trigger, hotkey: Hotkey)] = []
+    /// Какие модификаторы (по keyCode) сейчас зажаты.
+    private var modifiersDown: Set<Int64> = []
+    private var live = LiveTypographer()
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -23,6 +29,23 @@ final class KeyboardTap {
         self.engine = engine
         self.store = store
         self.layouts = layouts
+        reloadHotkeys()
+    }
+
+    /// Перечитать сочетания из настроек (после изменения в окне настроек).
+    func reloadHotkeys() {
+        detectors = []
+        combos = []
+        for (trigger, hotkey) in [(Trigger.convert, store.hotkeyConvert), (.typography, store.hotkeyTypography)] {
+            switch hotkey {
+            case .doubleTap(let key): detectors.append((trigger, DoubleTapDetector(key: key)))
+            case .combo: combos.append((trigger, hotkey))
+            }
+        }
+    }
+
+    private func otherInput() {
+        for i in detectors.indices { detectors[i].detector.otherInput() }
     }
 
     func start() -> Bool {
@@ -47,6 +70,7 @@ final class KeyboardTap {
         ) { [weak self] _ in
             log.debug("app activated → reset")
             self?.engine.reset()
+            self?.live.reset()
             // Chrome и Electron отдают поля через Accessibility, только если попросить, — просим сразу,
             // иначе охранник не видит, что курсор в поле e-mail или телефона
             SelectionReader.enableAccessibilityInFrontApp()
@@ -73,7 +97,8 @@ final class KeyboardTap {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             // пока тап был выключен, мы не видели клавиш — память набора врёт
             engine.reset()
-            detector.otherInput()
+            live.reset()
+            otherInput()
             return Unmanaged.passUnretained(event)
         }
         // доступ отобрали на ходу — снимаем перехват немедленно, иначе встанет клавиатура всей системы
@@ -92,25 +117,41 @@ final class KeyboardTap {
             handleFlags(event)
         default:
             log.debug("mouse → reset")
-            detector.otherInput()
+            otherInput()
             engine.reset()
+            live.reset()
         }
         return Unmanaged.passUnretained(event)
     }
 
     private func handleKeyDown(_ event: CGEvent, proxy: CGEventTapProxy) -> Unmanaged<CGEvent>? {
-        detector.otherInput()
+        otherInput()
         let flags = event.flags
-        let stroke = KeyStroke(keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
-                               shift: flags.contains(.maskShift),
-                               capsLock: flags.contains(.maskAlphaShift))
+        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        if let trigger = combo(keyCode: keyCode, flags: flags) {
+            DispatchQueue.main.async { [self] in fire(trigger) }
+            return nil
+        }
+        let stroke = KeyStroke(keyCode: keyCode, shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift))
         let modified = !flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
         if store.debugMode { ContextGuard.dumpFocusedElement() }
         engine.autoSwitchEnabled = store.autoSwitchEnabled && ContextGuard.autoSwitchAllowed(store: store)
+        let liveAllowed = store.typographyLiveEnabled && ContextGuard.typographyAllowed(store: store)
+
+        // Backspace сразу после типографской правки — вернуть набранное
+        if keyCode == Engine.backspaceKey && !modified {
+            if liveAllowed, let edit = live.backspace() {
+                engine.reset()
+                EventPoster.perform([.delete(edit.delete), .insert(edit.insert)], store: store, layouts: layouts, proxy: proxy)
+                return nil
+            }
+        }
+
         // уведомления о смене раскладки иногда не приходят — сверяемся с Маком перед каждой клавишей
         guard let actual = layouts.current else {
             // третья раскладка (украинская, японская…) — свитчер молчит
             engine.reset()
+            live.reset()
             return Unmanaged.passUnretained(event)
         }
         if actual != engine.currentLanguage {
@@ -119,28 +160,81 @@ final class KeyboardTap {
         }
         let output = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: modified))
         log.debug("key → \(output == .passThrough ? "pass" : "consume")")
-        guard case .consume(let actions) = output else { return Unmanaged.passUnretained(event) }
-        report()
-        // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
-        EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)
+        if case .consume(let actions) = output {
+            // сначала свитчер; на этом нажатии типографика молчит
+            live.reset()
+            report()
+            // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
+            EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)
+            return nil
+        }
+
+        // типографика на лету
+        guard keyCode != Engine.backspaceKey else { return Unmanaged.passUnretained(event) }
+        guard !modified, liveAllowed,
+              let text = layouts.pair.layout(actual).character(for: stroke), text.count == 1, let char = text.first else {
+            live.reset()
+            return Unmanaged.passUnretained(event)
+        }
+        guard let edit = live.typed(char, hint: actual) else { return Unmanaged.passUnretained(event) }
+        log.debug("typography → delete(\(edit.delete)) insert(\(edit.insert.count) chars)")
+        // длина текста изменилась (… вместо ...) — память свитчера больше не совпадает с экраном
+        if live.lastEditChangedLength { engine.reset() }
+        EventPoster.perform([.delete(edit.delete), .insert(edit.insert)], store: store, layouts: layouts, proxy: proxy)
         return nil
+    }
+
+    /// Своё сочетание из настроек, если нажато оно.
+    private func combo(keyCode: UInt16, flags: CGEventFlags) -> Trigger? {
+        combos.first { _, hotkey in
+            guard case let .combo(code, command, option, control, shift) = hotkey else { return false }
+            return code == keyCode && flags.contains(.maskCommand) == command && flags.contains(.maskAlternate) == option
+                && flags.contains(.maskControl) == control && flags.contains(.maskShift) == shift
+        }?.trigger
     }
 
     private func handleFlags(_ event: CGEvent) {
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        guard keyCode == KeyboardTap.leftShiftKey else {
-            detector.otherInput()
-            return
-        }
+        // каждое нажатие и отпускание модификатора приходит сюда; левый и правый различаем по keyCode
+        let isDown = !modifiersDown.contains(keyCode)
+        if isDown { modifiersDown.insert(keyCode) } else { modifiersDown.remove(keyCode) }
+        // флаги события — истина: если модификатор не зажат, его нет и в нашем списке
+        if event.flags.intersection([.maskShift, .maskAlternate, .maskControl, .maskCommand]).isEmpty { modifiersDown.removeAll() }
         let now = ProcessInfo.processInfo.systemUptime
-        let isDown = event.flags.contains(.maskShift)
-        if isDown && !shiftDown {
-            detector.keyDown(at: now)
-        } else if !isDown && shiftDown, detector.keyUp(at: now) {
-            // ждём, пока отпускание Shift дойдёт до приложения, и только потом печатаем
-            DispatchQueue.main.async { [self] in doubleShift() }
+        for i in detectors.indices {
+            guard Int64(detectors[i].detector.key.keyCode) == keyCode else {
+                detectors[i].detector.otherInput()
+                continue
+            }
+            if isDown {
+                detectors[i].detector.keyDown(at: now)
+            } else if detectors[i].detector.keyUp(at: now) {
+                let trigger = detectors[i].trigger
+                // ждём, пока отпускание модификатора дойдёт до приложения, и только потом печатаем
+                DispatchQueue.main.async { [self] in fire(trigger) }
+            }
         }
-        shiftDown = isDown
+    }
+
+    private func fire(_ trigger: Trigger) {
+        switch trigger {
+        case .convert: doubleShift()
+        case .typography: typographySelection()
+        }
+    }
+
+    /// Причесать выделенный текст.
+    private func typographySelection() {
+        guard store.typographyHotkeyEnabled, !ContextGuard.secureInputActive else { return }
+        SelectionReader.selectedText { [self] text in
+            guard let text else { return }
+            let formatted = Typographer.format(text)
+            log.debug("typography selection: \(text.count) → \(formatted.count) chars")
+            guard formatted != text else { return }
+            engine.reset()
+            live.reset()
+            EventPoster.replaceSelection(formatted)
+        }
     }
 
     private func doubleShift() {
