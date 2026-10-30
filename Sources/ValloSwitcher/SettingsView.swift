@@ -111,24 +111,7 @@ final class SettingsModel: ObservableObject {
     }
 }
 
-struct SettingsView: View {
-    @ObservedObject var model: SettingsModel
-
-    var body: some View {
-        TabView {
-            GeneralTab(model: model).tabItem { Label("Основное", systemImage: "gearshape") }
-            AppListTab(title: "Здесь автопереключение молчит. Двойной Shift работает.",
-                       apps: $model.excluded, model: model)
-                .tabItem { Label("Исключения", systemImage: "nosign") }
-            TypographyTab(model: model).tabItem { Label("Типографика", systemImage: "textformat") }
-            HotkeysTab(model: model).tabItem { Label("Сочетания", systemImage: "keyboard") }
-            LearnedTab(model: model).tabItem { Label("Слова", systemImage: "text.book.closed") }
-        }
-        .frame(width: 500, height: 440)
-    }
-}
-
-private struct GeneralTab: View {
+struct GeneralTab: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
@@ -147,7 +130,7 @@ private struct GeneralTab: View {
 }
 
 /// Список приложений с кнопками «Убрать» и «Добавить…».
-private struct AppListTab: View {
+struct AppListTab: View {
     let title: String
     @Binding var apps: [String]
     @ObservedObject var model: SettingsModel
@@ -173,7 +156,7 @@ private struct AppListTab: View {
     }
 }
 
-private struct TypographyTab: View {
+struct TypographyTab: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
@@ -203,7 +186,7 @@ private struct TypographyTab: View {
     }
 }
 
-private struct HotkeysTab: View {
+struct HotkeysTab: View {
     @ObservedObject var model: SettingsModel
     @State private var recorder = HotkeyRecorder()
     @State private var recording: SettingsModel.Action?
@@ -270,7 +253,7 @@ private struct HotkeysTab: View {
     }
 }
 
-private struct LearnedTab: View {
+struct LearnedTab: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
@@ -298,7 +281,8 @@ private struct LearnedTab: View {
     }
 }
 
-/// Окно настроек: одно на всё приложение.
+/// Окно настроек: одно на всё приложение. Нативная панель настроек macOS —
+/// вкладки-иконки в панели инструментов, заголовок окна = название вкладки.
 final class SettingsWindow {
     private var window: NSWindow?
     let model: SettingsModel
@@ -307,15 +291,35 @@ final class SettingsWindow {
 
     func show() {
         model.reload()
-        if window == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model)))
-            w.title = "Vallo Switcher"
-            w.styleMask = [.titled, .closable]
-            w.isReleasedWhenClosed = false
-            w.center()
-            window = w
-        }
+        if window == nil { window = makeWindow() }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeWindow() -> NSWindow {
+        let tabs = NSTabViewController()
+        tabs.tabStyle = .toolbar
+        func add<V: View>(_ title: String, _ symbol: String, height: CGFloat, _ view: V) {
+            let host = NSHostingController(rootView: view.frame(width: 500, height: height))
+            host.sizingOptions = .preferredContentSize
+            let item = NSTabViewItem(viewController: host)
+            item.label = title
+            item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+            tabs.addTabViewItem(item)
+        }
+        add("Основное", "gearshape", height: 200, GeneralTab(model: model))
+        add("Исключения", "nosign", height: 340, AppListTab(title: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.",
+                                               apps: Binding(get: { self.model.excluded }, set: { self.model.excluded = $0 }),
+                                               model: model))
+        add("Типографика", "textformat", height: 420, TypographyTab(model: model))
+        add("Сочетания", "keyboard", height: 240, HotkeysTab(model: model))
+        add("Слова", "text.book.closed", height: 340, LearnedTab(model: model))
+
+        let w = NSWindow(contentViewController: tabs)
+        w.styleMask = [.titled, .closable]
+        w.toolbarStyle = .preference
+        w.isReleasedWhenClosed = false
+        w.center()
+        return w
     }
 }
