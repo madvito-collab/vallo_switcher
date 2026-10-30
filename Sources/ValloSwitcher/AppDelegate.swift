@@ -54,6 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         onboarding.model.onGranted = { [weak self] in self?.startTap() }
         if Permissions.allGranted {
             startTap()
+            // предпросмотр онбординга: open -a "Vallo Switcher" --args --onboarding
+            if CommandLine.arguments.contains("--onboarding") { onboarding.show(preview: true) }
         } else {
             menu.set(state: .needsPermissions)
             onboarding.show()
