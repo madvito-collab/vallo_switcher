@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .filter { $0 != .current }
         if !others.isEmpty {
+            others.first?.activate()
             NSApp.terminate(nil)
             return
         }
@@ -50,16 +51,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self?.checkPermissions() }
         }
 
-        menu.onGivePermissions = { [weak self] in self?.onboarding.show() }
+        menu.onGivePermissions = { [weak self] in self?.showOnboarding() }
         onboarding.model.onGranted = { [weak self] in self?.startTap() }
         if Permissions.allGranted {
             startTap()
             // предпросмотр онбординга: open -a "Vallo Switcher" --args --onboarding
-            if CommandLine.arguments.contains("--onboarding") { onboarding.show(preview: true) }
+            if CommandLine.arguments.contains("--onboarding") { showOnboarding(preview: true) }
         } else {
             menu.set(state: .needsPermissions)
-            onboarding.show()
+            showOnboarding()
         }
+    }
+
+    private func showOnboarding(preview: Bool = false) {
+        onboarding.show(preview: preview, convertTitle: store.hotkeyConvert.title, typographyTitle: store.hotkeyTypography.title)
     }
 
     private func startTap() {
@@ -90,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         secureInputTimer?.invalidate()
         secureInputTimer = nil
         menu.set(state: .needsPermissions)
-        onboarding.show()
+        showOnboarding()
         return false
     }
 

@@ -5,6 +5,9 @@ import Foundation
 /// где правила, которым нужен следующий символ, ждут его.
 public enum Typographer {
     static let nbsp = "\u{00A0}"
+    /// Метка «слева неизвестно что» (после клика или сброса посреди текста): это буква,
+    /// поэтому правила начала строки и слова рядом с ней не срабатывают.
+    public static let unknownLeft: Character = "ꙮ"
 
     /// Предлоги, союзы и частицы, после которых ставится неразрывный пробел (1–2 буквы + трёхбуквенные предлоги).
     static let shortWords = ["а", "в", "во", "и", "к", "ко", "о", "об", "от", "с", "со", "у", "на", "по", "за", "до",
@@ -41,9 +44,11 @@ public enum Typographer {
         let words = shortWords.joined(separator: "|")
         let parts = particles.joined(separator: "|")
         let raw: [(String, String)] = [
-            // чистка пробелов
-            ("(?<=\\S) {2,}", " "),
-            (" +(?=[,.!?:;])", ""),
+            // чистка пробелов: двойной пробел — только в законченном тексте (на лету это мешало бы
+            // «точке по двойному пробелу» в macOS); пробел перед знаком — если за знаком пробел или конец,
+            // иначе это смайлик «:)» или «.env»
+            final ? ("(?<=\\S) {2,}", " ") : ("(?!)", ""),
+            (" +(?=[,.!?:;](?:\\s\(end)))", ""),
             // символы
             ("(?i)\\([cс]\\)", "©"),
             ("(?i)\\(r\\)", "®"),
@@ -52,17 +57,18 @@ public enum Typographer {
             ("->", "→"),
             ("<-", "←"),
             ("(?<![\\d/])1/2(?=[^\\d/]\(end))", "½"),
-            // умножение: 5x3, 5*3, 5 х 3 (пробел мог уже стать неразрывным — «число + слово»)
-            ("(?<=\\d)[xх*](?=\\d)", "×"),
+            // умножение: 5x3, 5*3, 5 х 3 (пробел мог уже стать неразрывным — «число + слово»); не 0x1F
+            ("(?<=\\d)(?<!\\b0)[xх*](?=\\d)", "×"),
             // хоть с одной стороны пробел — ставим с обеих
             ("(\\d)(?:[ \\u00A0][xх*][ \\u00A0]?|[xх*][ \\u00A0])(?=\\d)", "$1 × "),
             ("(?<!\\.)\\.{3}(?!\\.)", "…"),
-            // цифры: диапазон (не даты и не телефоны), минус
-            ("(?<![\\d+\\-–])(\\d{1,4})-(\\d{1,4})(?=[^\\d\\-]\(end))", "$1–$2"),
+            // цифры: диапазон (не даты, не телефоны, не ссылки и имена файлов), минус
+            ("(?<![\\d+\\-–/.])(\\d{1,4})-(\\d{1,4})(?=[\\s,;:!?)»”]|\\.\\s\(final ? "|\\.\\z|\\z" : ""))", "$1–$2"),
             ("(\\d) - (?=\\d)", "$1 − "),
             ("(^|[ \\u00A0(])-(?=\\d)", "$1−"),
-            // тире: в начале строки (диалог), между словами; после цифры — только если справа не цифра
-            ("(^|\\n)-{1,2} ", "$1— "),
+            // тире: в начале строки (диалог) — только в законченном тексте, на лету это ломало бы списки «- пункт»;
+            // между словами; после цифры — только если справа не цифра
+            final ? ("(^|\\n)-{1,2} ", "$1— ") : ("(?!)", ""),
             ("([^\\s\\d])\(sp)+-{1,2}\(sp)+", "$1\(nbsp)— "),
             ("(\\d)\(sp)+-{1,2}\(sp)+(?=[^\\d\\s]\(end))", "$1\(nbsp)— "),
             ("([^\\s]) —", "$1\(nbsp)—"),
@@ -70,7 +76,7 @@ public enum Typographer {
             ("(?i)(?<![\\p{L}\\p{N}'’\\-])(\(words)) ", "$1\(nbsp)"),
             ("(?i)(?<=\\p{L}) (\(parts))(?=[\\s.,!?;:…)»“”]\(end))", "\(nbsp)$1"),
             ("(?<=\\d) (?=\\p{L})", nbsp),
-            ("(?<=\\d) (?=\\d{3}(?!\\d))", nbsp),
+            ("(?<=\\d) (?=\\d{3}(?:[^\\d]\(end)))", nbsp),
             ("(?<![\\p{L}])(\\p{Lu})\\. (?=\\p{Lu})", "$1.\(nbsp)"),
             ("([№§]) ", "$1\(nbsp)"),
         ]
@@ -108,7 +114,7 @@ public enum Typographer {
             case "’":
                 if stack.last == "‘" { stack.removeLast() }
             case "\"":
-                if isOpeningPosition(prev) || stack.isEmpty {
+                if isOpeningPosition(prev) {
                     let open: Character
                     switch language(around: chars, at: i, hint: hint) {
                     case .ru: open = stack.isEmpty ? "«" : "„"
@@ -116,9 +122,11 @@ public enum Typographer {
                     }
                     chars[i] = open
                     stack.append(open)
-                } else {
-                    let opener = stack.removeLast()
+                } else if let opener = stack.popLast() {
                     chars[i] = ["«": "»", "„": "“", "“": "”", "‘": "’"][opener] ?? "»"
+                } else {
+                    // начало цитаты не видно (ушло из памяти) — после буквы кавычка всё равно закрывающая
+                    chars[i] = language(around: chars, at: i, hint: hint) == .ru ? "»" : "”"
                 }
             default:
                 break
@@ -128,14 +136,14 @@ public enum Typographer {
     }
 
     private static func isOpeningPosition(_ prev: Character?) -> Bool {
-        guard let prev else { return true }
+        guard let prev, prev != unknownLeft else { return true }
         return prev.isWhitespace || "([{—–-«„".contains(prev)
     }
 
     /// Язык по ближайшей букве слева, а если слева букв нет — справа.
     private static func language(around chars: [Character], at i: Int, hint: Language) -> Language {
-        let left = chars[..<i].last(where: \.isLetter)
-        let right = chars[(i + 1)...].first(where: \.isLetter)
+        let left = chars[..<i].last { $0.isLetter && $0 != unknownLeft }
+        let right = chars[(i + 1)...].first { $0.isLetter && $0 != unknownLeft }
         guard let letter = left ?? right else { return hint }
         return Lexicon.isInAlphabet(Character(letter.lowercased()), .ru) ? .ru : .en
     }

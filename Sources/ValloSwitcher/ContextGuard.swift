@@ -10,6 +10,16 @@ enum ContextGuard {
     /// Мак закрыл клавиатуру от всех программ (активно поле пароля где-то в системе).
     static var secureInputActive: Bool { IsSecureEventInputEnabled() }
 
+    /// Оба решения за одно обращение к Accessibility (на каждое нажатие — не дважды).
+    static func allowed(store: SettingsStore) -> (autoSwitch: Bool, typography: Bool) {
+        let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
+        let autoApp = !store.excludedBundleIDs.contains(id)
+        let typoApp = !store.typographyExcludedBundleIDs.contains(id) && !id.hasPrefix("com.jetbrains.")
+        guard autoApp || typoApp else { return (false, false) }
+        let field = fieldAllowed()
+        return (autoApp && field, typoApp && field)
+    }
+
     static func autoSwitchAllowed(store: SettingsStore) -> Bool {
         if let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
            store.excludedBundleIDs.contains(id) { return false }

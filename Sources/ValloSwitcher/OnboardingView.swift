@@ -10,6 +10,9 @@ final class OnboardingModel: ObservableObject {
     enum Step: Int, CaseIterable { case welcome, accessibility, inputMonitoring, done }
 
     @Published var step: Step = .welcome
+    /// Подписи текущих сочетаний для финального шага.
+    @Published var convertTitle = Hotkey.defaultConvert.title
+    @Published var typographyTitle = Hotkey.defaultTypography.title
     /// Предпросмотр (запуск с `--onboarding`): шаги листаются кнопкой, а не по разрешениям.
     var preview = false
     @Published var accessibility = Permissions.accessibility
@@ -39,6 +42,12 @@ final class OnboardingModel: ObservableObject {
         if !accessibility { step = .accessibility } else if !inputMonitoring { step = .inputMonitoring } else { step = .done }
     }
 
+    /// Перечитать разрешения сейчас (например, их только что отобрали).
+    func reload() {
+        accessibility = Permissions.accessibility
+        inputMonitoring = Permissions.inputMonitoring
+    }
+
     private func refresh() {
         let wasGranted = allGranted
         accessibility = Permissions.accessibility
@@ -47,6 +56,8 @@ final class OnboardingModel: ObservableObject {
         if !preview, (step == .accessibility && accessibility) || (step == .inputMonitoring && inputMonitoring) {
             withAnimation { next() }
         }
+        // разрешение отобрали, пока окно открыто на «Готово» — вернуться к нужному шагу
+        if !preview, step == .done, !allGranted { withAnimation { next() } }
         if allGranted && !wasGranted { onGranted?() }
     }
 }
@@ -72,7 +83,7 @@ struct OnboardingView: View {
                                    why: "Чтобы видеть, что ты печатаешь, и ловить двойной Shift. Текст никуда не сохраняется и не отправляется.",
                                    open: { Permissions.open(.inputMonitoring) },
                                    skip: model.preview ? { withAnimation { model.next() } } : nil)
-                case .done: DoneStep(close: close)
+                case .done: DoneStep(convertTitle: model.convertTitle, typographyTitle: model.typographyTitle, close: close)
                 }
             }
             .padding(28)
@@ -261,6 +272,8 @@ private struct Placeholder: View {
 }
 
 private struct DoneStep: View {
+    let convertTitle: String
+    let typographyTitle: String
     let close: () -> Void
     var body: some View {
         VStack(spacing: 18) {
@@ -269,8 +282,8 @@ private struct DoneStep: View {
             Text(T("Попробуй: в английской раскладке набери ghbdtn — получится «привет»."))
                 .multilineTextAlignment(.center)
             VStack(alignment: .leading, spacing: 10) {
-                Feature(symbol: "shift", text: "Дважды левый Shift — откатить исправление или перевести выделенное")
-                Feature(symbol: "shift.fill", text: "Дважды правый Shift — причесать типографику в выделенном тексте")
+                Feature(symbol: "shift", text: "\(convertTitle) — откатить исправление или перевести выделенное")
+                Feature(symbol: "shift.fill", text: "\(typographyTitle) — причесать типографику в выделенном тексте")
                 Feature(symbol: "menubar.rectangle", text: "Иконка ↩ в строке меню — настройки, исключения, сочетания")
             }
             Button(action: close) { Text("Закрыть").frame(minWidth: 120) }
@@ -286,7 +299,10 @@ final class OnboardingWindow {
     let model = OnboardingModel()
     private var window: NSWindow?
 
-    func show(preview: Bool = false) {
+    func show(preview: Bool = false, convertTitle: String? = nil, typographyTitle: String? = nil) {
+        model.reload()
+        if let convertTitle { model.convertTitle = convertTitle }
+        if let typographyTitle { model.typographyTitle = typographyTitle }
         model.startWatching()
         model.preview = preview
         model.step = model.allGranted && !preview ? .done : .welcome

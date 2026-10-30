@@ -84,6 +84,27 @@ let nb = "\u{00A0}"
         }
     }
 
+    @Test func ordinaryTextSurprisesAvoided() {
+        let live = { (s: String) in Typographer.format(s, final: false) }
+        #expect(live("спасибо :)") == "спасибо :)")
+        #expect(f("see .env file") == "see .env file")
+        #expect(live("- пункт") == "- пункт")              // списки в Markdown на лету не трогаем
+        #expect(f("- Привет") == "— Привет")               // а при причёсывании выделения — диалог
+        #expect(f("http://x.y/1-2/") == "http://x.y/1-2/")
+        #expect(f("report 1-2.pdf") == "report 1-2.pdf")
+        #expect(f("1990-2000.") == "1990–2000.")
+        #expect(f("0x1F") == "0x1F")
+        #expect(f("10x20") == "10×20")
+        #expect(live("1 0001") == "1 0001")
+        #expect(live("а  б") == "а\(nb) б" || live("а  б").hasSuffix("  б"))   // двойной пробел на лету не схлопываем
+    }
+
+    @Test func closingQuoteWithoutOpener() {
+        // начало цитаты ушло из памяти — кавычка после буквы всё равно закрывающая
+        #expect(f("конец\"") == "конец»")
+        #expect(f("end\"") == "end”")
+    }
+
     @Test func liveWaitsForRightContext() {
         #expect(Typographer.format("5 - ", final: false) == "5 - ")
         #expect(Typographer.format("5 - 3", final: false) == "5 − 3")

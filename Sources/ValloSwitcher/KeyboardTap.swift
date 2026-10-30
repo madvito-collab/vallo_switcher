@@ -7,6 +7,9 @@ final class KeyboardTap {
     /// Что делать по сочетанию.
     enum Trigger { case convert, typography }
 
+    /// Пока в настройках записывают своё сочетание, сочетания не срабатывают и не глотаются.
+    static var recordingHotkey = false
+
     let engine: Engine
     let store: SettingsStore
     let layouts: SystemLayouts
@@ -128,15 +131,18 @@ final class KeyboardTap {
         otherInput()
         let flags = event.flags
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-        if let trigger = combo(keyCode: keyCode, flags: flags) {
+        if let trigger = combo(keyCode: keyCode, flags: flags), canFire(trigger) {
             DispatchQueue.main.async { [self] in fire(trigger) }
             return nil
         }
         let stroke = KeyStroke(keyCode: keyCode, shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift))
         let modified = !flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
         if store.debugMode { ContextGuard.dumpFocusedElement() }
-        engine.autoSwitchEnabled = store.autoSwitchEnabled && ContextGuard.autoSwitchAllowed(store: store)
-        let liveAllowed = store.typographyLiveEnabled && ContextGuard.typographyAllowed(store: store)
+        let allowed = ContextGuard.allowed(store: store)
+        engine.autoSwitchEnabled = store.autoSwitchEnabled && allowed.autoSwitch
+        let liveAllowed = store.typographyLiveEnabled && allowed.typography
+        // ⌥⌫, ⌘⌫ и прочие сочетания меняют текст непредсказуемо — память типографики больше не верна
+        if modified || !liveAllowed { live.reset() }
 
         // Backspace сразу после типографской правки — вернуть набранное
         if keyCode == Engine.backspaceKey && !modified {
@@ -186,7 +192,8 @@ final class KeyboardTap {
 
     /// Своё сочетание из настроек, если нажато оно.
     private func combo(keyCode: UInt16, flags: CGEventFlags) -> Trigger? {
-        combos.first { _, hotkey in
+        guard !KeyboardTap.recordingHotkey else { return nil }
+        return combos.first { _, hotkey in
             guard case let .combo(code, command, option, control, shift) = hotkey else { return false }
             return code == keyCode && flags.contains(.maskCommand) == command && flags.contains(.maskAlternate) == option
                 && flags.contains(.maskControl) == control && flags.contains(.maskShift) == shift
@@ -208,12 +215,18 @@ final class KeyboardTap {
             }
             if isDown {
                 detectors[i].detector.keyDown(at: now)
-            } else if detectors[i].detector.keyUp(at: now) {
+            } else if detectors[i].detector.keyUp(at: now), !KeyboardTap.recordingHotkey {
                 let trigger = detectors[i].trigger
                 // ждём, пока отпускание модификатора дойдёт до приложения, и только потом печатаем
                 DispatchQueue.main.async { [self] in fire(trigger) }
             }
         }
+    }
+
+    /// Действие сейчас доступно: иначе сочетание не глотаем, пусть дойдёт до приложения.
+    private func canFire(_ trigger: Trigger) -> Bool {
+        guard !ContextGuard.secureInputActive else { return false }
+        return trigger == .convert || store.typographyHotkeyEnabled
     }
 
     private func fire(_ trigger: Trigger) {
@@ -253,6 +266,8 @@ final class KeyboardTap {
     private func run(_ actions: [Action]) {
         log.debug("double shift → \(actions.summary)")
         guard !actions.isEmpty else { return }
+        // текст на экране переписан целиком — контекст типографики больше не верен
+        live.reset()
         report()
         EventPoster.perform(actions, store: store, layouts: layouts)
     }

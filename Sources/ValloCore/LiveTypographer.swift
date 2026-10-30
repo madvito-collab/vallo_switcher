@@ -16,6 +16,8 @@ public struct LiveTypographer: Sendable {
 
     /// Текст на экране с последнего сброса (последние `contextLimit` символов).
     private var context: [Character] = []
+    /// Что слева от контекста, неизвестно (сброс посреди текста): правила начала строки и слова не срабатывают.
+    private var leftUnknown = true
     /// Столько первых символов контекста не трогаем: человек отменил правку — значит, хотел именно так.
     private var frozen = 0
     /// Последняя правка: что показали и что человек набрал на самом деле.
@@ -30,13 +32,14 @@ public struct LiveTypographer: Sendable {
         undo = nil
         lastEditChangedLength = false
         let raw = context + [char]
-        let formatted = Array(Typographer.format(String(raw), final: false, hint: hint))
-        guard formatted != raw else {
-            setContext(raw)
-            return nil
+        var formatted = format(raw, unknownLeft: leftUnknown, hint: hint)
+        var p = zip(raw, formatted).prefix { $0 == $1 }.count
+        if p < frozen {
+            // правка задела отменённое место — его не трогаем, а остальное причёсываем как обычно
+            formatted = Array(raw[..<frozen]) + format(Array(raw[frozen...]), unknownLeft: true, hint: hint)
+            p = zip(raw, formatted).prefix { $0 == $1 }.count
         }
-        let p = zip(raw, formatted).prefix { $0 == $1 }.count
-        guard p >= frozen else {
+        guard formatted != raw else {
             setContext(raw)
             return nil
         }
@@ -61,7 +64,9 @@ public struct LiveTypographer: Sendable {
         return TypoEdit(delete: u.shown.count, insert: String(u.typed))
     }
 
-    public mutating func reset() {
+    /// `knownLineStart` — перед контекстом точно начало строки (для тестов и пустого поля).
+    public mutating func reset(knownLineStart: Bool = false) {
+        leftUnknown = !knownLineStart
         context = []
         frozen = 0
         undo = nil
@@ -72,5 +77,12 @@ public struct LiveTypographer: Sendable {
         let extra = max(0, chars.count - LiveTypographer.contextLimit)
         context = Array(chars.dropFirst(extra))
         frozen = max(0, frozen - extra)
+        if extra > 0 { leftUnknown = true }
+    }
+
+    private func format(_ chars: [Character], unknownLeft: Bool, hint: Language) -> [Character] {
+        let input = unknownLeft ? [Typographer.unknownLeft] + chars : chars
+        let out = Array(Typographer.format(String(input), final: false, hint: hint))
+        return unknownLeft && out.first == Typographer.unknownLeft ? Array(out.dropFirst()) : out
     }
 }
