@@ -27,6 +27,8 @@ final class KeyboardTap {
     private var live = LiveTypographer()
     /// Исправлятор опечаток; «Мои слова» обновляются снаружи.
     var typos: TypoCorrector
+    /// Запятые по сочетанию (модель).
+    let commas = CommaService()
     /// Человек отменил исправление опечатки — слово в «Не исправлять».
     var onTypoUndone: ((String) -> Void)?
     private var tap: CFMachPort?
@@ -250,16 +252,21 @@ final class KeyboardTap {
     }
 
     /// Причесать выделенный текст.
+    /// Двойной правый Shift по выделенному: опечатки → запятые (если модель скачана) → типографика.
     private func typographySelection() {
         guard store.typographyHotkeyEnabled, !ContextGuard.secureInputActive else { return }
         SelectionReader.selectedText { [self] text in
             guard let text else { return }
-            let formatted = Typographer.format(text)
-            log.debug("typography selection: \(text.count) → \(formatted.count) chars")
-            guard formatted != text else { return }
-            engine.reset()
-            live.reset()
-            EventPoster.replaceSelection(formatted)
+            let typoFixed = typos.correctPhrase(text)
+            // модель думает на фоне; без модели, при ошибке или дольше 3 с — без запятых
+            commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled) { [self] withCommas in
+                let formatted = Typographer.format(withCommas ?? typoFixed)
+                log.debug("right shift: \(text.count) → \(formatted.count) chars, model=\(withCommas != nil)")
+                guard formatted != text else { return }
+                engine.reset()
+                live.reset()
+                EventPoster.replaceSelection(formatted)
+            }
         }
     }
 
