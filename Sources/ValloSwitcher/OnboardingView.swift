@@ -285,6 +285,7 @@ private struct DoneStep: View {
                 Feature(symbol: "shift", text: "\(convertTitle) — откатить исправление или перевести выделенное")
                 Feature(symbol: "shift.fill", text: "\(typographyTitle) — причесать типографику в выделенном тексте")
                 Feature(symbol: "menubar.rectangle", text: "Иконка ↩ в строке меню — настройки, исключения, сочетания")
+                Feature(symbol: "exclamationmark.triangle", text: "Выключи автозамену macOS (Клавиатура → Ввод текста), чтобы она не спорила со свитчером")
             }
             Button(action: close) { Text("Закрыть").frame(minWidth: 120) }
                 .buttonStyle(.borderedProminent)

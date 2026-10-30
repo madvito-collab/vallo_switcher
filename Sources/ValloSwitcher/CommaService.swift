@@ -18,6 +18,8 @@ final class CommaService: @unchecked Sendable {
     }
 
     private let queue = DispatchQueue(label: "com.vallo.switcher.commas")
+    /// Модель есть на диске, но не загрузилась (битые файлы) — на главном потоке.
+    var onLoadFailed: (() -> Void)?
     private var model: CommaModel?
 
     /// Модель удалили — выгрузить.
@@ -47,7 +49,10 @@ final class CommaService: @unchecked Sendable {
                 }
                 semaphore.wait()
             }
-            guard let model else { return finish(nil) }
+            guard let model else {
+                DispatchQueue.main.async { self.onLoadFailed?() }
+                return finish(nil)
+            }
             do {
                 let lines = text.components(separatedBy: "\n").map { line -> String in
                     CommaService.sentences(line).map { sentence in

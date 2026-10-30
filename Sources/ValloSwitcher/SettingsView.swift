@@ -467,23 +467,63 @@ struct LearnedTab: View {
     }
 }
 
-/// Опечатки (вкладка расширяется в задаче со скачиванием модели).
+/// Автозамена macOS включена? Нет ключа в общих настройках — значит, включена (так по умолчанию).
+func macAutocorrectEnabled() -> Bool {
+    let value = CFPreferencesCopyAppValue("NSAutomaticSpellingCorrectionEnabled" as CFString, kCFPreferencesAnyApplication)
+    return (value as? Bool) ?? true
+}
+
+/// Опечатки и модель запятых.
 struct TyposTab: View {
     @ObservedObject var model: SettingsModel
+    @ObservedObject var store: ModelStore
+    @State private var macAutocorrect = macAutocorrectEnabled()
 
     private let examples: [(String, String)] = [
         ("првет · приввет · привте", "привет"),
-        ("пожалуста", "пожалуйста"),
+        ("пожалуста · можеш", "пожалуйста · можешь"),
         ("ктото · какой то", "кто-то · какой-то"),
         ("фигма · ща · хз · Сбербанк", "не трогаются"),
     ]
 
     var body: some View {
         Form {
+            if macAutocorrect {
+                Section {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        Text(T("Автозамена macOS тоже включена — она будет спорить с Vallo Switcher и ставить заглавные, где ты пишешь строчные."))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } footer: {
+                    BelowBlock(hint: "Клавиатура → Ввод текста → Изменить… → выключи «Исправлять ошибки автоматически» и «Писать с прописной буквы».") {
+                        Button("Открыть настройки клавиатуры") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
+                        }
+                    }
+                }
+            }
             Section {
                 SubtitledToggle(title: "Исправлять опечатки на лету",
                                 subtitle: "Лишние, пропущенные и переставленные буквы. Backspace сразу после — вернуть и запомнить слово",
                                 isOn: $model.typoLive)
+            }
+            Section {
+                LabeledContent {
+                    modelStatus
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Модель SAGE")
+                        Text(T("Скачать \(ModelStore.downloadSize), на диске \(ModelStore.diskSize). Работает без интернета"))
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                SubtitledToggle(title: "Заглавная буква и точка в конце",
+                                subtitle: "Когда модель причёсывает выделенное. В мессенджерах обычно не нужно",
+                                isOn: $model.typoCapitalize)
+            } header: {
+                SectionHeader(title: "Запятые по сочетанию",
+                              subtitle: "\(model.hotkey(.typography).title) по выделенному тексту: опечатки, запятые и типографика сразу.")
             }
             Section("Что исправляется") {
                 ForEach(examples, id: \.0) { before, after in
@@ -492,6 +532,30 @@ struct TyposTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { macAutocorrect = macAutocorrectEnabled() }
+    }
+
+    @ViewBuilder private var modelStatus: some View {
+        switch store.state {
+        case .notDownloaded:
+            Button("Скачать") { store.download() }
+        case .downloading(let progress):
+            HStack {
+                ProgressView(value: progress).frame(width: 110)
+                Text("\(Int(progress * 100))%").monospacedDigit().foregroundStyle(.secondary)
+                Button("Отмена") { store.cancel() }
+            }
+        case .ready:
+            HStack {
+                Label("Активна", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                Button("Удалить") { store.delete() }
+            }
+        case .failed(let message):
+            HStack {
+                Text(message).foregroundStyle(.red).font(.callout).lineLimit(2).frame(maxWidth: 200)
+                Button("Повторить") { store.download() }
+            }
+        }
     }
 }
 
@@ -500,8 +564,12 @@ struct TyposTab: View {
 final class SettingsWindow {
     private var window: NSWindow?
     let model: SettingsModel
+    let modelStore: ModelStore
 
-    init(model: SettingsModel) { self.model = model }
+    init(model: SettingsModel, modelStore: ModelStore) {
+        self.model = model
+        self.modelStore = modelStore
+    }
 
     func show() {
         model.reload()
@@ -527,7 +595,7 @@ final class SettingsWindow {
         add("Исключения", "nosign", height: 520, ExclusionsTab(model: model))
         add("Типографика", "textformat", height: 600, TypographyTab(model: model))
         add("Сочетания", "keyboard", height: 260, HotkeysTab(model: model))
-        add("Опечатки", "text.badge.checkmark", height: 340, TyposTab(model: model))
+        add("Опечатки", "text.badge.checkmark", height: 640, TyposTab(model: model, store: modelStore))
         add("Слова", "text.book.closed", height: 520, LearnedTab(model: model))
 
         let w = NSWindow(contentViewController: tabs)

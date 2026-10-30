@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var secureInputTimer: Timer?
     private var settings: SettingsWindow!
     private var typos: TypoCorrector!
+    private let modelStore = ModelStore()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // свитчер уже запущен (например, второй раз из «Программ» или из DMG) — второй экземпляр не нужен:
@@ -40,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.tap?.typos.ignored = Set(words.map(Lexicon.normalize))
         }
         model.onHotkeysChanged = { [weak self] in self?.tap?.reloadHotkeys() }
-        settings = SettingsWindow(model: model)
+        settings = SettingsWindow(model: model, modelStore: modelStore)
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
 
         layouts.onExternalChange = { [weak self] lang in
@@ -77,6 +78,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startTap() {
         guard tap == nil else { return }
         let tap = KeyboardTap(engine: engine, store: store, layouts: layouts, typos: typos)
+        modelStore.onChange = { [weak tap] in tap?.commas.unload() }
+        tap.commas.onLoadFailed = { [weak self] in self?.modelStore.markBroken() }
         tap.onTypoUndone = { [weak self] word in
             self?.store.ignoreTypo(word)
             self?.settings.model.reloadTypoWords()
