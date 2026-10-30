@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let model = SettingsModel(store: store)
         model.onLearnedChanged = { [weak self] words in self?.engine.judge.learned = Set(words) }
+        model.onHotkeysChanged = { [weak self] in self?.tap?.reloadHotkeys() }
         settings = SettingsWindow(model: model)
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
 
