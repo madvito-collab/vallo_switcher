@@ -87,6 +87,12 @@ public struct Judge: Sendable {
         return !A.isPrefix(conv) && L.trigramScore(orig) > A.trigramScore(conv)
     }
 
+    /// Частое короткое слово или словечко этого языка — кандидат, если контекст укажет на этот язык.
+    public static func isShortCandidate(_ word: String, _ language: Language) -> Bool {
+        let w = core(word).lowercased()
+        return !w.isEmpty && w.count < minLetters && (shortWords[language]!.contains(w) || slang[language]!.contains(w))
+    }
+
     static func isSlang(_ word: String, _ language: Language) -> Bool {
         slang[language]!.contains(word.lowercased())
     }

@@ -62,12 +62,13 @@ public final class Engine {
     }
     private var undo: Undo?
 
-    /// Только что исправленное короткое слово (1–2 буквы) — самое ненадёжное решение.
-    /// Если следующее слово пришлось вернуть в язык `from`, короткое было исправлено зря: возвращаем и его.
+    /// Короткое слово (1–2 буквы) — самое ненадёжное решение. Если следующее слово ушло в язык `candidate`,
+    /// короткое тоже переводим в него. Бывает двух видов: исправленное зря (`ща` → `of`, следом русское)
+    /// и оставленное, хотя это было слово другого языка (`of` набрано вместо `ща`, следом русское).
     private struct ShortSwitch {
         let start: Int
         let nextWordStart: Int
-        let from: Language
+        let candidate: Language
     }
     private var shortSwitch: ShortSwitch?
 
@@ -154,7 +155,7 @@ public final class Engine {
     /// Текущее слово переключаем в `target`, а прошлое короткое было исправлено как раз из `target` —
     /// значит, оно ошибка: стираем оба и печатаем оба в `target`. `word` — текущее слово уже в `target`.
     private func revertShortSwitch(to target: Language, word: String, through end: Int? = nil) -> EngineOutput? {
-        guard let s = shortSwitch, s.nextWordStart == wordStart, s.from == target else { return nil }
+        guard let s = shortSwitch, s.nextWordStart == wordStart, s.candidate == target else { return nil }
         shortSwitch = nil
         let shownEnd = end ?? buffer.count - 1   // новая буква ещё не на экране
         let shown = display(s.start..<shownEnd)
@@ -177,7 +178,12 @@ public final class Engine {
         let alternative = Converter.render(word, in: layouts.layout(currentLanguage.other))
         guard case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
                                                                currentLanguage: currentLanguage) else {
+            // короткое слово оставили, но его можно прочитать как слово другого языка — решит следующее слово
+            let start = wordStart
             buffer.append(Entry(stroke: stroke, language: currentLanguage))
+            if Judge.isShortCandidate(alternative, currentLanguage.other) {
+                shortSwitch = ShortSwitch(start: start, nextWordStart: buffer.count, candidate: currentLanguage.other)
+            }
             return .passThrough
         }
         lastDecision = reason
@@ -191,7 +197,7 @@ public final class Engine {
         let isShort = Judge.core(current).count < Judge.minLetters
         undo = Undo(start: wordStart, from: from)
         setWordLanguage(from.other)
-        if isShort { shortSwitch = ShortSwitch(start: wordStart, nextWordStart: buffer.count, from: from) }
+        if isShort { shortSwitch = ShortSwitch(start: wordStart, nextWordStart: buffer.count, candidate: from) }
         return .consume([.delete(current.count), .insert(alternative + boundaryText), .switchLayout(currentLanguage)])
     }
 

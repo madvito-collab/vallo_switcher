@@ -167,6 +167,15 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(engine.currentLanguage == .ru)
     }
 
+    @Test func keptShortWordFollowsNextWord() {
+        // «ща» набрано в EN-раскладке → «of» (настоящее слово, оставлено); следом русское слово —
+        // значит, и «of» было «ща»
+        let engine = makeEngine()
+        #expect(type("of ", engine).allSatisfy { $0 == .passThrough })
+        let next = type("ghb", engine)
+        #expect(next[2] == .consume([.delete(5), .insert("ща при"), .switchLayout(.ru)]))
+    }
+
     @Test func shortWordKeptWhenNextWordAgrees() {
         // «jr» → «ок», дальше русское слово — это подтверждение, ничего не возвращаем
         let engine = makeEngine()
