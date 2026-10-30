@@ -193,6 +193,8 @@ private struct SettingsSketch: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(5)
+                // выделение тянется на всю ширину панели, как в настоящем сайдбаре
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 5).fill(Color.accentColor))
                 ForEach(0..<2, id: \.self) { _ in Placeholder(width: 60) }
                 Spacer()
