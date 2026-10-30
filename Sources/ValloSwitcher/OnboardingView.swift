@@ -190,6 +190,7 @@ private struct SettingsSketch: View {
                         .frame(width: 14, height: 14).background(RoundedRectangle(cornerRadius: 3).fill(.blue))
                     Text(T("Конфиденциальность и безопасность")).font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.white).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(5)
                 .background(RoundedRectangle(cornerRadius: 5).fill(Color.accentColor))
@@ -197,7 +198,8 @@ private struct SettingsSketch: View {
                 Spacer()
             }
             .padding(10)
-            .frame(width: 150)
+            // «Конфиденциальность» должна влезать целиком, без разрыва слова
+            .frame(width: 185)
             .background(Color.secondary.opacity(0.08))
 
             // правая часть
