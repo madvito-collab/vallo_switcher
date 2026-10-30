@@ -80,7 +80,7 @@ struct OnboardingView: View {
                                    skip: model.preview ? { withAnimation { model.next() } } : nil)
                 case .inputMonitoring:
                     PermissionStep(number: 2, listName: "Мониторинг ввода",
-                                   why: "Чтобы видеть, что ты печатаешь, и ловить двойной Shift. Текст никуда не сохраняется и не отправляется.",
+                                   why: "Чтобы видеть, что вы печатаете, и ловить двойное нажатие Shift. Текст никуда не сохраняется и не отправляется.",
                                    open: { Permissions.open(.inputMonitoring) },
                                    skip: model.preview ? { withAnimation { model.next() } } : nil)
                 case .done: DoneStep(convertTitle: model.convertTitle, typographyTitle: model.typographyTitle, close: close)
@@ -153,7 +153,7 @@ private struct PermissionStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Шаг \(number) из 2").font(.callout).foregroundStyle(.secondary)
-            Text(T("Включи Vallo Switcher в «\(listName)»")).font(.title2.bold())
+            Text(T("Включите Vallo Switcher в «\(listName)»")).font(.title2.bold())
                 .fixedSize(horizontal: false, vertical: true)
             Text(T(why)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
@@ -162,14 +162,14 @@ private struct PermissionStep: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(T("Системные настройки → Конфиденциальность и безопасность → \(listName)"))
                     .font(.callout.weight(.medium))
-                Text(T("Нет Vallo Switcher в списке — нажми «+» внизу и выбери его в «Программах». Есть, но шаг не перелистывается — удали его «−» и добавь снова."))
+                Text(T("Если Vallo Switcher нет в списке, нажмите «+» внизу и выберите его в «Программах». Если он есть, но шаг не перелистывается, удалите его кнопкой «−» и добавьте снова."))
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack {
                 ProgressView().controlSize(.small)
-                Text(T("Жду, пока включишь…")).font(.callout).foregroundStyle(.secondary)
+                Text(T("Ждём, пока вы включите…")).font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 if let skip { Button("Дальше", action: skip) }
                 Button(action: open) { Text("Открыть настройки").frame(minWidth: 140) }
@@ -279,13 +279,13 @@ private struct DoneStep: View {
         VStack(spacing: 18) {
             Image(systemName: "checkmark.circle.fill").font(.system(size: 56)).foregroundStyle(.green)
             Text("Готово, свитчер работает").font(.title.bold())
-            Text(T("Попробуй: в английской раскладке набери ghbdtn — получится «привет»."))
+            Text(T("Попробуйте: в английской раскладке наберите ghbdtn — получится «привет»."))
                 .multilineTextAlignment(.center)
             VStack(alignment: .leading, spacing: 10) {
-                Feature(symbol: "shift", text: "\(convertTitle) — откатить исправление или перевести выделенное")
-                Feature(symbol: "shift.fill", text: "\(typographyTitle) — причесать типографику в выделенном тексте")
+                Feature(symbol: "shift", text: "\(convertTitle) — отменить исправление или перевести выделенный текст в другую раскладку")
+                Feature(symbol: "shift.fill", text: "\(typographyTitle) — исправить опечатки, запятые и типографику в выделенном тексте")
                 Feature(symbol: "menubar.rectangle", text: "Иконка ↩ в строке меню — настройки, исключения, сочетания")
-                Feature(symbol: "exclamationmark.triangle", text: "Выключи автозамену macOS (Клавиатура → Ввод текста), чтобы она не спорила со свитчером")
+                Feature(symbol: "exclamationmark.triangle", text: "Выключите автозамену macOS (Клавиатура → Ввод текста), чтобы она не спорила со свитчером")
             }
             Button(action: close) { Text("Закрыть").frame(minWidth: 120) }
                 .buttonStyle(.borderedProminent)

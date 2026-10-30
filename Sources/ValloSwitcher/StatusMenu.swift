@@ -6,7 +6,7 @@ final class StatusMenu: NSObject {
 
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let store: SettingsStore
-    private let autoItem = NSMenuItem(title: "Автопереключение", action: #selector(toggleAuto), keyEquivalent: "")
+    private let autoItem = NSMenuItem(title: "Автоматически переключать раскладку", action: #selector(toggleAuto), keyEquivalent: "")
     private let permissionsItem = NSMenuItem(title: "Дать разрешения…", action: #selector(givePermissions), keyEquivalent: "")
     private let debugHeader = NSMenuItem(title: "Последние решения:", action: nil, keyEquivalent: "")
     private var decisions: [String] = []

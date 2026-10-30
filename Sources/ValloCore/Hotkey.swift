@@ -14,6 +14,17 @@ public enum ModifierKey: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// «левый Shift» — для фраз «Нажмите левый Shift дважды», «по двойному нажатию левого Shift».
+    var keyName: (nominative: String, genitive: String) {
+        switch self {
+        case .leftShift: ("левый Shift", "левого Shift")
+        case .rightShift: ("правый Shift", "правого Shift")
+        case .leftOption: ("левый Option", "левого Option")
+        case .rightOption: ("правый Option", "правого Option")
+        case .leftControl: ("Control", "Control")
+        }
+    }
+
     public var title: String {
         switch self {
         case .leftShift: "Двойной левый Shift"
@@ -29,6 +40,22 @@ public enum ModifierKey: String, Codable, CaseIterable, Sendable {
 public enum Hotkey: Codable, Equatable, Sendable {
     case doubleTap(ModifierKey)
     case combo(keyCode: UInt16, command: Bool, option: Bool, control: Bool, shift: Bool)
+
+    /// «Нажмите левый Shift дважды» / «Нажмите ⌃⌥T».
+    public var pressInstruction: String {
+        switch self {
+        case .doubleTap(let key): "Нажмите \(key.keyName.nominative) дважды"
+        case .combo: "Нажмите \(title)"
+        }
+    }
+
+    /// «по двойному нажатию правого Shift» / «по сочетанию ⌃⌥T».
+    public var byPhrase: String {
+        switch self {
+        case .doubleTap(let key): "по двойному нажатию \(key.keyName.genitive)"
+        case .combo: "по сочетанию \(title)"
+        }
+    }
 
     public static let defaultConvert: Hotkey = .doubleTap(.leftShift)
     public static let defaultTypography: Hotkey = .doubleTap(.rightShift)

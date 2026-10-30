@@ -205,11 +205,11 @@ struct GeneralTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Автопереключение", isOn: $model.autoSwitch)
-                Toggle("Запускать вместе с Маком", isOn: $model.launchAtLogin)
+                Toggle("Автоматически переключать раскладку", isOn: $model.autoSwitch)
+                Toggle("Запускать при входе в систему", isOn: $model.launchAtLogin)
                 Toggle(T("Режим отладки"), isOn: $model.debugMode)
             } footer: {
-                BelowBlock(hint: "\(model.hotkey(.convert).title) переводит набранное или выделенное в другую раскладку всегда — даже когда автопереключение выключено.") {
+                BelowBlock(hint: "\(model.hotkey(.convert).pressInstruction), чтобы переключить раскладку набранного или выделенного текста. Работает, даже если автоматическое переключение выключено.") {
                     HelpButton()
                 }
             }
@@ -246,7 +246,7 @@ struct ExclusionsTab: View {
                 }
             } header: {
                 SectionHeader(title: "Автопереключение",
-                              subtitle: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.")
+                              subtitle: "В этих приложениях раскладка не переключается автоматически. Сочетание клавиш продолжает работать.")
             } footer: {
                 addButton(to: \.excluded)
             }
@@ -256,7 +256,7 @@ struct ExclusionsTab: View {
                 }
             } header: {
                 SectionHeader(title: "Типографика и опечатки на лету",
-                              subtitle: "Здесь тире, кавычки и исправление опечаток не работают. Редакторы JetBrains исключены всегда.")
+                              subtitle: "В этих приложениях не применяются типографические замены и исправление опечаток. Приложения JetBrains исключены автоматически.")
             } footer: {
                 addButton(to: \.typographyExcluded)
             }
@@ -268,7 +268,7 @@ struct ExclusionsTab: View {
         HStack {
             Text(model.appName(id))
             Spacer()
-            Button("Убрать") { model[keyPath: list].removeAll { $0 == id } }
+            Button("Удалить") { model[keyPath: list].removeAll { $0 == id } }
         }
     }
 
@@ -300,18 +300,18 @@ struct TypographyTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Типографика на лету", isOn: $model.typographyLive)
-                SubtitledToggle(title: "Причёсывать выделенное",
-                                subtitle: "По сочетанию \(model.hotkey(.typography).title)",
+                Toggle("Исправлять типографику автоматически", isOn: $model.typographyLive)
+                SubtitledToggle(title: "Исправлять выделенный текст",
+                                subtitle: "\(model.hotkey(.typography).byPhrase.prefix(1).uppercased())\(model.hotkey(.typography).byPhrase.dropFirst())",
                                 isOn: $model.typographyHotkey)
             }
-            Section("Что исправляется") {
+            Section("Примеры замен") {
                 ForEach(examples, id: \.0) { before, after in
                     LabeledContent(before) { Text(after) }
                 }
             }
             Section {} footer: {
-                BelowBlock(hint: "Передумал — нажми Backspace сразу после замены, и вернётся набранное. Где типографика не работает — на вкладке «Исключения».") {
+                BelowBlock(hint: "Чтобы отменить замену, сразу нажмите Backspace. Приложения, в которых типографика отключена, можно настроить во вкладке «Исключения».") {
                     HelpButton()
                 }
             }
@@ -425,7 +425,7 @@ struct LearnedTab: View {
         Form {
             Section {
                 if model.typoWords.isEmpty {
-                    Text(T("Пока пусто. Слово попадает сюда, когда ты отменяешь его исправление Backspace.")).foregroundStyle(.secondary)
+                    Text(T("Пока пусто. Слово попадает сюда, когда вы отменяете его исправление клавишей Backspace.")).foregroundStyle(.secondary)
                 }
                 ForEach(model.typoWords.map { "typo:" + $0 }, id: \.self) { key in
                     let word = String(key.dropFirst(5))
@@ -449,7 +449,7 @@ struct LearnedTab: View {
             }
             Section {
                 if model.learned.isEmpty {
-                    Text(T("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его двойным Shift.")).foregroundStyle(.secondary)
+                    Text(T("Пока пусто. Слово попадает сюда, когда вы дважды отменяете для него переключение раскладки.")).foregroundStyle(.secondary)
                 }
                 ForEach(model.learned.map { "learn:" + $0 }, id: \.self) { key in
                     let word = String(key.dropFirst(6))
@@ -497,11 +497,11 @@ struct TyposTab: View {
                 Section {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                        Text(T("Автозамена macOS тоже включена — она будет спорить с Vallo Switcher и ставить заглавные, где ты пишешь строчные."))
+                        Text(T("Автозамена macOS тоже включена. Она будет спорить с Vallo Switcher и ставить заглавные буквы там, где вы пишете строчные."))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 } footer: {
-                    BelowBlock(hint: "Клавиатура → Ввод текста → Изменить… → выключи «Исправлять ошибки автоматически» и «Писать с прописной буквы».") {
+                    BelowBlock(hint: "Клавиатура → Ввод текста → Изменить… → выключите «Исправлять ошибки автоматически» и «Писать слова с прописной буквы автоматически».") {
                         Button("Открыть настройки клавиатуры") {
                             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
                         }
@@ -510,7 +510,7 @@ struct TyposTab: View {
             }
             Section {
                 SubtitledToggle(title: "Исправлять опечатки на лету",
-                                subtitle: "Лишние, пропущенные и переставленные буквы. Backspace сразу после — вернуть и запомнить слово",
+                                subtitle: "Лишние, пропущенные и переставленные буквы. Чтобы отменить исправление, сразу нажмите Backspace — слово запомнится",
                                 isOn: $model.typoLive)
             }
             Section {
@@ -524,13 +524,13 @@ struct TyposTab: View {
                     }
                 }
                 SubtitledToggle(title: "Заглавная буква и точка в конце",
-                                subtitle: "Когда модель причёсывает выделенное. В мессенджерах обычно не нужно",
+                                subtitle: "Когда модель исправляет выделенный текст. В мессенджерах обычно не нужно",
                                 isOn: $model.typoCapitalize)
             } header: {
                 SectionHeader(title: "Запятые по сочетанию",
-                              subtitle: "\(model.hotkey(.typography).title) по выделенному тексту: опечатки, запятые и типографика сразу.")
+                              subtitle: "\(model.hotkey(.typography).byPhrase.prefix(1).uppercased())\(model.hotkey(.typography).byPhrase.dropFirst()) в выделенном тексте исправляются опечатки, запятые и типографика.")
             }
-            Section("Что исправляется") {
+            Section("Примеры замен") {
                 ForEach(examples, id: \.0) { before, after in
                     LabeledContent(before) { Text(after) }
                 }

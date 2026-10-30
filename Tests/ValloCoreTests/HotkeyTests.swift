@@ -75,6 +75,14 @@ import Testing
         #expect(Hotkey.defaultConvert != Hotkey.defaultTypography)
     }
 
+    @Test func phrases() {
+        #expect(Hotkey.doubleTap(.leftShift).pressInstruction == "Нажмите левый Shift дважды")
+        #expect(Hotkey.doubleTap(.rightShift).byPhrase == "по двойному нажатию правого Shift")
+        let combo = Hotkey.combo(keyCode: 17, command: false, option: true, control: true, shift: false)
+        #expect(combo.pressInstruction == "Нажмите ⌃⌥T")
+        #expect(combo.byPhrase == "по сочетанию ⌃⌥T")
+    }
+
     @Test func titles() {
         #expect(Hotkey.combo(keyCode: 17, command: false, option: true, control: true, shift: false).title == "⌃⌥T")
         #expect(Hotkey.doubleTap(.rightShift).title == "Двойной правый Shift")

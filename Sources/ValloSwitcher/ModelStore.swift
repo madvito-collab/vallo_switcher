@@ -55,7 +55,7 @@ final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
     /// Модель не загрузилась (битые файлы) — предложить скачать заново.
     func markBroken() {
         try? FileManager.default.removeItem(at: CommaService.modelDirectory)
-        state = .failed("Файлы модели повреждены — скачай заново")
+        state = .failed("Файлы модели повреждены — скачайте заново")
     }
 
     // MARK: - URLSessionDownloadDelegate
@@ -95,7 +95,7 @@ final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
         let data = try Data(contentsOf: zip, options: .mappedIfSafe)
         let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         guard hash == ModelStore.sha256 else {
-            throw InstallError(errorDescription: "Файл скачался с ошибкой — попробуй ещё раз")
+            throw InstallError(errorDescription: "Файл скачался с ошибкой — попробуйте ещё раз")
         }
         let fm = FileManager.default
         let models = CommaService.modelDirectory.deletingLastPathComponent()
