@@ -106,7 +106,9 @@ final class SettingsModel: ObservableObject {
 
     /// Имя приложения по bundle ID — для списка.
     func appName(_ id: String) -> String {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return id }
+        let known = ["com.googlecode.iterm2": "iTerm", "com.todesktop.230313mzl4w4u92": "Cursor",
+                     "com.apple.Terminal": "Терминал", "com.microsoft.VSCode": "Visual Studio Code", "com.apple.dt.Xcode": "Xcode"]
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return known[id] ?? id }
         return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
     }
 }
@@ -120,6 +122,34 @@ private struct Hint: View {
     init(_ text: String) { self.text = text }
     var body: some View {
         Text(T(text)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Нативная круглая кнопка «?» — открывает справку свитчера.
+private struct HelpButton: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSButton {
+        let b = NSButton(title: "", target: context.coordinator, action: #selector(Coordinator.open))
+        b.bezelStyle = .helpButton
+        return b
+    }
+    func updateNSView(_ nsView: NSButton, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator: NSObject {
+        @objc func open() {
+            if let url = Bundle.main.url(forResource: "Help", withExtension: "html") { NSWorkspace.shared.open(url) }
+        }
+    }
+}
+
+/// Под серым блоком: подсказка слева, кнопки справа — как «Добавить аккаунт…» в системных настройках.
+private struct BelowBlock<Buttons: View>: View {
+    let hint: String?
+    @ViewBuilder let buttons: Buttons
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            if let hint { Hint(hint) } else { Spacer() }
+            buttons
+        }
     }
 }
 
@@ -144,32 +174,34 @@ struct GeneralTab: View {
     var body: some View {
         Form {
             Section {
-                SubtitledToggle(title: "Автопереключение",
-                                subtitle: "Смена раскладки по сочетанию (\(model.hotkey(.convert).title)) работает всегда",
-                                isOn: $model.autoSwitch)
+                Toggle("Автопереключение", isOn: $model.autoSwitch)
                 Toggle("Запускать вместе с Маком", isOn: $model.launchAtLogin)
                 Toggle(T("Режим отладки"), isOn: $model.debugMode)
+            } footer: {
+                BelowBlock(hint: "\(model.hotkey(.convert).title) переводит набранное или выделенное в другую раскладку всегда — даже когда автопереключение выключено.") {
+                    HelpButton()
+                }
             }
         }
         .formStyle(.grouped)
     }
 }
 
-/// Список приложений с кнопками «Убрать» и «Добавить…».
-private struct AppList: View {
+/// Строки приложений с кнопкой «Убрать».
+private struct AppRows: View {
     @Binding var apps: [String]
     @ObservedObject var model: SettingsModel
 
     var body: some View {
+        if apps.isEmpty {
+            Text("Нет приложений").foregroundStyle(.secondary)
+        }
         ForEach(apps, id: \.self) { id in
             HStack {
                 Text(model.appName(id))
                 Spacer()
                 Button("Убрать") { apps.removeAll { $0 == id } }
             }
-        }
-        Button("Добавить приложение…") {
-            for id in model.pickApps() where !apps.contains(id) { apps.append(id) }
         }
     }
 }
@@ -181,38 +213,63 @@ struct ExclusionsTab: View {
     var body: some View {
         Form {
             Section {
-                AppList(apps: $model.excluded, model: model)
+                AppRows(apps: $model.excluded, model: model)
             } header: {
                 Text("Автопереключение")
             } footer: {
-                Hint("Здесь автопереключение молчит. Смена раскладки по сочетанию работает.")
+                BelowBlock(hint: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.") {
+                    Button("Добавить приложение…") { add(to: \.excluded) }
+                }
             }
             Section {
-                AppList(apps: $model.typographyExcluded, model: model)
+                AppRows(apps: $model.typographyExcluded, model: model)
             } header: {
                 Text("Типографика на лету")
             } footer: {
-                Hint("Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.")
+                BelowBlock(hint: "Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.") {
+                    Button("Добавить приложение…") { add(to: \.typographyExcluded) }
+                }
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func add(to list: ReferenceWritableKeyPath<SettingsModel, [String]>) {
+        for id in model.pickApps() where !model[keyPath: list].contains(id) { model[keyPath: list].append(id) }
     }
 }
 
 struct TypographyTab: View {
     @ObservedObject var model: SettingsModel
 
+    /// Что исправляется — примеры «было → стало».
+    private let examples: [(String, String)] = [
+        ("Москва - столица", "Москва — столица"),
+        ("\"текст\"", "«текст»"),
+        ("ну...", "ну…"),
+        ("5 - 3 · 5x3", "5 − 3 · 5×3"),
+        ("1990-2000", "1990–2000"),
+        ("(c) · +- · ->", "© · ± · →"),
+        ("в доме", "в доме без переноса после «в»"),
+    ]
+
     var body: some View {
         Form {
             Section {
-                SubtitledToggle(title: "Типографика на лету",
-                                subtitle: "Пока печатаешь. Backspace сразу после замены возвращает набранное",
-                                isOn: $model.typographyLive)
+                Toggle("Типографика на лету", isOn: $model.typographyLive)
                 SubtitledToggle(title: "Причёсывать выделенное",
                                 subtitle: "По сочетанию \(model.hotkey(.typography).title)",
                                 isOn: $model.typographyHotkey)
-            } footer: {
-                Hint("Тире, «ёлочки», неразрывные пробелы, ×, …, © и другие правила из «Ководства» Лебедева. Исключения — на вкладке «Исключения».")
+            }
+            Section("Что исправляется") {
+                ForEach(examples, id: \.0) { before, after in
+                    LabeledContent(before) { Text(after) }
+                }
+            }
+            Section {} footer: {
+                BelowBlock(hint: "Передумал — нажми Backspace сразу после замены, и вернётся набранное. Где типографика не работает — на вкладке «Исключения».") {
+                    HelpButton()
+                }
             }
         }
         .formStyle(.grouped)
@@ -249,16 +306,16 @@ struct HotkeysTab: View {
                 row("Сменить раскладку", .convert)
                 row("Причесать типографику", .typography)
             } footer: {
-                if let message = model.hotkeyMessage {
-                    Text(message).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    Hint("«Свой вариант» — сочетание с ⌘, ⌥ или ⌃, например ⌃⌥T. Esc — отмена.")
-                }
-            }
-            Section {
-                Button("По умолчанию") {
-                    stopRecording()
-                    model.resetHotkeys()
+                VStack(alignment: .leading, spacing: 8) {
+                    if let message = model.hotkeyMessage {
+                        Text(message).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    BelowBlock(hint: "«Свой вариант» — сочетание с ⌘, ⌥ или ⌃, например ⌃⌥T. Esc — отмена.") {
+                        Button("По умолчанию") {
+                            stopRecording()
+                            model.resetHotkeys()
+                        }
+                    }
                 }
             }
         }
@@ -362,26 +419,26 @@ final class SettingsWindow {
     private func makeWindow() -> NSWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        // заголовок окна = название вкладки
-        tabs.canPropagateSelectedChildViewControllerTitle = true
+        // заголовок окна всегда «Vallo Switcher» — название вкладки и так видно на панели
+        tabs.canPropagateSelectedChildViewControllerTitle = false
         func add<V: View>(_ title: String, _ symbol: String, height: CGFloat, _ view: V) {
             let host = NSHostingController(rootView: view.frame(width: 500, height: height))
             host.sizingOptions = .preferredContentSize
-            host.title = title
             let item = NSTabViewItem(viewController: host)
             item.label = title
             item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
             tabs.addTabViewItem(item)
         }
-        add("Основное", "gearshape", height: 200, GeneralTab(model: model))
+        add("Основное", "gearshape", height: 230, GeneralTab(model: model))
         add("Исключения", "nosign", height: 520, ExclusionsTab(model: model))
-        add("Типографика", "textformat", height: 220, TypographyTab(model: model))
-        add("Сочетания", "keyboard", height: 240, HotkeysTab(model: model))
+        add("Типографика", "textformat", height: 600, TypographyTab(model: model))
+        add("Сочетания", "keyboard", height: 260, HotkeysTab(model: model))
         add("Слова", "text.book.closed", height: 340, LearnedTab(model: model))
 
         let w = NSWindow(contentViewController: tabs)
         w.styleMask = [.titled, .closable]
         w.toolbarStyle = .preference
+        w.title = "Vallo Switcher"
         w.isReleasedWhenClosed = false
         w.center()
         return w

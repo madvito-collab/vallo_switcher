@@ -20,6 +20,7 @@ xcrun vtool -set-build-version macos 14.0 "$(xcrun --show-sdk-version)" -replace
 cp Support/Info.plist "$APP/Contents/Info.plist"
 cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
+cp Support/Help.html "$APP/Contents/Resources/"
 
 codesign --force --options runtime --sign "$SIGN_ID" "$APP"
 echo "Готово: $APP"

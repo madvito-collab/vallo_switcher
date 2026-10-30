@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vallo Switcher — справка</title>
+<style>
+  :root { --bg: #fff; --text: #1d1d1f; --muted: #6e6e73; --card: #f5f5f7; --accent: #1f6fe0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1c1c1e; --text: #f5f5f7; --muted: #a1a1a6; --card: #2c2c2e; --accent: #5aa2ff; }
+  }
+  body { background: var(--bg); color: var(--text); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+         max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 32px; margin: 0 0 6px; }
+  h2 { font-size: 21px; margin: 40px 0 10px; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px 18px; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 7px 0; border-bottom: 1px solid rgba(127,127,127,.18); vertical-align: top; }
+  td:first-child { color: var(--muted); width: 45%; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+  tr:last-child td { border-bottom: 0; }
+  kbd { font: 13px ui-monospace, Menlo, monospace; background: var(--card); border: 1px solid rgba(127,127,127,.3);
+        border-radius: 5px; padding: 1px 6px; }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<h1>Vallo Switcher</h1>
+<p class="lead">Исправляет текст, набранный не в&nbsp;той раскладке, и&nbsp;ставит правильные тире, кавычки и&nbsp;пробелы. Работает без интернета, набранный текст никуда не&nbsp;сохраняется и&nbsp;не&nbsp;отправляется.</p>
+
+<h2>Автопереключение</h2>
+<p>Пишешь не&nbsp;в&nbsp;той раскладке&nbsp;— свитчер исправит сам, обычно уже на&nbsp;третьей букве, и&nbsp;переключит раскладку.</p>
+<div class="card">
+<table>
+  <tr><td>ghbdtn</td><td>привет</td></tr>
+  <tr><td>,eltn</td><td>будет</td></tr>
+  <tr><td>руддщ</td><td>hello</td></tr>
+  <tr><td>jr</td><td>ок (частые короткие слова&nbsp;— после пробела)</td></tr>
+</table>
+</div>
+<p>Разговорные словечки (ща, спс, хз, lol…) свитчер не&nbsp;трогает. Если короткое слово исправилось зря, а&nbsp;следующее слово ты пишешь на&nbsp;прежнем языке, свитчер вернёт и&nbsp;его.</p>
+
+<h2>Двойной левый Shift</h2>
+<ul>
+  <li><b>Сразу после исправления</b>&nbsp;— откат: слово вернётся как было. Откатишь одно и&nbsp;то&nbsp;же слово второй раз&nbsp;— свитчер его запомнит и&nbsp;больше не&nbsp;тронет (список&nbsp;— на&nbsp;вкладке «Слова»).</li>
+  <li><b>Есть выделение</b>&nbsp;— переводит выделенный текст в&nbsp;другую раскладку. Буфер обмена потом возвращается как был.</li>
+  <li><b>Иначе</b>&nbsp;— переводит всё, что ты только что набрал подряд.</li>
+</ul>
+<p>Работает всегда, даже когда автопереключение выключено. Сочетание можно поменять на&nbsp;вкладке «Сочетания».</p>
+
+<h2>Типографика</h2>
+<p><b>На&nbsp;лету</b>&nbsp;— пока печатаешь. <b>Двойной правый Shift</b>&nbsp;— причёсывает выделенный текст целиком.</p>
+<div class="card">
+<table>
+  <tr><td>Москва - столица</td><td>Москва&nbsp;— столица</td></tr>
+  <tr><td>- Привет</td><td>— Привет</td></tr>
+  <tr><td>"текст"</td><td>«текст»</td></tr>
+  <tr><td>"Он сказал "да""</td><td>«Он сказал „да“»</td></tr>
+  <tr><td>"Hello" it's</td><td>“Hello” it’s</td></tr>
+  <tr><td>5 - 3</td><td>5 − 3 (минус)</td></tr>
+  <tr><td>1990-2000</td><td>1990–2000 (диапазон)</td></tr>
+  <tr><td>5x3, 5 * 3</td><td>5×3, 5 × 3</td></tr>
+  <tr><td>ну...</td><td>ну…</td></tr>
+  <tr><td>(c) (r) (tm)</td><td>© ® ™</td></tr>
+  <tr><td>+- -&gt; &lt;- 1/2</td><td>± → ← ½</td></tr>
+  <tr><td>привет  ,  как</td><td>привет, как</td></tr>
+</table>
+</div>
+<p><b>Неразрывные пробелы</b> (невидимые, но не&nbsp;дают строке разорваться в&nbsp;неудачном месте): после коротких предлогов и&nbsp;союзов (в, на, и, для, через…), перед «ли», «же», «бы», между числом и&nbsp;словом (5&nbsp;кг), в&nbsp;инициалах (А.&nbsp;С.&nbsp;Пушкин), после №, перед тире.</p>
+<p><b>Передумал?</b> Нажми <kbd>Backspace</kbd> сразу после замены&nbsp;— вернётся то, что ты набрал. Это касается только типографики; исправление раскладки откатывается двойным Shift.</p>
+<p>Даты и&nbsp;телефоны (2026-10-30, +7-999-123-45-67) и&nbsp;дефисы в&nbsp;словах (кто-то) не&nbsp;трогаются.</p>
+
+<h2>Где не&nbsp;работает</h2>
+<ul>
+  <li>В&nbsp;приложениях из&nbsp;вкладки «Исключения»&nbsp;— отдельно для автопереключения и&nbsp;для типографики. По&nbsp;умолчанию типографика молчит в&nbsp;терминалах и&nbsp;редакторах кода: там «ёлочки» и&nbsp;тире ломают команды.</li>
+  <li>В&nbsp;полях пароля, e-mail, телефона и&nbsp;ссылок.</li>
+  <li>В&nbsp;ссылках, почтовых адресах и&nbsp;словах с&nbsp;цифрами.</li>
+  <li>На&nbsp;третьей раскладке (украинская и&nbsp;т.&nbsp;п.)&nbsp;— свитчер работает только с&nbsp;русской и&nbsp;английской.</li>
+</ul>
+
+<h2>Разрешения</h2>
+<p>Свитчеру нужны два разрешения в&nbsp;«Системные настройки → Конфиденциальность и&nbsp;безопасность»: «Универсальный доступ» (в&nbsp;macOS&nbsp;27&nbsp;— «Управление устройством и&nbsp;доступ к&nbsp;данным»)&nbsp;— чтобы исправлять текст, и&nbsp;«Мониторинг ввода»&nbsp;— чтобы видеть набор. Набранный текст не&nbsp;сохраняется и&nbsp;не&nbsp;отправляется; на&nbsp;Маке хранятся только настройки и&nbsp;запомненные слова.</p>
+
+</body>
+</html>
