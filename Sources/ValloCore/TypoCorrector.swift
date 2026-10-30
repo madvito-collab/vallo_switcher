@@ -21,6 +21,11 @@ public struct TypoCorrector: Sendable {
         "кого", "кому", "кем", "ком", "чего", "чему", "чем",
     ]
 
+    /// На лету после этих слов «то» часто местоимение («что то решение», «как то, так и другое») — не склеиваем.
+    static let ambiguousStems: Set<String> = ["что", "как", "чем"]
+    static let particleRegex = try! NSRegularExpression(
+        pattern: "(?i)(?<![\\p{L}])(\\p{L}+) (то|нибудь|либо|таки)(?![\\p{L}])")
+
     /// «Мои слова» — нормализованы (строчные, ё → е).
     public var ignored: Set<String>
 
@@ -79,6 +84,10 @@ public struct TypoCorrector: Sendable {
     /// Исправленное слово или nil — не трогать.
     public func correct(_ word: String) -> String? {
         let w = Lexicon.normalize(word)
+        // смешанный регистр («пРвет») — не трогаем: регистр не меняем никогда
+        let letters = word.filter(\.isLetter)
+        let mixedCase = letters.dropFirst().contains(where: \.isUppercase) && !letters.allSatisfy(\.isUppercase)
+        if mixedCase { return nil }
         // забытый «ь» в конце: «можеш» → «можешь» (решение ученика) — узкое исключение из «окончания не трогаем»
         if w.count >= 4, w.hasSuffix("ш"), w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
            frequency[w] == nil, !ignored.contains(w), isKnown(w + "ь") {
@@ -117,13 +126,14 @@ public struct TypoCorrector: Sendable {
     }
 
     /// «какой то» → «какой-то», только после местоимений и наречий (иначе «то» — союз).
-    func joinParticles(_ text: String) -> String {
-        let pattern = "(?i)(?<![\\p{L}])(\\p{L}+) (то|нибудь|либо|таки)(?![\\p{L}])"
-        let regex = try! NSRegularExpression(pattern: pattern)
+    /// `live` — на лету: «что/как/чем то» не склеиваем, там «то» часто местоимение.
+    public func joinParticles(_ text: String, live: Bool = false) -> String {
         var result = text
-        for m in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).reversed() {
-            guard let stemRange = Range(m.range(at: 1), in: text), let whole = Range(m.range, in: result),
-                  TypoCorrector.particleStems.contains(Lexicon.normalize(String(text[stemRange]))) else { continue }
+        for m in TypoCorrector.particleRegex.matches(in: text, range: NSRange(text.startIndex..., in: text)).reversed() {
+            guard let stemRange = Range(m.range(at: 1), in: text), let whole = Range(m.range, in: result) else { continue }
+            let stem = Lexicon.normalize(String(text[stemRange]))
+            guard TypoCorrector.particleStems.contains(stem),
+                  !(live && TypoCorrector.ambiguousStems.contains(stem)) else { continue }
             result.replaceSubrange(whole, with: String(result[whole]).replacingOccurrences(of: " ", with: "-"))
         }
         return result

@@ -8,37 +8,57 @@ public enum CommaFilter {
     static let allowedMarks: Set<Character> = [",", "?", "!", ":", ";"]
 
     public static func merge(original: String, model: String, typos: TypoCorrector, capitalize: Bool) -> String {
-        let ot = original.split(whereSeparator: \.isWhitespace).map(String.init)
+        // слова человека вместе с пробелами между ними — пробелы, переносы и отступы остаются как были
+        let (seps, ot) = tokenize(original)
         let mt = model.split(whereSeparator: \.isWhitespace).map(String.init)
-        var out: [String] = []
+        guard !ot.isEmpty else { return original }
+        var out = ot
 
         for op in diff(ot.map(key), mt.map(key)) {
             switch op {
             case let .equal(i, j):
-                out.append(sameWord(original: ot[i], model: mt[j]))
+                out[i] = sameWord(original: ot[i], model: mt[j])
             case let .replace(i1, i2, j1, j2):
-                out.append(contentsOf: replace(Array(ot[i1..<i2]), Array(mt[j1..<j2]), typos: typos))
-            case .insert:
-                break   // модель добавила слово — не принимаем
-            case let .delete(i1, i2):
-                out.append(contentsOf: ot[i1..<i2])
+                let replaced = replace(Array(ot[i1..<i2]), Array(mt[j1..<j2]), typos: typos)
+                for (k, w) in replaced.enumerated() { out[i1 + k] = w }
+            case .insert, .delete:
+                break   // добавленные моделью слова не берём, удалённые — оставляем свои
             }
         }
 
-        var s = out.joined(separator: " ")
-        s = s.replacingOccurrences(of: "(\\d)\\.\\s+(\\d)", with: "$1 $2", options: .regularExpression)
-        if !capitalize {
-            if s.hasSuffix(".") && !original.hasSuffix(".") { s.removeLast() }
-            if let first = original.first, first.isLowercase, let f = s.first {
-                s = String(f).lowercased() + s.dropFirst()
-            }
-        } else if let f = s.first {
-            s = String(f).uppercased() + s.dropFirst()
-            if let last = s.last, !".!?…".contains(last) { s += "." }
-        }
+        // собрать: пустое слово (склеенная частица) забирает с собой пробел перед ним
+        var body = seps[0]
+        for i in out.indices where !out[i].isEmpty { body += (i == 0 ? "" : seps[i]) + out[i] }
+        body = body.replacingOccurrences(of: "(\\d)\\.\\s+(\\d)", with: "$1 $2", options: .regularExpression)
         // запятая в конце, оставшаяся от отброшенного слова
-        while s.hasSuffix(",") && !original.hasSuffix(",") { s.removeLast() }
-        return s
+        while body.hasSuffix(",") && !original.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(",") {
+            body.removeLast()
+        }
+        if capitalize {
+            if let i = body.firstIndex(where: \.isLetter) {
+                body.replaceSubrange(i...i, with: String(body[i]).uppercased())
+            }
+            if let last = body.last, !".!?…".contains(last) { body += "." }
+        }
+        return body + seps[ot.count]
+    }
+
+    /// Слова и пробелы между ними: `seps[i]` — пробелы перед словом `i`, `seps[n]` — хвост.
+    static func tokenize(_ text: String) -> ([String], [String]) {
+        var seps: [String] = [], words: [String] = []
+        var sep = "", word = ""
+        for ch in text {
+            if ch.isWhitespace {
+                if !word.isEmpty { words.append(word); word = "" }
+                sep.append(ch)
+            } else {
+                if word.isEmpty { seps.append(sep); sep = "" }
+                word.append(ch)
+            }
+        }
+        if !word.isEmpty { words.append(word) }
+        seps.append(sep)
+        return (seps, words)
     }
 
     // MARK: - Слова
@@ -73,11 +93,26 @@ public enum CommaFilter {
         return (o.isUppercase ? String(w).uppercased() : String(w).lowercased()) + word.dropFirst()
     }
 
-    /// То же слово: знаки — модели; написание — модели, если отличается только ё или дефисом.
+    /// Знаки после слова у человека: «.», «»», «)», «...» — всегда его.
+    static func trail(_ t: String) -> String {
+        let chars = Array(t)
+        guard let last = chars.lastIndex(where: { $0.isLetter || $0.isNumber }) else { return t }
+        return String(chars[(last + 1)...])
+    }
+
+    /// К своим знакам человека добавляем знак модели, только если у человека знака препинания нет.
+    /// Запятая модели встаёт после закрывающей кавычки или скобки: «да», и ушёл.
+    static func ownTrail(_ original: String, plus modelMarks: String) -> String {
+        let own = trail(original)
+        if own.contains(where: { ",.?!:;…".contains($0) }) { return own }
+        return own + modelMarks
+    }
+
+    /// То же слово: знаки — свои плюс запятая модели; написание — модели, если отличается только ё или дефисом.
     static func sameWord(original: String, model: String) -> String {
         let o = core(original), m = core(model)
         let word = o.lowercased() == m.lowercased() ? o : withLeadingCase(of: original, m)
-        return lead(original) + word + marks(model)
+        return lead(original) + word + ownTrail(original, plus: marks(model))
     }
 
     static func replace(_ o: [String], _ m: [String], typos: TypoCorrector) -> [String] {
@@ -85,20 +120,20 @@ public enum CommaFilter {
         if o.count == 2, m.count == 1, TypoCorrector.particles.contains(Lexicon.normalize(core(o[1]))),
            TypoCorrector.particleStems.contains(Lexicon.normalize(core(o[0]))),
            key(m[0]) == key(o[0]) + key(o[1]) {
-            return [lead(o[0]) + withLeadingCase(of: o[0], core(m[0])) + marks(m[0])]
+            return [lead(o[0]) + withLeadingCase(of: o[0], core(m[0])) + ownTrail(o[1], plus: marks(m[0])), ""]
         }
         // замена слово на слово — только если исправлятор опечаток согласен
         if o.count == m.count {
             return zip(o, m).map { ow, mw in
                 if let fixed = typos.correct(core(ow)), key(fixed) == key(mw) {
-                    return lead(ow) + fixed + marks(mw)
+                    return lead(ow) + fixed + ownTrail(ow, plus: marks(mw))
                 }
-                return ow + commaOnly(mw)
+                return lead(ow) + core(ow) + ownTrail(ow, plus: commaOnly(mw))
             }
         }
         // модель разбила или склеила слова — слова оставляем свои, берём только запятую после куска
         guard let last = o.last, let modelLast = m.last else { return o }
-        return o.dropLast() + [last + commaOnly(modelLast)]
+        return o.dropLast() + [lead(last) + core(last) + ownTrail(last, plus: commaOnly(modelLast))]
     }
 
     /// От отвергнутого слова модели берём только запятую: «СП:» вместо «спс» не должен оставить двоеточие.

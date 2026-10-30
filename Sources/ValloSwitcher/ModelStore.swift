@@ -54,6 +54,8 @@ final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
 
     /// Модель не загрузилась (битые файлы) — предложить скачать заново.
     func markBroken() {
+        // только если модель считалась готовой: во время удаления или скачивания это не поломка
+        guard state == .ready else { return }
         try? FileManager.default.removeItem(at: CommaService.modelDirectory)
         state = .failed("Файлы модели повреждены — скачайте заново")
     }
@@ -67,15 +69,37 @@ final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        // файл по `location` живёт только до выхода из этого метода — проверяем и распаковываем сразу
+        task = nil
+        session.finishTasksAndInvalidate()
+        self.session = nil
+        if let status = (downloadTask.response as? HTTPURLResponse)?.statusCode, status != 200 {
+            state = .failed("Сервер ответил ошибкой \(status) — попробуйте позже")
+            return
+        }
+        // файл по `location` живёт только до выхода из этого метода — забираем его себе,
+        // а проверку и распаковку (секунды) делаем в фоне: главный поток — это перехват клавиатуры
+        let owned = FileManager.default.temporaryDirectory.appendingPathComponent("vallo-model-\(UUID().uuidString).zip")
         do {
-            try install(zip: location)
-            state = .ready
-            onChange?()
+            try FileManager.default.moveItem(at: location, to: owned)
         } catch {
             state = .failed(error.localizedDescription)
+            return
         }
-        task = nil
+        state = .downloading(1)
+        DispatchQueue.global(qos: .utility).async { [self] in
+            defer { try? FileManager.default.removeItem(at: owned) }
+            let result: State
+            do {
+                try install(zip: owned)
+                result = .ready
+            } catch {
+                result = .failed(error.localizedDescription)
+            }
+            DispatchQueue.main.async { [self] in
+                state = result
+                if result == .ready { onChange?() }
+            }
+        }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -92,8 +116,12 @@ final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
 
     /// Сверить контрольную сумму, распаковать во временную папку и только потом заменить модель.
     private func install(zip: URL) throws {
-        let data = try Data(contentsOf: zip, options: .mappedIfSafe)
-        let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        // контрольная сумма по кускам, без загрузки 228 МБ в память целиком
+        let handle = try FileHandle(forReadingFrom: zip)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 4 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+        let hash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
         guard hash == ModelStore.sha256 else {
             throw InstallError(errorDescription: "Файл скачался с ошибкой — попробуйте ещё раз")
         }

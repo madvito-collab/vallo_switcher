@@ -67,6 +67,17 @@ struct SeededRandom: RandomNumberGenerator {
         #expect(typos.correctPhrase("какой то баг ктото") == "какой-то баг кто-то")
     }
 
+    @Test func pronounToNotJoinedLive() {
+        // «что то решение» — «то» здесь местоимение; на лету «что/как/чем» + «то» не склеиваем
+        #expect(typos.joinParticles("я думаю что то решение верное", live: true) == "я думаю что то решение верное")
+        #expect(typos.joinParticles("какой то баг", live: true) == "какой-то баг")
+    }
+
+    @Test func mixedCaseKept() {
+        #expect(typos.correct("пРвет") == nil)
+        #expect(typos.correct("ПРвет") == nil)
+    }
+
     @Test func ignoredWordsKept() throws {
         let t = try TypoCorrector.load(url: repoURL("Data/wordlists/ru-typos.txt"), ignored: ["приввет"])
         #expect(t.correct("приввет") == nil)

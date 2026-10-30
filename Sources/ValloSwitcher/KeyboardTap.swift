@@ -25,6 +25,8 @@ final class KeyboardTap {
     /// Какие модификаторы (по keyCode) сейчас зажаты.
     private var modifiersDown: Set<Int64> = []
     private var live = LiveTypographer()
+    /// Растёт на каждое нажатие и клик — чтобы понять, что человек что-то делал, пока мы ждали модель.
+    private var inputGeneration = 0
     /// Исправлятор опечаток; «Мои слова» обновляются снаружи.
     var typos: TypoCorrector
     /// Запятые по сочетанию (модель).
@@ -120,6 +122,9 @@ final class KeyboardTap {
         if event.getIntegerValueField(.eventSourceUserData) == EventPoster.marker {
             return Unmanaged.passUnretained(event)
         }
+        if type == .keyDown || type == .leftMouseDown || type == .rightMouseDown || type == .otherMouseDown {
+            inputGeneration &+= 1
+        }
         switch type {
         case .keyDown:
             return handleKeyDown(event, proxy: proxy)
@@ -182,7 +187,9 @@ final class KeyboardTap {
         if case .consume(let actions) = output {
             // сначала свитчер; на этом нажатии типографика молчит. Свитчер мог исправить слово посреди —
             // дальше в памяти будет хвост слова
-            let typedLetter = layouts.pair.layout(actual).character(for: stroke)?.first?.isLetter ?? false
+            // буква хотя бы в одной раскладке: «,» в EN — это «б» в RU
+            let isLetter = { (l: Language) in self.layouts.pair.layout(l).character(for: stroke)?.first?.isLetter ?? false }
+            let typedLetter = isLetter(.en) || isLetter(.ru)
             live.reset(midWord: typedLetter)
             report()
             // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
@@ -257,9 +264,16 @@ final class KeyboardTap {
         guard store.typographyHotkeyEnabled, !ContextGuard.secureInputActive else { return }
         SelectionReader.selectedText { [self] text in
             guard let text else { return }
+            // пока модель думает, человек мог уйти в другое окно или начать печатать — тогда не вставляем
+            let app = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            let generation = inputGeneration
             let typoFixed = typos.correctPhrase(text)
             // модель думает на фоне; без модели, при ошибке или дольше 3 с — без запятых
             commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled) { [self] withCommas in
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app, inputGeneration == generation else {
+                    log.debug("right shift: focus changed while waiting — skipped")
+                    return
+                }
                 let formatted = Typographer.format(withCommas ?? typoFixed)
                 log.debug("right shift: \(text.count) → \(formatted.count) chars, model=\(withCommas != nil)")
                 guard formatted != text else { return }

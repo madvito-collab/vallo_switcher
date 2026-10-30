@@ -47,6 +47,30 @@ let sageOutputs: [String: String] = {
         #expect(merged("спасибо большое ты лучший", capitalize: true) == "Спасибо большое, ты лучший.")
     }
 
+    @Test func ownPunctuationKept() {
+        func m(_ o: String, _ model: String) -> String {
+            CommaFilter.merge(original: o, model: model, typos: typos, capitalize: false)
+        }
+        #expect(m("Я дома.", "Я дома.") == "Я дома.")
+        #expect(m("Он сказал «привет» и ушёл", "Он сказал «привет» и ушёл.") == "Он сказал «привет» и ушёл")
+        #expect(m("см. (пример) тут", "См. (пример) тут.") == "см. (пример) тут")
+        #expect(m("Что-то не так...", "Что-то не так...") == "Что-то не так...")
+        #expect(m("Привет. Как дела?", "Привет. Как дела?") == "Привет. Как дела?")
+        // запятая модели — после закрывающей кавычки
+        #expect(m("он сказал «да» и ушёл", "Он сказал «да», и ушёл.") == "он сказал «да», и ушёл")
+    }
+
+    @Test func whitespaceKept() {
+        let o = "  я думаю  что\tэто идея  "
+        #expect(CommaFilter.merge(original: o, model: "Я думаю, что это идея.", typos: typos, capitalize: false)
+                == "  я думаю,  что\tэто идея  ")
+    }
+
+    @Test func noCommaDotAtEnd() {
+        #expect(CommaFilter.merge(original: "привет как дела", model: "привет, как дела, ну", typos: typos, capitalize: true)
+                == "Привет, как дела.")
+    }
+
     @Test func modelAddsWordsRejected() {
         // модель дописала слово — не принимаем
         #expect(CommaFilter.merge(original: "ну давай", model: "Ну давай, пожалуйста.", typos: typos, capitalize: false)

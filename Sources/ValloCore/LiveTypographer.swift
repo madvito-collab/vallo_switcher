@@ -124,7 +124,7 @@ public struct LiveTypographer: Sendable {
             result += Array(word)
         }
         result.append(boundary)
-        let joined = Array(typos.joinParticles(String(result)))
+        let joined = Array(typos.joinParticles(String(result), live: true))
         return (joined.count == result.count ? joined : result, typoWord)
     }
 

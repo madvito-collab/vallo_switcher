@@ -4,7 +4,11 @@ import ValloCore
 /// Запятые по сочетанию: держит модель (загружает лениво), режет текст на предложения,
 /// прогоняет через модель на фоне и фильтрует ответ. Без модели, при ошибке или таймауте — nil.
 final class CommaService: @unchecked Sendable {
+    /// Ожидание ответа модели: 3 с, если она уже в памяти; при первом запуске — ещё и на загрузку.
     static let timeout: TimeInterval = 3
+    static let coldTimeout: TimeInterval = 8
+    /// Модель занимает ~500 МБ памяти — выгружаем, если ею не пользовались полчаса.
+    static let idleUnload: TimeInterval = 30 * 60
     static let modelName = "sage-fredt5-95m"
 
     /// Куда распаковывается скачанная модель.
@@ -20,7 +24,13 @@ final class CommaService: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.vallo.switcher.commas")
     /// Модель есть на диске, но не загрузилась (битые файлы) — на главном потоке.
     var onLoadFailed: (() -> Void)?
-    private var model: CommaModel?
+    private var model: CommaModel? {
+        didSet { loadedLock.withLock { loaded = model != nil } }
+    }
+    /// Загружена ли модель — читается с главного потока без ожидания очереди.
+    private var loaded = false
+    private let loadedLock = NSLock()
+    private var idleTimer: DispatchWorkItem?
 
     /// Модель удалили — выгрузить.
     func unload() {
@@ -38,9 +48,11 @@ final class CommaService: @unchecked Sendable {
                 completion(result)
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + CommaService.timeout) { finish(nil) }
+        let cold = loadedLock.withLock { !loaded }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (cold ? CommaService.coldTimeout : CommaService.timeout)) { finish(nil) }
 
         queue.async { [self] in
+            scheduleUnload()
             let semaphore = DispatchSemaphore(value: 0)
             if model == nil {
                 Task {
@@ -55,7 +67,9 @@ final class CommaService: @unchecked Sendable {
             }
             do {
                 let lines = text.components(separatedBy: "\n").map { line -> String in
-                    CommaService.sentences(line).map { sentence in
+                    // пустые строки и строки без букв модели не нужны
+                    guard line.contains(where: \.isLetter) else { return line }
+                    return CommaService.sentences(line).map { sentence in
                         let raw = try? model.run(sentence)
                         return raw.map { CommaFilter.merge(original: sentence, model: $0, typos: typos, capitalize: capitalize) }
                             ?? sentence
@@ -64,6 +78,14 @@ final class CommaService: @unchecked Sendable {
                 finish(lines.joined(separator: "\n"))
             }
         }
+    }
+
+    /// Выгрузить модель, если ею не пользовались `idleUnload` (вызывается на очереди сервиса).
+    private func scheduleUnload() {
+        idleTimer?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.model = nil }
+        idleTimer = work
+        queue.asyncAfter(deadline: .now() + CommaService.idleUnload, execute: work)
     }
 
     /// Строку — на предложения (после . ! ? … и пробела), чтобы модель не обрезала длинный ответ.
