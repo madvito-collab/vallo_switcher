@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import ValloCore
 
-let typos = try! TypoCorrector.load(url: repoURL("Data/wordlists/ru.txt"), ignored: [])
+let typos = try! TypoCorrector.load(url: repoURL("Data/wordlists/ru-typos.txt"), ignored: [])
 
 /// Детерминированный генератор для синтетических промахов.
 struct SeededRandom: RandomNumberGenerator {
@@ -29,6 +29,15 @@ struct SeededRandom: RandomNumberGenerator {
         #expect(typos.correct("Делаеш") == "Делаешь")
         #expect(typos.correct("можш") == nil)      // два промаха — не трогаем
         #expect(typos.correct("малыш") == nil)     // настоящее слово на «ш»
+    }
+
+    @Test func workVocabulary() {
+        // рабочие слова — из письменного словаря (Википедия)
+        let work = [("навки", "навыки"), ("тарфи", "тариф"), ("проетк", "проект"), ("компаия", "компания"),
+                    ("сотрудиник", "сотрудник"), ("зарплта", "зарплата"), ("настрйоки", "настройки"), ("подключеия", "подключения")]
+        let fixed = work.filter { typos.correct($0.0) == $0.1 }
+        print("Рабочие: \(fixed.count)/\(work.count)")
+        #expect(fixed.count >= 6)
     }
 
     @Test func keepsCase() {
@@ -59,7 +68,7 @@ struct SeededRandom: RandomNumberGenerator {
     }
 
     @Test func ignoredWordsKept() throws {
-        let t = try TypoCorrector.load(url: repoURL("Data/wordlists/ru.txt"), ignored: ["приввет"])
+        let t = try TypoCorrector.load(url: repoURL("Data/wordlists/ru-typos.txt"), ignored: ["приввет"])
         #expect(t.correct("приввет") == nil)
     }
 
@@ -94,7 +103,8 @@ struct SeededRandom: RandomNumberGenerator {
 
     @Test func rareWordsSafety() {
         var rng = SeededRandom(state: 7)
-        let rare = typos.words(from: 20_000, to: 50_000).filter { $0.count >= 5 }
+        let rare = typos.words(from: TypoCorrector.candidateLimit, to: TypoCorrector.candidateLimit + 100_000)
+            .filter { $0.count >= 5 }
         let sample = (0..<3000).map { _ in rare.randomElement(using: &rng)! }
         let spoiled = sample.filter { typos.correct($0) != nil }
         print("Редкие: испорчено \(spoiled.count) из 3000: \(spoiled.prefix(5))")

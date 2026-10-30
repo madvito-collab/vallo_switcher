@@ -5,9 +5,10 @@ import Foundation
 /// Регистр не меняет никогда. Правила и пороги — из эксперимента 2026-10-30 (см. спеку).
 public struct TypoCorrector: Sendable {
     /// Кандидаты в исправление — только из первых `candidateLimit` слов.
-    public static let candidateLimit = 20_000
+    public static let candidateLimit = 40_000
     public static let minLength = 5
-    static let minCandidateFrequency = 200
+    /// Частоты в словаре — на миллион слов × 1000 (см. scripts/build-typo-dictionary.py); 500 = 0,5 на миллион.
+    static let minCandidateFrequency = 500
     static let confidenceRatio = 10
     static let rareWordRatio = 300
     static let alphabet = Array("абвгдежзийклмнопрстуфхцчшщъыьэюя")
@@ -46,8 +47,9 @@ public struct TypoCorrector: Sendable {
         self.ignored = Set(ignored.map(Lexicon.normalize))
     }
 
-    /// Формат как у словаря свитчера: «слово количество», самые частые сверху. Берём 50 000 русских слов.
-    public static func load(url: URL, ignored: Set<String>, limit: Int = 50_000) throws -> TypoCorrector {
+    /// Формат как у словаря свитчера: «слово количество», самые частые сверху.
+    /// Словарь — `Data/wordlists/ru-typos.txt`: разговорные слова (субтитры) + письменные (Википедия), 150 000 слов.
+    public static func load(url: URL, ignored: Set<String>, limit: Int = 150_000) throws -> TypoCorrector {
         let text = try String(contentsOf: url, encoding: .utf8)
         var list: [(String, Int)] = []
         list.reserveCapacity(limit)

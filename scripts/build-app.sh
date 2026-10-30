@@ -18,7 +18,7 @@ cp "$BIN" "$APP/Contents/MacOS/ValloSwitcher"
 xcrun vtool -set-build-version macos 14.0 "$(xcrun --show-sdk-version)" -replace \
     -output "$APP/Contents/MacOS/ValloSwitcher" "$APP/Contents/MacOS/ValloSwitcher"
 cp Support/Info.plist "$APP/Contents/Info.plist"
-cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
+cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
 

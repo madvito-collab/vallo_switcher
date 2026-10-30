@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             layouts = try SystemLayouts()
             engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current ?? .en)
-            typos = try TypoCorrector.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru.txt"),
+            typos = try TypoCorrector.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-typos.txt"),
                                            ignored: Set(store.typoIgnoredWords))
         } catch {
             fail("Не получилось запуститься: \(error)")
