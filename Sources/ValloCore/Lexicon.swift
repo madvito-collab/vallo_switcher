@@ -48,6 +48,8 @@ public struct Lexicon: Sendable {
         // частые ошибки («вобщем», «помоему») — тоже русские слова, иначе свитчер примет «воб» за английский
         // и переключит раскладку посреди слова, а исправлятор потом не тронет хвост
         if language == .ru { list += TypoCorrector.misspellings.keys }
+        // аббревиатуры — слова своего языка: «зва» в RU-раскладке узнаётся как «pdf»
+        list += Judge.abbreviations[language]!
         return Lexicon(words: list)
     }
 

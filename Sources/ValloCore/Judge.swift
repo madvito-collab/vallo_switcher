@@ -29,6 +29,29 @@ public struct Judge: Sendable {
         .en: ["ok", "lol", "omg", "btw", "imo", "tbh", "thx", "pls", "plz", "idk", "brb", "np", "ty"],
     ]
 
+    /// Частые аббревиатуры и расширения файлов (список согласован с учеником 2026-10-30). Набранные в чужой
+    /// раскладке переводятся («зва» → «pdf»); хоть одна заглавная — пишутся целиком заглавными («Pdf» → «PDF»).
+    /// Не берём то, что маленькими — обычное слово (it, us, id, ram, по, ос), и смешанный регистр (iOS, Wi-Fi).
+    /// Убраны, потому что в чужой раскладке дают настоящее слово: cv → «см», exe → «учу», рф → «ha», пфр → «gah».
+    public static let abbreviations: [Language: Set<String>] = [
+        .en: [
+            // расширения файлов
+            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "csv", "json", "xml", "html", "css", "js",
+            "svg", "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "psd", "eps", "fig", "mov", "avi", "mkv", "wav",
+            "zip", "rar", "dmg", "apk", "iso",
+            // аббревиатуры
+            "api", "ui", "ux", "kpi", "okr", "hr", "pr", "ceo", "cto", "cfo", "mvp", "qa", "sdk", "url", "usb", "faq",
+            "crm", "erp", "seo", "smm", "saas", "nda", "sla", "roi", "gpu", "cpu", "ssd", "vpn", "ai", "ml",
+            "llm", "gpt", "ctr", "cpa", "cta", "utm", "qr",
+        ],
+        .ru: [
+            "жкх", "мчс", "мвд", "фсб", "гибдд", "гаи", "снг", "ссср", "сша", "оон", "нато", "сми", "ооо", "оао",
+            "зао", "пао", "ип", "инн", "огрн", "кпп", "бик", "снилс", "ндс", "ндфл", "усн", "осаго", "мфц", "фнс",
+            "цб", "мрот", "жк", "тц", "тз", "кп", "пк", "смс", "ржд", "мкад", "тэц", "аэс", "гэс", "спг", "вгсч", "чс",
+            "нии", "мгу", "мфти", "вшэ", "загс",
+        ],
+    ]
+
     public var learned: Set<String>
     private let en: Lexicon
     private let ru: Lexicon
@@ -46,6 +69,7 @@ public struct Judge: Sendable {
     public func midWord(current: String, alternative: String, currentLanguage: Language) -> Verdict {
         let cur = Judge.core(current), alt = Judge.core(alternative)
         if SpecialText.isSpecial(current) || SpecialText.isSpecial(alternative) { return .wait }
+        if Judge.isAbbreviation(current) { return .wait }
         if cur.count < Judge.minLetters { return .wait }
         let normalized = Lexicon.normalize(cur)
         if learned.contains(where: { $0.hasPrefix(normalized) }) { return .wait }
@@ -61,11 +85,14 @@ public struct Judge: Sendable {
     public func wordEnd(current: String, alternative: String, currentLanguage: Language) -> Verdict {
         let cur = Judge.core(current), alt = Judge.core(alternative)
         if SpecialText.isSpecial(current) || SpecialText.isSpecial(alternative) { return .keep }
+        // заглавными — не переводим, кроме известной аббревиатуры другого языка («ЗВА» → «PDF»)
+        if Judge.isAbbreviation(current), !Judge.isKnownAbbreviation(alternative, currentLanguage.other) { return .keep }
         if learned.contains(Lexicon.normalize(cur)) { return .keep }
         if Judge.isSlang(cur, currentLanguage) { return .keep }
         if cur.count < Judge.minLetters {
             let short = Judge.shortWords
-            guard short[currentLanguage.other]!.contains(alt.lowercased()),
+            guard short[currentLanguage.other]!.contains(alt.lowercased())
+                    || Judge.isKnownAbbreviation(alt, currentLanguage.other),
                   !short[currentLanguage]!.contains(cur.lowercased()) else { return .keep }
             return .switchLanguage(reason: "«\(alt)» — частое короткое слово \(currentLanguage.other.rawValue.uppercased())")
         }
@@ -91,6 +118,17 @@ public struct Judge: Sendable {
     public static func isShortCandidate(_ word: String, _ language: Language) -> Bool {
         let w = core(word).lowercased()
         return !w.isEmpty && w.count < minLetters && (shortWords[language]!.contains(w) || slang[language]!.contains(w))
+    }
+
+    /// Слово целиком заглавными (от двух букв) — аббревиатура (ВГСЧ, ЖКХ, PDF): её не переводим,
+    /// иначе тем, кто их часто пишет, придётся вносить каждую в исключения (решение ученика).
+    public static func isAbbreviation(_ word: String) -> Bool {
+        let letters = word.filter(\.isLetter)
+        return letters.count >= 2 && letters.allSatisfy(\.isUppercase)
+    }
+
+    public static func isKnownAbbreviation(_ word: String, _ language: Language) -> Bool {
+        abbreviations[language]!.contains(core(word).lowercased())
     }
 
     static func isSlang(_ word: String, _ language: Language) -> Bool {

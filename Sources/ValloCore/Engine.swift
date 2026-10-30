@@ -43,7 +43,7 @@ public final class Engine {
 
     /// Нажатие и раскладка, в которой оно сейчас показано на экране.
     private struct Entry {
-        let stroke: KeyStroke
+        var stroke: KeyStroke
         var language: Language
     }
 
@@ -170,6 +170,17 @@ public final class Engine {
     private func handleBoundary(_ stroke: KeyStroke) -> EngineOutput {
         defer { startNewWord() }
         let word = buffer[wordStart...].map(\.stroke)
+        // слово уже в своей раскладке, но это аббревиатура с заглавной («Pdf») — только поднять регистр
+        if autoSwitchEnabled, !wordLocked, !word.isEmpty {
+            let range = wordStart..<buffer.count
+            let shown = display(range)
+            if let upper = capitalizedAbbreviation(range) {
+                lastDecision = "«\(shown)» — аббревиатура, пишем заглавными"
+                buffer.append(Entry(stroke: stroke, language: currentLanguage))
+                let boundaryText = layouts.layout(currentLanguage).character(for: stroke) ?? ""
+                return .consume([.delete(shown.count), .insert(upper + boundaryText)])
+            }
+        }
         guard autoSwitchEnabled, !wordLocked, autoSwitchedFrom == nil, !word.isEmpty else {
             buffer.append(Entry(stroke: stroke, language: currentLanguage))
             return .passThrough
@@ -198,7 +209,8 @@ public final class Engine {
         undo = Undo(start: wordStart, from: from)
         setWordLanguage(from.other)
         if isShort { shortSwitch = ShortSwitch(start: wordStart, nextWordStart: buffer.count, candidate: from) }
-        return .consume([.delete(current.count), .insert(alternative + boundaryText), .switchLayout(currentLanguage)])
+        let fixed = capitalizedAbbreviation(wordStart..<buffer.count - 1) ?? alternative
+        return .consume([.delete(current.count), .insert(fixed + boundaryText), .switchLayout(currentLanguage)])
     }
 
     /// Enter и Tab: как граница слова, но после них память набора сбрасывается.
@@ -300,6 +312,16 @@ public final class Engine {
     }
 
     // MARK: - Помощники
+
+    /// Известная аббревиатура хоть с одной заглавной («Pdf», «Жкх») — целиком заглавными (решение ученика).
+    /// Меняет нажатия в буфере на заглавные и возвращает новый вид слова; иначе nil.
+    private func capitalizedAbbreviation(_ range: Range<Int>) -> String? {
+        let shown = display(range)
+        guard let language = buffer[range].first?.language, Judge.isKnownAbbreviation(shown, language),
+              shown.contains(where: \.isUppercase), !Judge.isAbbreviation(shown) else { return nil }
+        for i in range { buffer[i].stroke = KeyStroke(keyCode: buffer[i].stroke.keyCode, shift: true) }
+        return display(range)
+    }
 
     private func startNewWord() {
         wordStart = buffer.count

@@ -261,3 +261,91 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         }
     }
 }
+
+@Suite struct AbbreviationTests {
+    /// Нажатия для текста с заглавными: заглавная — та же клавиша с Shift.
+    func strokes(_ text: String, in layout: TableKeyLayout) -> [KeyStroke] {
+        text.map { ch in
+            let s = strokesTyping(String(ch.lowercased()), in: layout)[0]
+            return ch.isUppercase ? KeyStroke(keyCode: s.keyCode, shift: true, capsLock: false) : s
+        }
+    }
+
+    func consumed(_ text: String, _ language: Language) -> Bool {
+        let engine = Engine(layouts: ansi, judge: Judge(en: realEN, ru: realRU, learned: []), currentLanguage: language)
+        let layout = (language == .ru ? ansi.ru : ansi.en) as! TableKeyLayout
+        return strokes(text, in: layout).contains {
+            engine.handleKey(KeyEvent(stroke: $0, hasCommandControlOrOption: false)) != .passThrough
+        }
+    }
+
+    @Test func capsAbbreviationsStayInTheirLayout() {
+        // просьба ученика: «ВГСЧ» → «DUC», «ЖКХ» → «:R{», «PDF» → «ЗВА» — так было; аббревиатуры не переводим
+        for w in ["ВГСЧ ", "ЖКХ ", "СПГ ", "ЧС ", "МЧС ", "СНИЛС "] { #expect(!consumed(w, .ru), "\(w)") }
+        for w in ["PDF ", "API ", "KPI ", "SDK "] { #expect(!consumed(w, .en), "\(w)") }
+    }
+
+    @Test func ordinaryWordsStillSwitch() {
+        #expect(consumed("ghbdtn ", .en))
+        #expect(consumed("Ghbdtn ", .en))      // заглавная только первая — это не аббревиатура
+    }
+
+    /// Что окажется на экране после набора.
+    func typed(_ text: String, _ language: Language) -> String {
+        let engine = Engine(layouts: ansi, judge: Judge(en: realEN, ru: realRU, learned: []), currentLanguage: language)
+        var screen = ""
+        // клавиши — по буквам текста (что человек имел в виду), а раскладка на экране — `language`
+        let cyrillic = text.contains { Lexicon.isInAlphabet(Character($0.lowercased()), .ru) }
+        let layout = (cyrillic ? ansi.ru : ansi.en) as! TableKeyLayout
+        for stroke in strokes(text, in: layout) {
+            let shownIn = engine.currentLanguage
+            switch engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: false)) {
+            case .passThrough: screen += ansi.layout(shownIn).character(for: stroke) ?? ""
+            case .consume(let actions):
+                for a in actions {
+                    if case .delete(let n) = a { screen.removeLast(n) }
+                    if case .insert(let t) = a { screen += t }
+                }
+            }
+        }
+        return screen
+    }
+
+    @Test func knownAbbreviationsFromOtherLayout() {
+        // набрано в чужой раскладке: маленькими — маленькими, хоть одна заглавная — все заглавные
+        #expect(typed("pdf ", .ru) == "pdf ")      // на экране было бы «зва»
+        #expect(typed("Pdf ", .ru) == "PDF ")
+        #expect(typed("PDF ", .ru) == "PDF ")
+        #expect(typed("жкх ", .en) == "жкх ")
+        #expect(typed("Жкх ", .en) == "ЖКХ ")
+        #expect(typed("ui ", .ru) == "ui ")
+    }
+
+    @Test func knownAbbreviationCaseInOwnLayout() {
+        #expect(typed("Pdf ", .en) == "PDF ")
+        #expect(typed("Жкх ", .ru) == "ЖКХ ")
+        #expect(typed("pdf ", .en) == "pdf ")
+        #expect(typed("Привет ", .ru) == "Привет ")
+    }
+
+    @Test func abbreviationsDontLookLikeOtherWords() {
+        // аббревиатура, набранная в чужой раскладке, не должна совпадать с настоящим словом того языка
+        let pair = ansi
+        for (language, list) in Judge.abbreviations {
+            let own = (language == .ru ? pair.ru : pair.en) as! TableKeyLayout
+            let other = language == .ru ? Language.en : .ru
+            let clashes = list.filter { abbr in
+                let shown = Converter.render(strokesTyping(abbr, in: own), in: pair.layout(other))
+                return (other == .ru ? realRU : realEN).isWord(shown)
+            }
+            #expect(clashes.isEmpty, "совпали с настоящими словами: \(clashes.sorted())")
+        }
+    }
+
+    @Test func judgeKnowsAbbreviation() {
+        #expect(Judge.isAbbreviation("ВГСЧ"))
+        #expect(Judge.isAbbreviation("PDF,"))
+        #expect(!Judge.isAbbreviation("Привет"))
+        #expect(!Judge.isAbbreviation("Я"))       // одна буква — не аббревиатура
+    }
+}
