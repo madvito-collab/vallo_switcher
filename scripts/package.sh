@@ -12,7 +12,7 @@ rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
 cp -R "build/Vallo Switcher.app" "$STAGE/"
 ln -s /Applications "$STAGE/Программы"
-cp Support/INSTALL.txt "$STAGE/Как установить.txt"
+cp "Support/Guide/Как установить.pdf" "$STAGE/Как установить.pdf"
 
 hdiutil create -volname "Vallo Switcher $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
 echo "Готово: $DMG"

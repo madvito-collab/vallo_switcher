@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Как установить Vallo Switcher</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+  :root { --text: #1d1d1f; --muted: #6e6e73; --card: #f5f5f7; --line: #e3e3e8; --accent: #1f6fe0; --accent-soft: #e6effd; --green: #2fb352; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--text); font: 10.5pt/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  header img { width: 56px; height: 56px; }
+  h1 { font-size: 22pt; margin: 0; letter-spacing: -0.3px; }
+  .sub { color: var(--muted); margin: 2px 0 0; }
+  h2 { font-size: 13pt; margin: 22px 0 8px; }
+  .step { display: grid; grid-template-columns: 34px 1fr 230px; gap: 14px; align-items: center;
+          background: var(--card); border-radius: 14px; padding: 14px 16px; margin: 10px 0; }
+  .num { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700;
+         display: flex; align-items: center; justify-content: center; font-size: 12pt; }
+  .step h3 { margin: 0 0 4px; font-size: 11.5pt; }
+  .step p { margin: 0; color: #3a3a3c; }
+  .path { display: inline-block; margin-top: 6px; font-size: 9pt; background: #fff; border: 1px solid var(--line);
+          border-radius: 6px; padding: 2px 7px; color: var(--text); }
+  svg { display: block; width: 100%; height: auto; }
+  .box { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 16px; margin: 10px 0; }
+  .box.accent { border-color: var(--accent); background: var(--accent-soft); }
+  code, kbd { font: 9pt ui-monospace, Menlo, monospace; }
+  pre { background: #1d1d1f; color: #f5f5f7; border-radius: 10px; padding: 10px 12px; margin: 8px 0 4px;
+        font: 9pt ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  kbd { background: #fff; border: 1px solid #c7c7cc; border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { width: 42%; color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 9pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .faq h3 { margin: 0 0 3px; font-size: 10.5pt; }
+  .faq p { margin: 0 0 10px; color: #3a3a3c; }
+  .muted { color: var(--muted); }
+  .foot { margin-top: 16px; color: var(--muted); font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- ====== Страница 1: установка ====== -->
+<section class="page">
+  <header>
+    <img src="icon.png" alt="">
+    <div>
+      <h1>Как установить Vallo Switcher</h1>
+      <p class="sub">Три шага, около минуты. Нужна macOS&nbsp;14 или новее.</p>
+    </div>
+  </header>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div>
+      <h3>Перетащи в&nbsp;«Программы»</h3>
+      <p>В&nbsp;окне диска перетащи значок Vallo Switcher на&nbsp;папку «Программы» рядом.</p>
+    </div>
+    <svg viewBox="0 0 230 110">
+      <rect x="1" y="1" width="228" height="108" rx="12" fill="#fff" stroke="#e3e3e8"/>
+      <circle cx="14" cy="13" r="3.5" fill="#ff5f57"/><circle cx="25" cy="13" r="3.5" fill="#febc2e"/><circle cx="36" cy="13" r="3.5" fill="#28c840"/>
+      <image href="icon.png" x="26" y="34" width="46" height="46"/>
+      <text x="49" y="94" font-size="8" text-anchor="middle" fill="#1d1d1f">Vallo Switcher</text>
+      <path d="M84 57 C 110 40, 130 40, 150 55" fill="none" stroke="#1f6fe0" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <path d="M144 47 L152 56 L141 59" fill="none" stroke="#1f6fe0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M160 40 h18 l5 6 h22 v34 h-45 z" fill="#5aa9f7"/>
+      <path d="M160 48 h45 v32 h-45 z" fill="#7cbcfa"/>
+      <text x="182" y="94" font-size="8" text-anchor="middle" fill="#1d1d1f">Программы</text>
+    </svg>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div>
+      <h3>Разреши первый запуск</h3>
+      <p>Запусти Vallo Switcher из&nbsp;«Программ». Мак скажет, что не&nbsp;может проверить разработчика,&nbsp;— это нормально для тестовой сборки. Нажми «Готово», затем открой:</p>
+      <span class="path">Системные настройки → Конфиденциальность и&nbsp;безопасность</span>
+      <p style="margin-top:6px">Внизу будет «Vallo Switcher заблокирован»&nbsp;— нажми <b>«Всё равно открыть»</b> и&nbsp;подтверди паролем. Это нужно один раз.</p>
+    </div>
+    <svg viewBox="0 0 230 130">
+      <rect x="1" y="1" width="228" height="128" rx="12" fill="#fff" stroke="#e3e3e8"/>
+      <rect x="1" y="1" width="70" height="128" rx="12" fill="#f2f2f5"/>
+      <rect x="60" y="1" width="11" height="128" fill="#f2f2f5"/>
+      <rect x="10" y="22" width="48" height="6" rx="3" fill="#d6d6dc"/>
+      <rect x="10" y="34" width="40" height="6" rx="3" fill="#d6d6dc"/>
+      <rect x="7" y="46" width="58" height="22" rx="5" fill="#1f6fe0"/>
+      <text x="12" y="55" font-size="5.6" fill="#fff" font-weight="600">Конфиденциальность</text>
+      <text x="12" y="63" font-size="5.6" fill="#fff" font-weight="600">и безопасность</text>
+      <rect x="10" y="76" width="44" height="6" rx="3" fill="#d6d6dc"/>
+      <text x="82" y="22" font-size="7.5" font-weight="700" fill="#1d1d1f">Безопасность</text>
+      <rect x="80" y="30" width="140" height="44" rx="8" fill="#f5f5f7"/>
+      <text x="88" y="45" font-size="6.5" fill="#1d1d1f">«Vallo Switcher» заблокирован,</text>
+      <text x="88" y="54" font-size="6.5" fill="#1d1d1f">так как разработчик не проверен.</text>
+      <rect x="148" y="58" width="66" height="12" rx="4" fill="#fff" stroke="#1f6fe0" stroke-width="1.5"/>
+      <text x="181" y="66.5" font-size="6.2" text-anchor="middle" fill="#1f6fe0" font-weight="600">Всё равно открыть</text>
+      <path d="M200 96 L186 74" stroke="#ff3b30" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M184 82 L185.5 73 L193 78" fill="none" stroke="#ff3b30" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="80" y="86" width="100" height="6" rx="3" fill="#e3e3e8"/>
+      <rect x="80" y="100" width="80" height="6" rx="3" fill="#e3e3e8"/>
+    </svg>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div>
+      <h3>Дай два разрешения</h3>
+      <p>Свитчер сам откроет окно с&nbsp;двумя шагами. В&nbsp;каждом нажми «Открыть настройки» и&nbsp;включи переключатель у&nbsp;Vallo Switcher&nbsp;— шаг перелистнётся сам.</p>
+      <span class="path">Конфиденциальность и&nbsp;безопасность → Универсальный доступ*</span>
+      <span class="path">Конфиденциальность и&nbsp;безопасность → Мониторинг ввода</span>
+      <p class="muted" style="margin-top:6px; font-size:9pt">* В&nbsp;macOS&nbsp;27 этот список называется «Управление устройством и&nbsp;доступ к&nbsp;данным». Пункт «Универсальный доступ» в&nbsp;левом столбце настроек&nbsp;— другое, там не&nbsp;ищи.</p>
+    </div>
+    <svg viewBox="0 0 230 120">
+      <rect x="1" y="1" width="228" height="118" rx="12" fill="#fff" stroke="#e3e3e8"/>
+      <text x="14" y="22" font-size="8" font-weight="700" fill="#1d1d1f">Мониторинг ввода</text>
+      <rect x="12" y="30" width="206" height="78" rx="8" fill="#f5f5f7"/>
+      <rect x="22" y="42" width="80" height="6" rx="3" fill="#d6d6dc"/>
+      <rect x="186" y="39" width="22" height="12" rx="6" fill="#d6d6dc"/><circle cx="192" cy="45" r="4.5" fill="#fff"/>
+      <line x1="20" y1="59" x2="210" y2="59" stroke="#e3e3e8"/>
+      <rect x="22" y="66" width="60" height="6" rx="3" fill="#d6d6dc"/>
+      <rect x="186" y="63" width="22" height="12" rx="6" fill="#d6d6dc"/><circle cx="192" cy="69" r="4.5" fill="#fff"/>
+      <line x1="20" y1="83" x2="210" y2="83" stroke="#e3e3e8"/>
+      <rect x="14" y="85" width="202" height="21" rx="5" fill="#e6effd"/>
+      <image href="icon.png" x="22" y="88" width="15" height="15"/>
+      <text x="42" y="98.5" font-size="7.5" font-weight="600" fill="#1d1d1f">Vallo Switcher</text>
+      <rect x="186" y="89" width="22" height="12" rx="6" fill="#2fb352"/><circle cx="202" cy="95" r="4.5" fill="#fff"/>
+      <path d="M166 112 L183 98" stroke="#ff3b30" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M175 98 L184 97 L182 106" fill="none" stroke="#ff3b30" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="box accent">
+    <b>Быстрый способ для тех, кто не&nbsp;боится Терминала</b> (вместо шага&nbsp;2)
+    <p style="margin:4px 0 0">После шага&nbsp;1 открой Терминал, вставь команду и&nbsp;нажми <kbd>Return</kbd>. Предупреждения о&nbsp;разработчике больше не&nbsp;будет.</p>
+    <pre>xattr -dr com.apple.quarantine "/Applications/Vallo Switcher.app"</pre>
+    <p class="muted" style="margin:0; font-size:9pt">Команда снимает с&nbsp;приложения пометку «скачано из&nbsp;интернета», ничего больше она не&nbsp;делает.</p>
+  </div>
+
+  <p class="foot">Свитчер работает без интернета. Набранный текст никуда не&nbsp;сохраняется и&nbsp;не&nbsp;отправляется.</p>
+</section>
+
+<!-- ====== Страница 2: как пользоваться ====== -->
+<section class="page">
+  <h2 style="margin-top:0">Как пользоваться</h2>
+  <div class="two">
+    <div class="box">
+      <b>Раскладка</b>
+      <table style="margin-top:6px">
+        <tr><td>ghbdtn</td><td>привет&nbsp;— исправится само</td></tr>
+        <tr><td>jr + пробел</td><td>ок</td></tr>
+        <tr><td>2 × левый Shift</td><td>откатить исправление или перевести выделенное</td></tr>
+        <tr><td>откатил дважды</td><td>слово запомнится, больше не&nbsp;тронет</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <b>Типографика</b>
+      <table style="margin-top:6px">
+        <tr><td>Москва - столица</td><td>Москва&nbsp;— столица</td></tr>
+        <tr><td>"текст"</td><td>«текст»</td></tr>
+        <tr><td>5x3 · ну...</td><td>5×3 · ну…</td></tr>
+        <tr><td>2 × правый Shift</td><td>причесать выделенный текст</td></tr>
+      </table>
+    </div>
+  </div>
+  <p>Передумал&nbsp;— <kbd>Backspace</kbd> сразу после замены возвращает набранное. Настройки, исключения и&nbsp;свои сочетания&nbsp;— в&nbsp;иконке <b>↩</b> в&nbsp;строке меню. Кнопка <b>?</b> в&nbsp;настройках открывает подробную справку.</p>
+
+  <h2>Если что-то не&nbsp;так</h2>
+  <div class="faq">
+    <h3>Нет иконки в&nbsp;строке меню</h3>
+    <p>Скорее всего, её спрятала выемка экрана: иконок много, и&nbsp;macOS прячет лишние. Закрой пару программ с&nbsp;иконками или зажми <kbd>⌘</kbd> и&nbsp;перетащи стрелку ↩ правее, к&nbsp;часам. Свитчер при этом работает.</p>
+    <h3>Не&nbsp;могу найти нужный пункт в&nbsp;настройках</h3>
+    <p>В&nbsp;Системных настройках есть поиск слева вверху&nbsp;— набери «Мониторинг ввода» или «Универсальный доступ» (в&nbsp;macOS&nbsp;27&nbsp;— «Управление устройством»).</p>
+    <h3>Включил, а&nbsp;свитчер не&nbsp;работает</h3>
+    <p>Удали Vallo Switcher из&nbsp;списка кнопкой «−», добавь снова через «+» и&nbsp;включи. Такое бывает после переустановки.</p>
+    <h3>Стоит Caramba или Punto Switcher</h3>
+    <p>Выключи их, пока тестируешь Vallo: два свитчера сразу будут исправлять одно слово дважды.</p>
+    <h3>Исправил то, что не&nbsp;надо</h3>
+    <p>Дважды левый Shift сразу после исправления. Слово, которое откатил дважды, свитчер запомнит. В&nbsp;программах, где он мешает, добавь их в&nbsp;«Исключения».</p>
+  </div>
+
+  <p class="foot">Что-то сломалось или бесит&nbsp;— напиши автору, что набирал и&nbsp;что получилось.</p>
+</section>
+
+</body>
+</html>
