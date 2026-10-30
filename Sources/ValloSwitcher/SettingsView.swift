@@ -208,7 +208,11 @@ struct ExclusionsTab: View {
     var body: some View {
         Form {
             Section {
-                ForEach(model.excluded, id: \.self) { id in row(id, in: \.excluded) }
+                // id строки уникален для раздела: одни и те же приложения есть в обоих списках,
+                // а Form склеивает все строки окна в одну ленту и путается в одинаковых id
+                ForEach(model.excluded.map { "auto:" + $0 }, id: \.self) { key in
+                    row(String(key.dropFirst(5)), in: \.excluded)
+                }
             } header: {
                 SectionHeader(title: "Автопереключение",
                               subtitle: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.")
@@ -216,7 +220,9 @@ struct ExclusionsTab: View {
                 addButton(to: \.excluded)
             }
             Section {
-                ForEach(model.typographyExcluded, id: \.self) { id in row(id, in: \.typographyExcluded) }
+                ForEach(model.typographyExcluded.map { "typo:" + $0 }, id: \.self) { key in
+                    row(String(key.dropFirst(5)), in: \.typographyExcluded)
+                }
             } header: {
                 SectionHeader(title: "Типографика на лету",
                               subtitle: "Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.")
