@@ -62,6 +62,15 @@ public final class Engine {
     }
     private var undo: Undo?
 
+    /// Только что исправленное короткое слово (1–2 буквы) — самое ненадёжное решение.
+    /// Если следующее слово пришлось вернуть в язык `from`, короткое было исправлено зря: возвращаем и его.
+    private struct ShortSwitch {
+        let start: Int
+        let nextWordStart: Int
+        let from: Language
+    }
+    private var shortSwitch: ShortSwitch?
+
     /// Слова, откаченные один раз. Запоминаем навсегда только со второго отката того же слова —
     /// первый мог быть случайным нажатием. Живёт только в памяти, до перезапуска.
     private var undoneOnce: Set<String> = []
@@ -106,6 +115,7 @@ public final class Engine {
         if wordStart == buffer.count {
             undo = nil
             startNewWord()
+            if let s = shortSwitch, s.nextWordStart != wordStart { shortSwitch = nil }
         }
         let previous = display(wordStart..<buffer.count).count
         buffer.append(Entry(stroke: stroke, language: currentLanguage))
@@ -135,9 +145,25 @@ public final class Engine {
         lastDecision = reason
         let from = currentLanguage
         autoSwitchedFrom = from
+        if let revert = revertShortSwitch(to: from.other, word: alternative) { return revert }
         undo = Undo(start: wordStart, from: from)
         setWordLanguage(from.other)
         return .consume([.delete(previous), .insert(alternative), .switchLayout(from.other)])
+    }
+
+    /// Текущее слово переключаем в `target`, а прошлое короткое было исправлено как раз из `target` —
+    /// значит, оно ошибка: стираем оба и печатаем оба в `target`. `word` — текущее слово уже в `target`.
+    private func revertShortSwitch(to target: Language, word: String, through end: Int? = nil) -> EngineOutput? {
+        guard let s = shortSwitch, s.nextWordStart == wordStart, s.from == target else { return nil }
+        shortSwitch = nil
+        let shownEnd = end ?? buffer.count - 1   // новая буква ещё не на экране
+        let shown = display(s.start..<shownEnd)
+        let shortPart = Converter.render(buffer[s.start..<wordStart].map(\.stroke), in: layouts.layout(target))
+        for i in s.start..<buffer.count { buffer[i].language = target }
+        currentLanguage = target
+        undo = nil
+        lastDecision = "«\(shortPart.trimmingCharacters(in: .whitespaces))» исправил зря — следующее слово тоже \(target.rawValue.uppercased())"
+        return .consume([.delete(shown.count), .insert(shortPart + word), .switchLayout(target)])
     }
 
     private func handleBoundary(_ stroke: KeyStroke) -> EngineOutput {
@@ -156,11 +182,17 @@ public final class Engine {
         }
         lastDecision = reason
         let from = currentLanguage
+        let boundaryText = layouts.layout(from.other).character(for: stroke) ?? ""
+        buffer.append(Entry(stroke: stroke, language: from.other))
+        if let revert = revertShortSwitch(to: from.other, word: alternative + boundaryText,
+                                          through: buffer.count - 1) {
+            return revert
+        }
+        let isShort = Judge.core(current).count < Judge.minLetters
         undo = Undo(start: wordStart, from: from)
         setWordLanguage(from.other)
-        buffer.append(Entry(stroke: stroke, language: currentLanguage))
-        let inserted = alternative + (layouts.layout(currentLanguage).character(for: stroke) ?? "")
-        return .consume([.delete(current.count), .insert(inserted), .switchLayout(currentLanguage)])
+        if isShort { shortSwitch = ShortSwitch(start: wordStart, nextWordStart: buffer.count, from: from) }
+        return .consume([.delete(current.count), .insert(alternative + boundaryText), .switchLayout(currentLanguage)])
     }
 
     /// Enter и Tab: как граница слова, но после них память набора сбрасывается.
@@ -183,6 +215,7 @@ public final class Engine {
         guard !buffer.isEmpty else { return }
         buffer.removeLast()
         undo = nil
+        shortSwitch = nil
         if buffer.count < wordStart {
             // стёрли границу и залезли в прошлое слово — его больше не трогаем
             wordStart = (buffer.lastIndex { isBoundary($0.stroke) }).map { $0 + 1 } ?? 0
@@ -242,6 +275,7 @@ public final class Engine {
     public func reset() {
         buffer.removeAll()
         undo = nil
+        shortSwitch = nil
         startNewWord()
     }
 

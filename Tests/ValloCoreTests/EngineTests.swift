@@ -157,6 +157,23 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(!engine.hasTypedText)
     }
 
+    @Test func wrongShortWordRevertedByNextWord() {
+        // «щт» (в RU) → «on»; следом «привет» пришлось вернуть в RU — значит, и «on» было ошибкой
+        let engine = Engine(layouts: ansi, judge: smallJudge, currentLanguage: .ru)
+        let short = type("on ", engine)
+        #expect(short[2] == .consume([.delete(2), .insert("on "), .switchLayout(.en)]))
+        let next = type("ghb", engine)
+        #expect(next[2] == .consume([.delete(5), .insert("щт при"), .switchLayout(.ru)]))
+        #expect(engine.currentLanguage == .ru)
+    }
+
+    @Test func shortWordKeptWhenNextWordAgrees() {
+        // «jr» → «ок», дальше русское слово — это подтверждение, ничего не возвращаем
+        let engine = makeEngine()
+        type("jr ", engine)
+        #expect(type("ghbdtn", engine).allSatisfy { $0 == .passThrough })
+    }
+
     @Test func canUndoOnlyRightAfterAutoSwitch() {
         let engine = makeEngine()
         #expect(!engine.canUndo)

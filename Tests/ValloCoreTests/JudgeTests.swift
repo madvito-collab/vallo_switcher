@@ -49,6 +49,14 @@ let smallJudge = Judge(en: Lexicon(words: ["hello", "help", "the"]),
         #expect(smallJudge.midWord(current: "jr", alternative: "ок", currentLanguage: .en) == .wait)
     }
 
+    @Test func slangIsKept() {
+        // разговорные коротыши не трогаем: «ща» — не ошибка раскладки для «of»
+        #expect(smallJudge.wordEnd(current: "ща", alternative: "of", currentLanguage: .ru) == .keep)
+        #expect(smallJudge.wordEnd(current: "чо", alternative: "xj", currentLanguage: .ru) == .keep)
+        #expect(smallJudge.wordEnd(current: "спс", alternative: "cgc", currentLanguage: .ru) == .keep)
+        #expect(smallJudge.midWord(current: "пжлст", alternative: "g;kcn", currentLanguage: .ru) == .wait)
+    }
+
     @Test func learnedWordBlocksSwitch() {
         var judge = smallJudge
         judge.learned = ["ghbdtn"]

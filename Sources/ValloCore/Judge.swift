@@ -21,6 +21,14 @@ public struct Judge: Sendable {
               "do", "go", "up", "be", "a", "i"],
     ]
 
+    /// Разговорные словечки: не ошибка раскладки, даже если их нет в словаре (решение ученика 2026-10-30:
+    /// «ща» превращалось в «of»).
+    public static let slang: [Language: Set<String>] = [
+        .ru: ["ща", "щас", "чо", "че", "чё", "ок", "окей", "ага", "угу", "неа", "спс", "пжлст", "пж", "плз", "хз",
+              "мб", "кст", "имхо", "лол", "кек", "тыщ", "тож", "щя", "збс", "норм", "оч", "прив", "пасиб", "нзч"],
+        .en: ["ok", "lol", "omg", "btw", "imo", "tbh", "thx", "pls", "plz", "idk", "brb", "np", "ty"],
+    ]
+
     public var learned: Set<String>
     private let en: Lexicon
     private let ru: Lexicon
@@ -41,6 +49,7 @@ public struct Judge: Sendable {
         if cur.count < Judge.minLetters { return .wait }
         let normalized = Lexicon.normalize(cur)
         if learned.contains(where: { $0.hasPrefix(normalized) }) { return .wait }
+        if Judge.isSlang(cur, currentLanguage) { return .wait }
         let L = lexicon(currentLanguage), A = lexicon(currentLanguage.other)
         if !L.isPrefix(cur) && A.isPrefix(alt) {
             return .switchLanguage(reason: "«\(cur)» не начало \(currentLanguage.rawValue.uppercased())-слова, «\(alt)» — начало \(currentLanguage.other.rawValue.uppercased())")
@@ -53,6 +62,7 @@ public struct Judge: Sendable {
         let cur = Judge.core(current), alt = Judge.core(alternative)
         if SpecialText.isSpecial(current) || SpecialText.isSpecial(alternative) { return .keep }
         if learned.contains(Lexicon.normalize(cur)) { return .keep }
+        if Judge.isSlang(cur, currentLanguage) { return .keep }
         if cur.count < Judge.minLetters {
             let short = Judge.shortWords
             guard short[currentLanguage.other]!.contains(alt.lowercased()),
@@ -75,6 +85,10 @@ public struct Judge: Sendable {
         let L = lexicon(originalLanguage), A = lexicon(originalLanguage.other)
         let orig = Judge.core(original), conv = Judge.core(converted)
         return !A.isPrefix(conv) && L.trigramScore(orig) > A.trigramScore(conv)
+    }
+
+    static func isSlang(_ word: String, _ language: Language) -> Bool {
+        slang[language]!.contains(word.lowercased())
     }
 
     /// Обрезает небуквенные символы в начале и в конце.
