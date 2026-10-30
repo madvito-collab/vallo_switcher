@@ -51,6 +51,15 @@ let nb = "\u{00A0}"
         #expect(f("(r)") == "®")
     }
 
+    @Test func multiplication() {
+        #expect(f("5 х 3") == "5 × 3")
+        #expect(f("5 x 3") == "5 × 3")
+        #expect(f("5*3") == "5×3")
+        #expect(f("5 * 3") == "5 × 3")
+        // на лету «5 х» успевает стать «5⍽х» (число + слово) — умножение всё равно должно сработать
+        #expect(Typographer.format("5\(nb)х 3", final: false) == "5 × 3")
+    }
+
     @Test func spacesCleanup() {
         #expect(f("привет  ,  как") == "привет, как")
     }
