@@ -576,9 +576,14 @@ final class SettingsWindow {
         self.modelStore = modelStore
     }
 
-    func show() {
+    enum Tab: Int { case general, exclusions, typography, hotkeys, typos, words }
+
+    func show(tab: Tab? = nil) {
         model.reload()
         if window == nil { window = makeWindow() }
+        if let tab, let tabs = window?.contentViewController as? NSTabViewController {
+            tabs.selectedTabViewItemIndex = tab.rawValue
+        }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }

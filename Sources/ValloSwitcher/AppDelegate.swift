@@ -23,7 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
-        menu = StatusMenu(store: store)
+        menu = StatusMenu(store: store, modelStore: modelStore)
         DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
@@ -43,6 +43,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onHotkeysChanged = { [weak self] in self?.tap?.reloadHotkeys() }
         settings = SettingsWindow(model: model, modelStore: modelStore)
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
+        menu.onDownloadModel = { [weak self] in
+            guard let self else { return }
+            self.settings.show(tab: .typos)
+            if case .downloading = self.modelStore.state { return }
+            self.modelStore.download()
+        }
 
         layouts.onExternalChange = { [weak self] lang in
             // третья раскладка: просто сбрасываем память, движок молчит, пока не вернутся RU/EN

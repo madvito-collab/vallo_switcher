@@ -6,14 +6,21 @@ final class StatusMenu: NSObject {
 
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let store: SettingsStore
-    private let autoItem = NSMenuItem(title: "Автоматически переключать раскладку", action: #selector(toggleAuto), keyEquivalent: "")
+    private let modelStore: ModelStore
+    /// Верхняя строка «Автопереключение» с переключателем справа — как «Wi-Fi» в меню Wi-Fi.
+    private lazy var autoRow = SwitchRowView(title: "Автопереключение") { [weak self] isOn in
+        self?.store.autoSwitchEnabled = isOn
+    }
     private let permissionsItem = NSMenuItem(title: "Дать разрешения…", action: #selector(givePermissions), keyEquivalent: "")
+    private let modelItem = NSMenuItem(title: "", action: #selector(downloadModel), keyEquivalent: "")
     private let debugHeader = NSMenuItem(title: "Последние решения:", action: nil, keyEquivalent: "")
     private var decisions: [String] = []
     private let menu = NSMenu()
 
     var onOpenSettings: (() -> Void)?
     var onGivePermissions: (() -> Void)?
+    /// «Скачать модель запятых» — открыть вкладку «Опечатки» и начать скачивание.
+    var onDownloadModel: (() -> Void)?
 
     /// Иконка ученика (шаблон: Мак сам красит её под светлую и тёмную строку меню).
     private static let icon: NSImage? = {
@@ -24,18 +31,30 @@ final class StatusMenu: NSObject {
         return image
     }()
 
-    init(store: SettingsStore) {
+    init(store: SettingsStore, modelStore: ModelStore) {
         self.store = store
+        self.modelStore = modelStore
         super.init()
-        autoItem.target = self
+        let autoItem = NSMenuItem()
+        autoItem.view = autoRow
         permissionsItem.target = self
-        let settings = NSMenuItem(title: "Настройки…", action: #selector(openSettings), keyEquivalent: ",")
+        modelItem.target = self
+        // без сочетаний и стандартных названий-действий: иначе macOS сама дорисует иконки,
+        // и текст пунктов поедет по вертикали
+        let settings = NSMenuItem(title: "Настройки…", action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
-        menu.addItem(permissionsItem)
+        let help = NSMenuItem(title: "Справка", action: #selector(openHelp), keyEquivalent: "")
+        help.target = self
+        let quit = NSMenuItem(title: "Выйти из Vallo Switcher", action: #selector(quit), keyEquivalent: "")
+        quit.target = self
         menu.addItem(autoItem)
         menu.addItem(.separator())
+        menu.addItem(permissionsItem)
+        menu.addItem(modelItem)
         menu.addItem(settings)
-        menu.addItem(NSMenuItem(title: "Выйти", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(help)
+        menu.addItem(.separator())
+        menu.addItem(quit)
         menu.delegate = self
         item.menu = menu
         set(state: .working)
@@ -57,14 +76,77 @@ final class StatusMenu: NSObject {
         decisions = Array(decisions.prefix(10))
     }
 
-    @objc private func toggleAuto() { store.autoSwitchEnabled.toggle() }
+    /// Пункт модели запятых: нет модели — предложить скачать; скачивается — показать проценты; есть — скрыть.
+    private func updateModelItem() {
+        switch modelStore.state {
+        case .ready:
+            modelItem.isHidden = true
+        case .notDownloaded:
+            modelItem.isHidden = false
+            modelItem.isEnabled = true
+            modelItem.title = "Скачать модель запятых (\(ModelStore.downloadSize))…"
+        case .downloading(let progress):
+            modelItem.isHidden = false
+            modelItem.isEnabled = false
+            modelItem.title = "Модель запятых: скачано \(Int(progress * 100)) %"
+        case .failed:
+            modelItem.isHidden = false
+            modelItem.isEnabled = true
+            modelItem.title = "Модель запятых не скачалась — повторить…"
+        }
+    }
+
     @objc private func givePermissions() { onGivePermissions?() }
     @objc private func openSettings() { onOpenSettings?() }
+    @objc private func downloadModel() { onDownloadModel?() }
+    @objc private func quit() { NSApp.terminate(nil) }
+    @objc private func openHelp() {
+        if let url = Bundle.main.url(forResource: "Help", withExtension: "html") { NSWorkspace.shared.open(url) }
+    }
+}
+
+/// Строка меню «название слева — переключатель справа», как «Wi-Fi» в меню Wi-Fi.
+final class SwitchRowView: NSView {
+    private let label = NSTextField(labelWithString: "")
+    private let toggle = NSSwitch()
+    private let onChange: (Bool) -> Void
+
+    init(title: String, onChange: @escaping (Bool) -> Void) {
+        self.onChange = onChange
+        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 34))
+        label.stringValue = title
+        label.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+        toggle.controlSize = .small
+        toggle.target = self
+        toggle.action = #selector(changed)
+        for v in [label, toggle] as [NSView] {
+            v.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(v)
+        }
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            toggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            toggle.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -12),
+        ])
+        autoresizingMask = [.width]
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    var isOn: Bool {
+        get { toggle.state == .on }
+        set { toggle.state = newValue ? .on : .off }
+    }
+
+    @objc private func changed() { onChange(isOn) }
 }
 
 extension StatusMenu: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
-        autoItem.state = store.autoSwitchEnabled ? .on : .off
+        autoRow.isOn = store.autoSwitchEnabled
+        updateModelItem()
         // режим отладки: последние решения судьи в конце меню
         while let last = menu.items.last, last.tag == 1 { menu.removeItem(last) }
         guard store.debugMode else { return }
