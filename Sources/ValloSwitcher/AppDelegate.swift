@@ -12,6 +12,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: SettingsWindow!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // свитчер уже запущен (например, второй раз из «Программ» или из DMG) — второй экземпляр не нужен:
+        // два перехвата клавиатуры исправляли бы каждое слово дважды
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .filter { $0 != .current }
+        if !others.isEmpty {
+            NSApp.terminate(nil)
+            return
+        }
         menu = StatusMenu(store: store)
         DebugLog.enabled = store.debugMode
         do {

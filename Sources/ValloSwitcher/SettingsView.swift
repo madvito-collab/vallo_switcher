@@ -111,18 +111,44 @@ final class SettingsModel: ObservableObject {
     }
 }
 
+/// Тексты в окне — через нашу же типографику: неразрывные пробелы, «ёлочки», тире.
+private func T(_ s: String) -> String { Typographer.format(s) }
+
+/// Подсказка под разделом — слева, как в системных настройках.
+private struct Hint: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(T(text)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Переключатель с подзаголовком.
+private struct SubtitledToggle: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(T(title))
+                Text(T(subtitle)).font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct GeneralTab: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
         Form {
             Section {
-                Toggle("Автопереключение", isOn: $model.autoSwitch)
+                SubtitledToggle(title: "Автопереключение",
+                                subtitle: "Смена раскладки по сочетанию (\(model.hotkey(.convert).title)) работает всегда",
+                                isOn: $model.autoSwitch)
                 Toggle("Запускать вместе с Маком", isOn: $model.launchAtLogin)
-                Toggle("Режим отладки", isOn: $model.debugMode)
-            } footer: {
-                Text("Смена раскладки по сочетанию (\(model.hotkey(.convert).title)) работает всегда, даже когда автопереключение выключено.")
-                    .foregroundStyle(.secondary)
+                Toggle(T("Режим отладки"), isOn: $model.debugMode)
             }
         }
         .formStyle(.grouped)
@@ -130,26 +156,43 @@ struct GeneralTab: View {
 }
 
 /// Список приложений с кнопками «Убрать» и «Добавить…».
-struct AppListTab: View {
-    let title: String
+private struct AppList: View {
     @Binding var apps: [String]
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        ForEach(apps, id: \.self) { id in
+            HStack {
+                Text(model.appName(id))
+                Spacer()
+                Button("Убрать") { apps.removeAll { $0 == id } }
+            }
+        }
+        Button("Добавить приложение…") {
+            for id in model.pickApps() where !apps.contains(id) { apps.append(id) }
+        }
+    }
+}
+
+/// Все исключения в одном месте: автопереключение и типографика.
+struct ExclusionsTab: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
         Form {
             Section {
-                ForEach(apps, id: \.self) { id in
-                    HStack {
-                        Text(model.appName(id))
-                        Spacer()
-                        Button("Убрать") { apps.removeAll { $0 == id } }
-                    }
-                }
-                Button("Добавить приложение…") {
-                    for id in model.pickApps() where !apps.contains(id) { apps.append(id) }
-                }
+                AppList(apps: $model.excluded, model: model)
+            } header: {
+                Text("Автопереключение")
             } footer: {
-                Text(title).foregroundStyle(.secondary)
+                Hint("Здесь автопереключение молчит. Смена раскладки по сочетанию работает.")
+            }
+            Section {
+                AppList(apps: $model.typographyExcluded, model: model)
+            } header: {
+                Text("Типографика на лету")
+            } footer: {
+                Hint("Здесь тире и кавычки не ставятся. Редакторы JetBrains исключены всегда.")
             }
         }
         .formStyle(.grouped)
@@ -162,27 +205,36 @@ struct TypographyTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Типографика на лету", isOn: $model.typographyLive)
-                Toggle("Причёсывать выделенное по сочетанию (\(model.hotkey(.typography).title))", isOn: $model.typographyHotkey)
+                SubtitledToggle(title: "Типографика на лету",
+                                subtitle: "Пока печатаешь. Backspace сразу после замены возвращает набранное",
+                                isOn: $model.typographyLive)
+                SubtitledToggle(title: "Причёсывать выделенное",
+                                subtitle: "По сочетанию \(model.hotkey(.typography).title)",
+                                isOn: $model.typographyHotkey)
             } footer: {
-                Text("Тире, «ёлочки», неразрывные пробелы, ×, …, ©. Backspace сразу после замены возвращает набранное.")
-                    .foregroundStyle(.secondary)
-            }
-            Section("Где типографика на лету молчит") {
-                ForEach(model.typographyExcluded, id: \.self) { id in
-                    HStack {
-                        Text(model.appName(id))
-                        Spacer()
-                        Button("Убрать") { model.typographyExcluded.removeAll { $0 == id } }
-                    }
-                }
-                Button("Добавить приложение…") {
-                    for id in model.pickApps() where !model.typographyExcluded.contains(id) { model.typographyExcluded.append(id) }
-                }
-                Text("Редакторы JetBrains исключены всегда.").foregroundStyle(.secondary)
+                Hint("Тире, «ёлочки», неразрывные пробелы, ×, …, © и другие правила из «Ководства» Лебедева. Исключения — на вкладке «Исключения».")
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Поле записи сочетания, как в «Клавиатура → Сочетания клавиш» в настройках macOS.
+private struct ShortcutField: View {
+    let cancel: () -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Нажмите сочетание")
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .frame(minWidth: 170)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.accentColor, lineWidth: 2))
+            Button(action: cancel) { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                .buttonStyle(.plain)
+                .help("Отмена (Esc)")
+        }
     }
 }
 
@@ -198,26 +250,36 @@ struct HotkeysTab: View {
                 row("Причесать типографику", .typography)
             } footer: {
                 if let message = model.hotkeyMessage {
-                    Text(message).foregroundStyle(.red)
-                } else if recording != nil {
-                    Text("Нажми сочетание с ⌘, ⌥ или ⌃. Esc — отмена.").foregroundStyle(.secondary)
+                    Text(message).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Hint("«Свой вариант» — сочетание с ⌘, ⌥ или ⌃, например ⌃⌥T. Esc — отмена.")
                 }
             }
             Section {
                 Button("По умолчанию") {
-                    recorder.stop()
-                    recording = nil
+                    stopRecording()
                     model.resetHotkeys()
                 }
             }
         }
         .formStyle(.grouped)
-        .onDisappear { recorder.stop() }
+        .onDisappear { stopRecording() }
     }
 
-    private enum Choice: Hashable { case modifier(ModifierKey), custom }
+    private enum Choice: Hashable { case modifier(ModifierKey), custom, record }
 
+    @ViewBuilder
     private func row(_ title: String, _ action: SettingsModel.Action) -> some View {
+        LabeledContent(title) {
+            if recording == action {
+                ShortcutField(cancel: stopRecording)
+            } else {
+                picker(action).labelsHidden().fixedSize()
+            }
+        }
+    }
+
+    private func picker(_ action: SettingsModel.Action) -> some View {
         let current = model.hotkey(action)
         let selection = Binding<Choice>(
             get: {
@@ -226,20 +288,16 @@ struct HotkeysTab: View {
             },
             set: { choice in
                 switch choice {
-                case .modifier(let key):
-                    model.setHotkey(.doubleTap(key), for: action)
-                case .custom:
-                    record(action)
+                case .modifier(let key): model.setHotkey(.doubleTap(key), for: action)
+                case .record: record(action)
+                case .custom: break
                 }
             })
-        return Picker(title, selection: selection) {
+        return Picker("", selection: selection) {
             ForEach(ModifierKey.allCases, id: \.self) { Text($0.title).tag(Choice.modifier($0)) }
             Divider()
-            if case .combo = current {
-                Text(recording == action ? "Нажми сочетание…" : current.title).tag(Choice.custom)
-            } else {
-                Text(recording == action ? "Нажми сочетание…" : "Свой вариант…").tag(Choice.custom)
-            }
+            if case .combo = current { Text(current.title).tag(Choice.custom) }
+            Text("Свой вариант…").tag(Choice.record)
         }
     }
 
@@ -251,6 +309,11 @@ struct HotkeysTab: View {
             if let hotkey { model.setHotkey(hotkey, for: action) }
         }
     }
+
+    private func stopRecording() {
+        recorder.stop()
+        recording = nil
+    }
 }
 
 struct LearnedTab: View {
@@ -260,7 +323,7 @@ struct LearnedTab: View {
         Form {
             Section {
                 if model.learned.isEmpty {
-                    Text("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его.")
+                    Text(T("Пока пусто. Слово попадает сюда, когда ты дважды откатываешь его."))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(model.learned, id: \.self) { word in
@@ -274,7 +337,7 @@ struct LearnedTab: View {
                     Button("Очистить всё", role: .destructive) { model.learned.removeAll() }
                 }
             } footer: {
-                Text("Эти слова свитчер сам не трогает.").foregroundStyle(.secondary)
+                Hint("Эти слова свитчер сам не трогает.")
             }
         }
         .formStyle(.grouped)
@@ -299,19 +362,20 @@ final class SettingsWindow {
     private func makeWindow() -> NSWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
+        // заголовок окна = название вкладки
+        tabs.canPropagateSelectedChildViewControllerTitle = true
         func add<V: View>(_ title: String, _ symbol: String, height: CGFloat, _ view: V) {
             let host = NSHostingController(rootView: view.frame(width: 500, height: height))
             host.sizingOptions = .preferredContentSize
+            host.title = title
             let item = NSTabViewItem(viewController: host)
             item.label = title
             item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
             tabs.addTabViewItem(item)
         }
         add("Основное", "gearshape", height: 200, GeneralTab(model: model))
-        add("Исключения", "nosign", height: 340, AppListTab(title: "Здесь автопереключение молчит. Смена раскладки по сочетанию работает.",
-                                               apps: Binding(get: { self.model.excluded }, set: { self.model.excluded = $0 }),
-                                               model: model))
-        add("Типографика", "textformat", height: 420, TypographyTab(model: model))
+        add("Исключения", "nosign", height: 520, ExclusionsTab(model: model))
+        add("Типографика", "textformat", height: 220, TypographyTab(model: model))
         add("Сочетания", "keyboard", height: 240, HotkeysTab(model: model))
         add("Слова", "text.book.closed", height: 340, LearnedTab(model: model))
 

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ValloCore
 
 /// Состояние разрешений для окна онбординга, обновляется само.
 final class OnboardingModel: ObservableObject {
@@ -38,8 +39,8 @@ struct OnboardingView: View {
             HStack(spacing: 12) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Vallo Switcher").font(.title2.bold())
-                    Text("Исправляет текст, набранный не в той раскладке").foregroundStyle(.secondary)
+                    Text(Typographer.format("Vallo Switcher")).font(.title2.bold())
+                    Text(Typographer.format("Исправляет текст, набранный не в той раскладке")).foregroundStyle(.secondary)
                 }
             }
 
@@ -47,8 +48,8 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Готово, свитчер работает", systemImage: "checkmark.circle.fill")
                         .font(.headline).foregroundStyle(.green)
-                    Text("Попробуй: в английской раскладке набери ghbdtn — получится «привет».")
-                    Text("Ошибся свитчер — дважды нажми левый Shift, и слово вернётся.")
+                    Text(Typographer.format("Попробуй: в английской раскладке набери ghbdtn — получится «привет»."))
+                    Text(Typographer.format("Ошибся свитчер — дважды нажми левый Shift, и слово вернётся."))
                         .foregroundStyle(.secondary)
                 }
                 HStack {
@@ -56,7 +57,7 @@ struct OnboardingView: View {
                     Button("Закрыть", action: close).keyboardShortcut(.defaultAction)
                 }
             } else {
-                Text("Нужны два разрешения Мака. Набранный текст никуда не сохраняется и не отправляется.")
+                Text(Typographer.format("Нужны два разрешения Мака. Набранный текст никуда не сохраняется и не отправляется."))
 
                 PermissionRow(title: Permissions.accessibilityName,
                               detail: "чтобы исправлять текст: стирать и печатать заново (\(Permissions.accessibilityOtherName))",
@@ -67,7 +68,7 @@ struct OnboardingView: View {
                               granted: model.inputMonitoring,
                               open: { Permissions.open(.inputMonitoring) })
 
-                Text("Оба списка — в Системных настройках → «Конфиденциальность и безопасность» (не путать с разделом «Универсальный доступ» в левом столбце). Включи переключатель у Vallo Switcher. Если его нет в списке — нажми «+» и выбери его в «Программах». Если он есть, но галочка тут не появляется — удали его «−» и добавь заново.")
+                Text(Typographer.format("Оба списка — в Системных настройках → «Конфиденциальность и безопасность» (не путать с разделом «Универсальный доступ» в левом столбце). Включи переключатель у Vallo Switcher. Если его нет в списке — нажми «+» и выбери его в «Программах». Если он есть, но галочка тут не появляется — удали его «−» и добавь заново."))
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -94,8 +95,8 @@ private struct PermissionRow: View {
                 .font(.title2)
                 .foregroundStyle(granted ? .green : .secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                Text(detail).font(.callout).foregroundStyle(.secondary)
+                Text(Typographer.format(title)).font(.headline)
+                Text(Typographer.format(detail)).font(.callout).foregroundStyle(.secondary)
             }
             Spacer()
             if !granted { Button("Открыть настройки", action: open) }
