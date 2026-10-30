@@ -107,6 +107,15 @@ import Testing
         #expect(typeAll("в првет ", &live, options: withTypos).last == TypoEdit(delete: 3, insert: "ивет "))
     }
 
+    @Test func misspellingOnSpaceAndUndo() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let edit = typeAll("вобщем ", &live, options: withTypos).last!!
+        #expect(live.backspace() != nil)
+        #expect(live.undoneTypoWord == "вобщем")
+        #expect(edit.delete > 0)
+    }
+
     @Test func typoUndoTeachesWord() {
         var live = LiveTypographer()
         live.reset(knownLineStart: true)

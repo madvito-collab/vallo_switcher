@@ -242,3 +242,22 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(engine.handleDoubleShift(selection: nil) == [])
     }
 }
+
+@Suite struct MisspellingsPipelineTests {
+    @Test func switcherLeavesMisspellingsForTypoCorrector() {
+        // «воб» нет среди начал русских слов — свитчер переключал раскладку посреди «вобщем», и исправлятор молчал
+        let judge = Judge(en: realEN, ru: realRU, learned: [])
+        let options = LiveOptions(typography: true, typos: typos)
+        for (typed, fixed) in TypoCorrector.misspellings {
+            let engine = Engine(layouts: ansi, judge: judge, currentLanguage: .ru)
+            var live = LiveTypographer()
+            var edit: TypoEdit?
+            for stroke in strokesTyping(typed + " ", in: ansi.ru as! TableKeyLayout) {
+                let out = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: false))
+                #expect(out == .passThrough, "\(typed): свитчер вмешался")
+                edit = live.typed(ansi.ru.character(for: stroke)!.first!, hint: .ru, options: options)
+            }
+            #expect(edit != nil, "\(typed) → \(fixed): не исправлено на лету")
+        }
+    }
+}

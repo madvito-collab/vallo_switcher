@@ -45,6 +45,9 @@ public struct Lexicon: Sendable {
                   word.lowercased().allSatisfy({ Lexicon.isInAlphabet($0, language) }) else { continue }
             list.append(word)
         }
+        // частые ошибки («вобщем», «помоему») — тоже русские слова, иначе свитчер примет «воб» за английский
+        // и переключит раскладку посреди слова, а исправлятор потом не тронет хвост
+        if language == .ru { list += TypoCorrector.misspellings.keys }
         return Lexicon(words: list)
     }
 

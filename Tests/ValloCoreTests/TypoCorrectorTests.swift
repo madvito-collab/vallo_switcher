@@ -73,6 +73,36 @@ struct SeededRandom: RandomNumberGenerator {
         #expect(typos.joinParticles("какой то баг", live: true) == "какой-то баг")
     }
 
+    // MARK: - Частые ошибки «как слышится»
+
+    @Test func commonMisspellings() {
+        let cases = [("помоему", "по-моему"), ("помойму", "по-моему"), ("вобщем", "в общем"), ("вообщем", "в общем"),
+                     ("всмысле", "в смысле"), ("какбы", "как бы"), ("зделать", "сделать"), ("извените", "извините"),
+                     ("щитаю", "считаю"), ("незнаю", "не знаю"), ("ево", "его"), ("будующем", "будущем"),
+                     ("всеравно", "всё равно"), ("компютер", "компьютер")]
+        for (typed, fixed) in cases { #expect(typos.correct(typed) == fixed, "\(typed)") }
+    }
+
+    @Test func misspellingsKeepCase() {
+        #expect(typos.correct("Помоему") == "По-моему")
+        #expect(typos.correct("Вобщем") == "В общем")
+        #expect(typos.correct("ЗДЕЛАТЬ") == "СДЕЛАТЬ")
+    }
+
+    @Test func misspellingsRespectMyWords() {
+        let mine = try! TypoCorrector.load(url: repoURL("Data/wordlists/ru-typos.txt"), ignored: ["ево"])
+        #expect(mine.correct("ево") == nil)
+    }
+
+    @Test func misspellingsAreNotRealWords() {
+        // в списке не должно быть настоящих частых слов — иначе испортим правильный текст.
+        // Эти три — ошибки, которые так часты в субтитрах, что попали в словарь; список их всё равно исправляет.
+        let frequentErrors: Set<String> = ["вобщем", "всмысле", "агенство"]
+        for typed in TypoCorrector.misspellings.keys where !frequentErrors.contains(typed) {
+            #expect(!typos.isKnown(typed), "\(typed)")
+        }
+    }
+
     @Test func mixedCaseKept() {
         #expect(typos.correct("пРвет") == nil)
         #expect(typos.correct("ПРвет") == nil)
