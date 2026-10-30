@@ -104,6 +104,12 @@ final class SettingsModel: ObservableObject {
         onHotkeysChanged?()
     }
 
+    /// Только установленные приложения — для показа. Исключения по умолчанию для приложений,
+    /// которых нет (Cursor, Xcode…), остаются в списке и сработают, если приложение поставят.
+    func installed(_ ids: [String]) -> [String] {
+        ids.filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
+    }
+
     /// Имя приложения по bundle ID — для списка.
     func appName(_ id: String) -> String {
         let known = ["com.googlecode.iterm2": "iTerm", "com.todesktop.230313mzl4w4u92": "Cursor",
@@ -210,7 +216,7 @@ struct ExclusionsTab: View {
             Section {
                 // id строки уникален для раздела: одни и те же приложения есть в обоих списках,
                 // а Form склеивает все строки окна в одну ленту и путается в одинаковых id
-                ForEach(model.excluded.map { "auto:" + $0 }, id: \.self) { key in
+                ForEach(model.installed(model.excluded).map { "auto:" + $0 }, id: \.self) { key in
                     row(String(key.dropFirst(5)), in: \.excluded)
                 }
             } header: {
@@ -220,7 +226,7 @@ struct ExclusionsTab: View {
                 addButton(to: \.excluded)
             }
             Section {
-                ForEach(model.typographyExcluded.map { "typo:" + $0 }, id: \.self) { key in
+                ForEach(model.installed(model.typographyExcluded).map { "typo:" + $0 }, id: \.self) { key in
                     row(String(key.dropFirst(5)), in: \.typographyExcluded)
                 }
             } header: {
