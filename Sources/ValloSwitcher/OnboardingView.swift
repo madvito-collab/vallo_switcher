@@ -58,8 +58,8 @@ struct OnboardingView: View {
             } else {
                 Text("Нужны два разрешения Мака. Набранный текст никуда не сохраняется и не отправляется.")
 
-                PermissionRow(title: "Универсальный доступ",
-                              detail: "чтобы исправлять текст: стирать и печатать заново",
+                PermissionRow(title: Permissions.accessibilityName,
+                              detail: "чтобы исправлять текст: стирать и печатать заново (\(Permissions.accessibilityOtherName))",
                               granted: model.accessibility,
                               open: { Permissions.open(.accessibility) })
                 PermissionRow(title: "Мониторинг ввода",
@@ -67,7 +67,7 @@ struct OnboardingView: View {
                               granted: model.inputMonitoring,
                               open: { Permissions.open(.inputMonitoring) })
 
-                Text("В настройках включи переключатель у Vallo Switcher. Если его нет в списке — нажми «+» и выбери его в «Программах». Если он есть, но галочка тут не появляется — удали его «−» и добавь заново.")
+                Text("Оба списка — в Системных настройках → «Конфиденциальность и безопасность» (не путать с разделом «Универсальный доступ» в левом столбце). Включи переключатель у Vallo Switcher. Если его нет в списке — нажми «+» и выбери его в «Программах». Если он есть, но галочка тут не появляется — удали его «−» и добавь заново.")
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
