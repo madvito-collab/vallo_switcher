@@ -115,6 +115,19 @@ import Testing
         #expect(live.undoneTypoWord == "приввет")
     }
 
+    @Test func firstWordAfterClickIsCorrected() {
+        // после клика в поле (обычный сброс) первое слово — целое слово, его исправляем
+        var live = LiveTypographer()
+        #expect(typeAll("првет ", &live, options: withTypos).last == TypoEdit(delete: 3, insert: "ивет "))
+    }
+
+    @Test func tailAfterMidWordResetIsNotCorrected() {
+        // свитчер исправил раскладку посреди слова — в памяти хвост, его не трогаем
+        var live = LiveTypographer()
+        live.reset(midWord: true)
+        #expect(typeAll("ивет ", &live, options: withTypos).allSatisfy { $0 == nil })
+    }
+
     @Test func typoOffKeepsWord() {
         var live = LiveTypographer()
         live.reset(knownLineStart: true)

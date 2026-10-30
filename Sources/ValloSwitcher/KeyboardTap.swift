@@ -178,8 +178,9 @@ final class KeyboardTap {
         let output = engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: modified))
         log.debug("key → \(output == .passThrough ? "pass" : "consume")")
         if case .consume(let actions) = output {
-            // сначала свитчер; на этом нажатии типографика молчит
-            live.reset()
+            // сначала свитчер; на этом нажатии типографика молчит. Свитчер мог исправить слово посреди —
+            // дальше в памяти будет хвост слова
+            live.reset(midWord: true)
             report()
             // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
             EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)

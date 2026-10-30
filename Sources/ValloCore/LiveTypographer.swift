@@ -29,6 +29,8 @@ public struct LiveTypographer: Sendable {
     private var context: [Character] = []
     /// Что слева от контекста, неизвестно (сброс посреди текста): правила начала строки и слова не срабатывают.
     private var leftUnknown = true
+    /// Контекст начинается посреди слова (свитчер исправил раскладку посреди слова) — первое слово не исправляем.
+    private var startsMidWord = false
     /// Столько первых символов контекста не трогаем: человек отменил правку — значит, хотел именно так.
     private var frozen = 0
     /// Последняя правка: что показали и что человек набрал на самом деле.
@@ -86,8 +88,10 @@ public struct LiveTypographer: Sendable {
     }
 
     /// `knownLineStart` — перед контекстом точно начало строки (для тестов и пустого поля).
-    public mutating func reset(knownLineStart: Bool = false) {
+    /// `midWord` — сброс посреди слова (свитчер исправил раскладку): в памяти дальше будет хвост слова.
+    public mutating func reset(knownLineStart: Bool = false, midWord: Bool = false) {
         leftUnknown = !knownLineStart
+        startsMidWord = midWord
         context = []
         frozen = 0
         undo = nil
@@ -98,7 +102,7 @@ public struct LiveTypographer: Sendable {
         let extra = max(0, chars.count - LiveTypographer.contextLimit)
         context = Array(chars.dropFirst(extra))
         frozen = max(0, frozen - extra)
-        if extra > 0 { leftUnknown = true }
+        if extra > 0 { leftUnknown = true; startsMidWord = true }
     }
 
     /// Набран символ-граница (не буква) — исправить опечатку в слове перед ним и дефис частицы.
@@ -108,8 +112,8 @@ public struct LiveTypographer: Sendable {
         let body = raw.dropLast()
         let start = body.lastIndex { !$0.isLetter }.map { $0 + 1 } ?? body.startIndex
         guard start >= frozen, start < body.endIndex else { return (raw, nil) }
-        // слово, начатое до сброса контекста, могло быть началом чужого слова — не трогаем
-        guard start > body.startIndex || !leftUnknown else { return (raw, nil) }
+        // контекст начался посреди слова — это хвост, не трогаем
+        guard start > body.startIndex || !startsMidWord else { return (raw, nil) }
         let word = String(body[start...])
         var result = Array(body[..<start])
         var typoWord: String?
