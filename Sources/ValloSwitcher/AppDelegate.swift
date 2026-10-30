@@ -33,6 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         layouts.onLayoutsChanged = { [weak self] pair in self?.engine.updateLayouts(pair) }
 
+        // Мак сообщает о любой смене разрешений «Универсального доступа» — сверяемся сразу
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.accessibility.api"), object: nil, queue: .main
+        ) { [weak self] _ in
+            // разрешение обновляется чуть позже уведомления
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self?.checkPermissions() }
+        }
+
         menu.onGivePermissions = { [weak self] in self?.onboarding.show() }
         onboarding.model.onGranted = { [weak self] in self?.startTap() }
         if Permissions.allGranted {
@@ -47,16 +55,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard tap == nil else { return }
         let tap = KeyboardTap(engine: engine, store: store, layouts: layouts)
         tap.onDecision = { [weak self] in self?.menu.record(decision: $0) }
+        tap.onPermissionLost = { [weak self] in self?.checkPermissions() }
         guard tap.start() else {
             menu.set(state: .needsPermissions)
             return
         }
         self.tap = tap
         menu.set(state: .working)
-        // пока активно поле пароля, Мак закрывает клавиатуру — показываем серую иконку
+        // раз в секунду: не отобрали ли разрешения; пока активно поле пароля — серая иконка
         secureInputTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.menu.set(state: ContextGuard.secureInputActive ? .blocked : .working)
+            guard let self, self.checkPermissions() else { return }
+            self.menu.set(state: ContextGuard.secureInputActive ? .blocked : .working)
         }
+    }
+
+    /// Разрешения на месте? Если отобрали — немедленно снимаем перехват, иначе встанет вся система.
+    @discardableResult
+    private func checkPermissions() -> Bool {
+        guard tap != nil else { return Permissions.allGranted }
+        guard !Permissions.allGranted else { return true }
+        tap?.stop()
+        tap = nil
+        secureInputTimer?.invalidate()
+        secureInputTimer = nil
+        menu.set(state: .needsPermissions)
+        onboarding.show()
+        return false
     }
 
     private func loadJudge() throws -> Judge {

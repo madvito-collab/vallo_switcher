@@ -9,12 +9,15 @@ final class KeyboardTap {
     let engine: Engine
     let store: SettingsStore
     let layouts: SystemLayouts
+    /// Перехват снят сам, потому что отобрали доступ.
+    var onPermissionLost: (() -> Void)?
     /// Вызывается после каждого решения движка — для меню отладки.
     var onDecision: ((String) -> Void)?
 
     private var detector = DoubleShiftDetector()
     private var shiftDown = false
     private var tap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
 
     init(engine: Engine, store: SettingsStore, layouts: SystemLayouts) {
         self.engine = engine
@@ -35,6 +38,7 @@ final class KeyboardTap {
         self.tap = tap
         SelectionReader.enableAccessibilityInFrontApp()
         let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        runLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
 
@@ -50,12 +54,32 @@ final class KeyboardTap {
         return true
     }
 
+    /// Снять перехват. Обязательно, если отобрали «Универсальный доступ»: активный перехват
+    /// без разрешения замораживает клавиатуру и мышь во всей системе.
+    func stop() {
+        if let tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
+        tap = nil
+        runLoopSource = nil
+        engine.reset()
+        log.debug("tap stopped")
+    }
+
     private func handle(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             // пока тап был выключен, мы не видели клавиш — память набора врёт
             engine.reset()
             detector.otherInput()
+            return Unmanaged.passUnretained(event)
+        }
+        // доступ отобрали на ходу — снимаем перехват немедленно, иначе встанет клавиатура всей системы
+        guard AXIsProcessTrusted() else {
+            stop()
+            DispatchQueue.main.async { [self] in onPermissionLost?() }
             return Unmanaged.passUnretained(event)
         }
         if event.getIntegerValueField(.eventSourceUserData) == EventPoster.marker {
