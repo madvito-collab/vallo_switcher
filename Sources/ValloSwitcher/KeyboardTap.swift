@@ -14,7 +14,7 @@ final class KeyboardTap {
     /// Вызывается после каждого решения движка — для меню отладки.
     var onDecision: ((String) -> Void)?
 
-    private var detector = DoubleShiftDetector()
+    private var detector = DoubleTapDetector(key: .leftShift)
     private var shiftDown = false
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -135,8 +135,8 @@ final class KeyboardTap {
         let now = ProcessInfo.processInfo.systemUptime
         let isDown = event.flags.contains(.maskShift)
         if isDown && !shiftDown {
-            detector.leftShiftDown(at: now)
-        } else if !isDown && shiftDown, detector.leftShiftUp(at: now) {
+            detector.keyDown(at: now)
+        } else if !isDown && shiftDown, detector.keyUp(at: now) {
             // ждём, пока отпускание Shift дойдёт до приложения, и только потом печатаем
             DispatchQueue.main.async { [self] in doubleShift() }
         }
