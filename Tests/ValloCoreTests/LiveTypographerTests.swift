@@ -85,4 +85,61 @@ import Testing
         _ = live.backspace()
         #expect(live.typed("д") == nil)
     }
+
+    // MARK: - Опечатки на лету
+
+    let withTypos = LiveOptions(typography: true, typos: typos)
+
+    func typeAll(_ text: String, _ live: inout LiveTypographer, options: LiveOptions) -> [TypoEdit?] {
+        text.map { live.typed($0, options: options) }
+    }
+
+    @Test func typoOnSpace() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        // правка минимальная: общее начало «пр» не трогаем
+        #expect(typeAll("првет ", &live, options: withTypos).last == TypoEdit(delete: 3, insert: "ивет "))
+    }
+
+    @Test func typoAndTypographyTogether() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("в првет ", &live, options: withTypos).last == TypoEdit(delete: 3, insert: "ивет "))
+    }
+
+    @Test func typoUndoTeachesWord() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        typeAll("приввет ", &live, options: withTypos)
+        #expect(live.backspace() == TypoEdit(delete: 3, insert: "вет "))
+        #expect(live.undoneTypoWord == "приввет")
+    }
+
+    @Test func typoOffKeepsWord() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let edits = typeAll("првет ", &live, options: LiveOptions(typography: true, typos: nil))
+        #expect(edits.allSatisfy { $0 == nil })
+    }
+
+    @Test func typoEditChangesLength() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        typeAll("приввет ", &live, options: withTypos)
+        #expect(live.lastEditChangedLength)
+    }
+
+    @Test func typographyOffTyposOn() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let edits = typeAll("раз - првет ", &live, options: LiveOptions(typography: false, typos: typos))
+        #expect(edits.last == TypoEdit(delete: 3, insert: "ивет "))
+        #expect(edits.dropLast().allSatisfy { $0 == nil })
+    }
+
+    @Test func particleJoinedLive() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("какой то ", &live, options: withTypos).last == TypoEdit(delete: 3, insert: "-то "))
+    }
 }
