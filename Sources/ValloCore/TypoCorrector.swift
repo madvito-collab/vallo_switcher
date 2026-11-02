@@ -65,6 +65,11 @@ public struct TypoCorrector: Sendable {
 
     /// «Мои слова» — нормализованы (строчные, ё → е).
     public var ignored: Set<String>
+    /// Словарь «ё»: настоящие слова, которых нет в словаре опечаток («введем») — не опечатка.
+    /// Работает и при выключенной расстановке «ё».
+    public var yoWords: Yoficator?
+    /// Современные слова (`ru-modern.txt`: чатах, дедлайны) — нормализованы. Без них «чатах» → «чартах».
+    public var modernWords: Set<String> = []
 
     private let order: [String]                 // слова по убыванию частоты
     private let frequency: [String: Int]        // все слова словаря (до 50 000)
@@ -126,17 +131,18 @@ public struct TypoCorrector: Sendable {
         let mixedCase = letters.dropFirst().contains(where: \.isUppercase) && !letters.allSatisfy(\.isUppercase)
         if mixedCase { return nil }
         if let fixed = TypoCorrector.misspellings[w] {
-            return ignored.contains(w) ? nil : withCase(of: word, fixed)
+            return ignored.contains(w) ? nil : Self.withCase(of: word, fixed)
         }
         // забытый «ь» в конце: «можеш» → «можешь» (решение ученика) — узкое исключение из «окончания не трогаем»
         if w.count >= 4, w.hasSuffix("ш"), w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
            frequency[w] == nil, !ignored.contains(w), isKnown(w + "ь") {
-            return withCase(of: word, (display[w + "ь"] ?? w + "ь"))
+            return Self.withCase(of: word, (display[w + "ь"] ?? w + "ь"))
         }
         guard w.count >= TypoCorrector.minLength,
               w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
-              !isKnown(w), !ignored.contains(w), !Judge.isSlang(w, .ru) else { return nil }
-        if let hyphenated = hyphenate(w) { return withCase(of: word, hyphenated) }
+              !isKnown(w), !ignored.contains(w), !Judge.isSlang(w, .ru), yoWords?.contains(w) != true,
+              !modernWords.contains(w) else { return nil }
+        if let hyphenated = hyphenate(w) { return Self.withCase(of: word, hyphenated) }
 
         let own = frequency[w] ?? 0
         let candidates = edits(Array(w))
@@ -147,7 +153,7 @@ public struct TypoCorrector: Sendable {
         if candidates.count > 1, bestFreq < TypoCorrector.confidenceRatio * frequency[candidates[1]]! { return nil }
         // редкое, но настоящее слово трогаем, только если рядом в сотни раз более частое
         if own > 0, bestFreq < TypoCorrector.rareWordRatio * own { return nil }
-        return withCase(of: word, display[best] ?? best)
+        return Self.withCase(of: word, display[best] ?? best)
     }
 
     /// Все слова фразы + дефисы частиц («какой то» → «какой-то»).
@@ -204,8 +210,8 @@ public struct TypoCorrector: Sendable {
         return out
     }
 
-    /// Регистр как у набранного: «Првет» → «Привет», «ПРВЕТ» → «ПРИВЕТ».
-    private func withCase(of original: String, _ fixed: String) -> String {
+    /// Регистр как у набранного: «Првет» → «Привет», «ПРВЕТ» → «ПРИВЕТ». Общий с `Yoficator`.
+    static func withCase(of original: String, _ fixed: String) -> String {
         let letters = original.filter(\.isLetter)
         if letters.count > 1, letters.allSatisfy(\.isUppercase) { return fixed.uppercased() }
         if original.first?.isUppercase == true { return fixed.prefix(1).uppercased() + fixed.dropFirst() }

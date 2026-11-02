@@ -9,14 +9,16 @@ public struct TypoEdit: Equatable, Sendable {
     }
 }
 
-/// Что делать на лету: типографика и/или опечатки.
+/// Что делать на лету: типографика, опечатки, «ё» — каждое включается отдельно.
 public struct LiveOptions: Sendable {
     public var typography: Bool
     public var typos: TypoCorrector?
+    public var yo: Yoficator?
 
-    public init(typography: Bool, typos: TypoCorrector?) {
+    public init(typography: Bool, typos: TypoCorrector?, yo: Yoficator? = nil) {
         self.typography = typography
         self.typos = typos
+        self.yo = yo
     }
 }
 
@@ -105,10 +107,11 @@ public struct LiveTypographer: Sendable {
         if extra > 0 { leftUnknown = true; startsMidWord = true }
     }
 
-    /// Набран символ-граница (не буква) — исправить опечатку в слове перед ним и дефис частицы.
-    /// Отменённое место (`frozen`) не трогаем. Возвращает текст и исходное слово, если оно исправлено.
+    /// Набран символ-граница (не буква) — исправить опечатку в слове перед ним, поставить «ё», дефис частицы.
+    /// Отменённое место (`frozen`) не трогаем. Возвращает текст и исходное слово, если в нём была опечатка
+    /// (только «ё» — не ошибка, такое слово в «Мои слова» при отмене не попадает).
     private func fixTypo(in raw: [Character], options: LiveOptions) -> ([Character], String?) {
-        guard let typos = options.typos, let boundary = raw.last, !boundary.isLetter else { return (raw, nil) }
+        guard options.typos != nil || options.yo != nil, let boundary = raw.last, !boundary.isLetter else { return (raw, nil) }
         let body = raw.dropLast()
         let start = body.lastIndex { !$0.isLetter }.map { $0 + 1 } ?? body.startIndex
         guard start >= frozen, start < body.endIndex else { return (raw, nil) }
@@ -117,13 +120,16 @@ public struct LiveTypographer: Sendable {
         let word = String(body[start...])
         var result = Array(body[..<start])
         var typoWord: String?
-        if let fixed = typos.correct(word) {
-            result += Array(fixed)
+        var fixed = word
+        if let corrected = options.typos?.correct(word) {
+            fixed = corrected
             typoWord = Lexicon.normalize(word)
-        } else {
-            result += Array(word)
         }
+        // «ё» — после опечатки: «далекйи» → «далекий» → «далёкий»
+        if let withYo = options.yo?.fix(fixed) { fixed = withYo }
+        result += Array(fixed)
         result.append(boundary)
+        guard let typos = options.typos else { return (result, typoWord) }
         let joined = Array(typos.joinParticles(String(result), live: true))
         return (joined.count == result.count ? joined : result, typoWord)
     }

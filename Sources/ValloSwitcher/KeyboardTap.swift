@@ -29,6 +29,7 @@ final class KeyboardTap {
     private var inputGeneration = 0
     /// Исправлятор опечаток; «Мои слова» обновляются снаружи.
     var typos: TypoCorrector
+    let yo: Yoficator
     /// Запятые по сочетанию (модель).
     let commas = CommaService()
     /// Человек отменил исправление опечатки — слово в «Не исправлять».
@@ -36,8 +37,9 @@ final class KeyboardTap {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    init(engine: Engine, store: SettingsStore, layouts: SystemLayouts, typos: TypoCorrector) {
+    init(engine: Engine, store: SettingsStore, layouts: SystemLayouts, typos: TypoCorrector, yo: Yoficator) {
         self.typos = typos
+        self.yo = yo
         self.engine = engine
         self.store = store
         self.layouts = layouts
@@ -153,8 +155,9 @@ final class KeyboardTap {
         let allowed = ContextGuard.allowed(store: store)
         engine.autoSwitchEnabled = store.autoSwitchEnabled && allowed.autoSwitch
         // типографика и опечатки на лету — один конвейер; работает, если включено хоть что-то
-        let options = LiveOptions(typography: store.typographyLiveEnabled, typos: store.typoLiveEnabled ? typos : nil)
-        let liveAllowed = (options.typography || options.typos != nil) && allowed.typography
+        let options = LiveOptions(typography: store.typographyLiveEnabled, typos: store.typoLiveEnabled ? typos : nil,
+                                  yo: store.yoEnabled ? yo : nil)
+        let liveAllowed = (options.typography || options.typos != nil || options.yo != nil) && allowed.typography
         // ⌥⌫, ⌘⌫ и прочие сочетания меняют текст непредсказуемо — память типографики больше не верна
         if modified || !liveAllowed { live.reset() }
 
@@ -259,7 +262,7 @@ final class KeyboardTap {
     }
 
     /// Причесать выделенный текст.
-    /// Двойной правый Shift по выделенному: опечатки → запятые (если модель скачана) → типографика.
+    /// Двойной правый Shift по выделенному: опечатки → «ё» → запятые (если модель скачана) → типографика.
     private func typographySelection() {
         guard store.typographyHotkeyEnabled, !ContextGuard.secureInputActive else { return }
         SelectionReader.selectedText { [self] text in
@@ -267,7 +270,8 @@ final class KeyboardTap {
             // пока модель думает, человек мог уйти в другое окно или начать печатать — тогда не вставляем
             let app = NSWorkspace.shared.frontmostApplication?.processIdentifier
             let generation = inputGeneration
-            let typoFixed = typos.correctPhrase(text)
+            let corrected = typos.correctPhrase(text)
+            let typoFixed = store.yoEnabled ? yo.fixPhrase(corrected) : corrected
             // модель думает на фоне; без модели, при ошибке или дольше 3 с — без запятых
             commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled) { [self] withCommas in
                 guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app, inputGeneration == generation else {

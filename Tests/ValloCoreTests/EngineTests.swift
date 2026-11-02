@@ -349,3 +349,58 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         #expect(!Judge.isAbbreviation("Я"))       // одна буква — не аббревиатура
     }
 }
+
+@Suite struct YoPipelineTests {
+    @Test func switcherLeavesFrequentYoWords() {
+        // как с «вобщем»: если свитчер переключит раскладку посреди слова, «ё» молча не поставится
+        let judge = Judge(en: realEN, ru: realRU, learned: [])
+        let options = LiveOptions(typography: false, typos: nil, yo: yo)
+        let text = try! String(contentsOf: repoURL("Data/wordlists/ru-yo.txt"), encoding: .utf8)
+        // имена собственные (с заглавной в словаре) строчными не трогаются — их здесь не проверяем
+        let frequent = text.split(separator: "\n").filter { $0.first?.isLowercase == true }
+            .map { Lexicon.normalize(String($0)) }.filter { typos.isKnown($0) }
+        var failed: [String] = []
+        for word in frequent {
+            let engine = Engine(layouts: ansi, judge: judge, currentLanguage: .ru)
+            var live = LiveTypographer()
+            var edit: TypoEdit?
+            var touched = false
+            for stroke in strokesTyping(word + " ", in: ansi.ru as! TableKeyLayout) {
+                if engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: false)) != .passThrough { touched = true }
+                edit = live.typed(ansi.ru.character(for: stroke)!.first!, hint: .ru, options: options)
+            }
+            if touched || edit == nil { failed.append(touched ? word + " (свитчер)" : word) }
+        }
+        print("ё-слов среди частых: \(frequent.count)")
+        #expect(failed.isEmpty, "свитчер мешает: \(failed.prefix(50)) … всего \(failed.count)")
+    }
+}
+
+@Suite struct UnitsAfterNumberTests {
+    let t = AbbreviationTests()
+
+    @Test func unitsAfterNumberStayRussian() {
+        // «руб» — это «he,» в английской раскладке, «шт» — «in», «сек» — «ctr»: после числа это единицы
+        for s in ["850руб ", "850 руб ", "100 руб. ", "5 шт ", "5шт ", "30 сек ", "2 млн руб "] {
+            #expect(t.typed(s, .ru) == s, "\(s) → \(t.typed(s, .ru))")
+        }
+    }
+
+    @Test func withoutNumberStillSwitches() {
+        // «in», набранное в русской раскладке, по-прежнему исправляется
+        #expect(t.typed("шт ", .ru) == "in ")
+        #expect(t.typed("I live in ", .ru) == "I live in ")
+    }
+}
+
+@Suite struct CommaLetterTests {
+    let t = AbbreviationTests()
+
+    @Test func wordsStartingWithBInWrongLayout() {
+        // «б» в английской раскладке — запятая: «был» = «,sk», свитчер считал его словом из двух букв и не трогал
+        for s in ["был ", "бог ", "бок ", "бар ", "были "] {
+            #expect(t.typed(s, .en) == s, "\(s) → \(t.typed(s, .en))")
+        }
+        #expect(t.typed("I was ok ", .en) == "I was ok ")
+    }
+}

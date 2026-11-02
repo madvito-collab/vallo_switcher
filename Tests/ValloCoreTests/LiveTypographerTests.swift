@@ -15,6 +15,13 @@ import Testing
         #expect(edits.dropLast().allSatisfy { $0 == nil })
     }
 
+    @Test func rubleOnSpace() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("850руб ", &live).last == TypoEdit(delete: 3, insert: "\u{00A0}₽ "))
+        #expect(live.backspace() == TypoEdit(delete: 3, insert: "руб "))
+    }
+
     @Test func quoteOpensAndCloses() {
         var live = LiveTypographer()
         live.reset(knownLineStart: true)
@@ -114,6 +121,49 @@ import Testing
         #expect(live.backspace() != nil)
         #expect(live.undoneTypoWord == "вобщем")
         #expect(edit.delete > 0)
+    }
+
+    // MARK: - «ё» на лету
+
+    let withYo = LiveOptions(typography: true, typos: typosWithYo, yo: yo)
+
+    @Test func yoOnSpace() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("еще ", &live, options: withYo).last == TypoEdit(delete: 1, insert: "ё "))
+    }
+
+    @Test func yoWithTyposOff() {
+        // свой переключатель: опечатки и типографика выключены, а «ё» ставится
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("еще ", &live, options: LiveOptions(typography: false, typos: nil, yo: yo)).last
+                == TypoEdit(delete: 1, insert: "ё "))
+    }
+
+    @Test func yoUndoDoesNotTeach() {
+        // «е» вместо «ё» — не ошибка: отмена не кладёт слово в «Мои слова»
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        typeAll("еще ", &live, options: withYo)
+        #expect(live.backspace() == TypoEdit(delete: 2, insert: "е "))
+        #expect(live.undoneTypoWord == nil)
+    }
+
+    @Test func realYoWordIsNotATypo() {
+        // «введем» нет в словаре опечаток — без «ё»-словаря исправлятор «чинил» его в «ведём»
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("введем ", &live, options: withYo).last == TypoEdit(delete: 2, insert: "ём "))
+    }
+
+    @Test func typoThenYo() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        // опечатка, потом «ё»: «серьезон» → «серьезно» → «серьёзно»
+        #expect(typeAll("серьезон ", &live, options: withYo).last == TypoEdit(delete: 4, insert: "ёзно "))
+        #expect(live.backspace() != nil)
+        #expect(live.undoneTypoWord == "серьезон")
     }
 
     @Test func typoUndoTeachesWord() {

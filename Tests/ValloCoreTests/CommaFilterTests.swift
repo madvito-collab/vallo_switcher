@@ -27,9 +27,16 @@ let sageOutputs: [String: String] = {
 
     @Test func commasAccepted() {
         #expect(merged("я думаю что это хорошая идея") == "я думаю, что это хорошая идея")
-        #expect(merged("когда ты придешь мы пойдем гулять") == "когда ты придёшь, мы пойдём гулять")
+        // «ё» от модели не берём — её ставит наш словарь (свой переключатель, двойные не трогаем)
+        #expect(merged("когда ты придешь мы пойдем гулять") == "когда ты придешь, мы пойдем гулять")
         #expect(merged("он сказал что не сможет прийти потому что заболел")
                 == "он сказал, что не сможет прийти, потому что заболел")
+    }
+
+    @Test func modelYoIgnored() {
+        // модель не ставит «ё» в двойных и не откатывает нашу
+        #expect(CommaFilter.merge(original: "все пришли", model: "Всё пришли.", typos: typos, capitalize: false) == "все пришли")
+        #expect(CommaFilter.merge(original: "ещё не время", model: "еще не время", typos: typos, capitalize: false) == "ещё не время")
     }
 
     @Test func safeReplacements() {

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var secureInputTimer: Timer?
     private var settings: SettingsWindow!
     private var typos: TypoCorrector!
+    private var yo: Yoficator!
     private let modelStore = ModelStore()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -27,9 +28,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
-            engine = Engine(layouts: layouts.pair, judge: try loadJudge(), currentLanguage: layouts.current ?? .en)
+            let modern = try WordForms.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-modern.txt"))
+            engine = Engine(layouts: layouts.pair, judge: try loadJudge(modern: modern), currentLanguage: layouts.current ?? .en)
             typos = try TypoCorrector.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-typos.txt"),
                                            ignored: Set(store.typoIgnoredWords))
+            yo = try Yoficator.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-yo.txt"))
+            typos.yoWords = yo
+            typos.modernWords = Set(modern.map(Lexicon.normalize))
         } catch {
             fail("Не получилось запуститься: \(error)")
             return
@@ -83,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startTap() {
         guard tap == nil else { return }
-        let tap = KeyboardTap(engine: engine, store: store, layouts: layouts, typos: typos)
+        let tap = KeyboardTap(engine: engine, store: store, layouts: layouts, typos: typos, yo: yo)
         modelStore.onChange = { [weak tap] in tap?.commas.unload() }
         tap.commas.onLoadFailed = { [weak self] in self?.modelStore.markBroken() }
         tap.onTypoUndone = { [weak self] word in
@@ -119,10 +124,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    private func loadJudge() throws -> Judge {
+    private func loadJudge(modern: [String]) throws -> Judge {
         let dir = Bundle.main.resourceURL!.appendingPathComponent("wordlists")
         return Judge(en: try Lexicon.load(url: dir.appendingPathComponent("en.txt"), language: .en),
-                     ru: try Lexicon.load(url: dir.appendingPathComponent("ru.txt"), language: .ru),
+                     ru: try Lexicon.load(url: dir.appendingPathComponent("ru.txt"), language: .ru, extra: modern),
                      learned: Set(store.learnedWords))
     }
 

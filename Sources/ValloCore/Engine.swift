@@ -187,6 +187,10 @@ public final class Engine {
         }
         let current = Converter.render(word, in: layouts.layout(currentLanguage))
         let alternative = Converter.render(word, in: layouts.layout(currentLanguage.other))
+        if isUnitAfterNumber(current) {
+            buffer.append(Entry(stroke: stroke, language: currentLanguage))
+            return .passThrough
+        }
         guard case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
                                                                currentLanguage: currentLanguage) else {
             // короткое слово оставили, но его можно прочитать как слово другого языка — решит следующее слово
@@ -205,7 +209,7 @@ public final class Engine {
                                           through: buffer.count - 1) {
             return revert
         }
-        let isShort = Judge.core(current).count < Judge.minLetters
+        let isShort = Judge.isShort(current: current, alternative: alternative)
         undo = Undo(start: wordStart, from: from)
         setWordLanguage(from.other)
         if isShort { shortSwitch = ShortSwitch(start: wordStart, nextWordStart: buffer.count, candidate: from) }
@@ -220,7 +224,8 @@ public final class Engine {
         guard autoSwitchEnabled, !wordLocked, autoSwitchedFrom == nil, !word.isEmpty else { return .passThrough }
         let current = Converter.render(word, in: layouts.layout(currentLanguage))
         let alternative = Converter.render(word, in: layouts.layout(currentLanguage.other))
-        guard case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
+        guard !isUnitAfterNumber(current),
+              case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
                                                                currentLanguage: currentLanguage) else {
             return .passThrough
         }
@@ -337,6 +342,15 @@ public final class Engine {
     /// Как кусок буфера сейчас выглядит на экране.
     private func display(_ range: Range<Int>) -> String {
         buffer[range].compactMap { layouts.layout($0.language).character(for: $0.stroke) }.joined()
+    }
+
+    /// «руб», «шт» сразу после числа («850руб», «5 шт», «2 млн руб») — единица, не ошибка раскладки.
+    private func isUnitAfterNumber(_ current: String) -> Bool {
+        guard Judge.isUnitAfterNumber(current, currentLanguage) else { return false }
+        let before = String(display(0..<wordStart).reversed().drop { $0 == " " || $0 == "." })
+        if before.first?.isNumber ?? false { return true }
+        let previous = String(before.prefix { $0.isLetter }.reversed())
+        return ["тыс", "млн", "млрд"].contains(previous.lowercased())
     }
 
     /// Граница слова — клавиша, которая ни в одной раскладке не даёт букву.

@@ -15,10 +15,14 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/wordlists"
 cp "$BIN" "$APP/Contents/MacOS/ValloSwitcher"
 # SwiftPM записывает в бинарник «собрано под SDK 14», и macOS рисует старый дизайн.
 # Ставим реальную версию SDK — тогда включается Liquid Glass.
-xcrun vtool -set-build-version macos 14.0 "$(xcrun --show-sdk-version)" -replace \
+# `--sdk macosx` обязателен: без него xcrun иногда не находит SDK и отдаёт пустоту — бинарник получал «sdk n/a»,
+# и приложение молча теряло Liquid Glass (2026-11-02). Пустая версия — ошибка сборки, не тихая поломка.
+SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
+[ -n "$SDK_VERSION" ] || { echo "Не узнал версию SDK — без неё не будет Liquid Glass" >&2; exit 1; }
+xcrun vtool -set-build-version macos 14.0 "$SDK_VERSION" -replace \
     -output "$APP/Contents/MacOS/ValloSwitcher" "$APP/Contents/MacOS/ValloSwitcher"
 cp Support/Info.plist "$APP/Contents/Info.plist"
-cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
+cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/wordlists/ru-yo.txt Data/wordlists/ru-modern.txt Data/wordlists/eyo-LICENSE.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
 

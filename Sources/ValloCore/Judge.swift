@@ -52,6 +52,18 @@ public struct Judge: Sendable {
         ],
     ]
 
+    /// Сокращения единиц и денег: сразу после числа («850руб», «5 шт») — не ошибка раскладки, хотя «руб» в
+    /// английской раскладке — «he,», а «шт» — «in». Без числа переводим как раньше: «in» в русской раскладке частое.
+    public static let unitsAfterNumber: [Language: Set<String>] = [
+        .ru: ["руб", "коп", "тыс", "млн", "млрд", "долл", "шт", "уп", "экз", "чел", "сек", "мин",
+              "кг", "км", "см", "мм", "мл", "кв"],
+        .en: [],
+    ]
+
+    public static func isUnitAfterNumber(_ word: String, _ language: Language) -> Bool {
+        unitsAfterNumber[language]!.contains(core(word).lowercased())
+    }
+
     public var learned: Set<String>
     private let en: Lexicon
     private let ru: Lexicon
@@ -89,7 +101,7 @@ public struct Judge: Sendable {
         if Judge.isAbbreviation(current), !Judge.isKnownAbbreviation(alternative, currentLanguage.other) { return .keep }
         if learned.contains(Lexicon.normalize(cur)) { return .keep }
         if Judge.isSlang(cur, currentLanguage) { return .keep }
-        if cur.count < Judge.minLetters {
+        if Judge.isShort(current: cur, alternative: alt) {
             let short = Judge.shortWords
             guard short[currentLanguage.other]!.contains(alt.lowercased())
                     || Judge.isKnownAbbreviation(alt, currentLanguage.other),
@@ -97,6 +109,11 @@ public struct Judge: Sendable {
             return .switchLanguage(reason: "«\(alt)» — частое короткое слово \(currentLanguage.other.rawValue.uppercased())")
         }
         let L = lexicon(currentLanguage), A = lexicon(currentLanguage.other)
+        // букв мало только здесь («,sk» — «был», «;r[» — «жкх»): решает лишь то, слово ли другой вариант
+        if cur.count < Judge.minLetters {
+            guard A.isWord(alt) || Judge.isKnownAbbreviation(alt, currentLanguage.other) else { return .keep }
+            return .switchLanguage(reason: "«\(alt)» — слово \(currentLanguage.other.rawValue.uppercased())")
+        }
         if L.isWord(cur) { return .keep }
         if A.isWord(alt) { return .switchLanguage(reason: "«\(alt)» — слово \(currentLanguage.other.rawValue.uppercased()), «\(cur)» — нет") }
         let margin = A.trigramScore(alt) - L.trigramScore(cur)
@@ -112,6 +129,12 @@ public struct Judge: Sendable {
         let L = lexicon(originalLanguage), A = lexicon(originalLanguage.other)
         let orig = Judge.core(original), conv = Judge.core(converted)
         return !A.isPrefix(conv) && L.trigramScore(orig) > A.trigramScore(conv)
+    }
+
+    /// Короткое слово (1–2 буквы) в обеих раскладках. Буквы считаем в той, где их больше: «б» и «ю» в английской
+    /// раскладке — запятая и точка, и «был» (,sk) иначе выглядел бы словом из двух букв.
+    public static func isShort(current: String, alternative: String) -> Bool {
+        max(core(current).count, core(alternative).count) < minLetters
     }
 
     /// Частое короткое слово или словечко этого языка — кандидат, если контекст укажет на этот язык.

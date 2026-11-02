@@ -35,7 +35,8 @@ public struct Lexicon: Sendable {
     /// Формат файла: «слово количество» на строку, самые частые сверху.
     /// Берём только слова алфавита языка: в русском списке из субтитров попадается английский, и наоборот.
     /// 20 000 — хвост списков шумный (в EN на 28 477 месте мусорное «ghb»).
-    public static func load(url: URL, language: Language, limit: Int = 20_000) throws -> Lexicon {
+    /// `extra` — свои слова сверх списка (современные слова из `ru-modern.txt`).
+    public static func load(url: URL, language: Language, limit: Int = 20_000, extra: [String] = []) throws -> Lexicon {
         let text = try String(contentsOf: url, encoding: .utf8)
         var list: [String] = []
         list.reserveCapacity(limit)
@@ -48,8 +49,12 @@ public struct Lexicon: Sendable {
         // частые ошибки («вобщем», «помоему») — тоже русские слова, иначе свитчер примет «воб» за английский
         // и переключит раскладку посреди слова, а исправлятор потом не тронет хвост
         if language == .ru { list += TypoCorrector.misspellings.keys }
+        // частые ё-слова, которых нет в списке субтитров: без них свитчер переключал раскладку посреди слова
+        // и «ё» молча не ставилась (проверяет `YoPipelineTests`)
+        if language == .ru { list += ["сожжен", "туберкулеза"] }
         // аббревиатуры — слова своего языка: «зва» в RU-раскладке узнаётся как «pdf»
         list += Judge.abbreviations[language]!
+        list += extra
         return Lexicon(words: list)
     }
 

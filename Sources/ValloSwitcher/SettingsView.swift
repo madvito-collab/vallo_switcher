@@ -23,6 +23,7 @@ final class SettingsModel: ObservableObject {
     @Published var excluded: [String] { didSet { store.excludedBundleIDs = excluded } }
     @Published var typographyLive: Bool { didSet { store.typographyLiveEnabled = typographyLive } }
     @Published var typoLive: Bool { didSet { store.typoLiveEnabled = typoLive } }
+    @Published var yo: Bool { didSet { store.yoEnabled = yo } }
     @Published var typoCapitalize: Bool { didSet { store.typoCapitalizeEnabled = typoCapitalize } }
     @Published var typoWords: [String] {
         didSet {
@@ -60,6 +61,7 @@ final class SettingsModel: ObservableObject {
         excluded = store.excludedBundleIDs
         typographyLive = store.typographyLiveEnabled
         typoLive = store.typoLiveEnabled
+        yo = store.yoEnabled
         typoCapitalize = store.typoCapitalizeEnabled
         typoWords = store.typoIgnoredWords
         typographyHotkey = store.typographyHotkeyEnabled
@@ -512,6 +514,9 @@ struct TyposTab: View {
                 SubtitledToggle(title: "Исправлять опечатки на лету",
                                 subtitle: "Лишние, пропущенные и переставленные буквы. Чтобы отменить исправление, сразу нажмите Backspace — слово запомнится",
                                 isOn: $model.typoLive)
+                SubtitledToggle(title: "Расставлять «ё»",
+                                subtitle: "ещё, её, далёкий. Если слово может быть и с «е», и с «ё» (все/всё), не трогаем",
+                                isOn: $model.yo)
             }
             Section {
                 LabeledContent {

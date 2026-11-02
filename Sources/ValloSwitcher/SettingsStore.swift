@@ -13,6 +13,7 @@ final class SettingsStore {
             "debugMode": false,
             "typographyLiveEnabled": true,
             "typoLiveEnabled": true,
+            "yoEnabled": true,
             "typoIgnoredWords": [String](),
             "typoCapitalizeEnabled": false,
             "typographyHotkeyEnabled": true,
@@ -78,6 +79,12 @@ final class SettingsStore {
     var typoLiveEnabled: Bool {
         get { defaults.bool(forKey: "typoLiveEnabled") }
         set { defaults.set(newValue, forKey: "typoLiveEnabled") }
+    }
+
+    /// Расставлять «ё» — на лету и по правому Shift, независимо от опечаток и типографики.
+    var yoEnabled: Bool {
+        get { defaults.bool(forKey: "yoEnabled") }
+        set { defaults.set(newValue, forKey: "yoEnabled") }
     }
 
     /// «Не исправлять» — слова, исправление которых человек отменил или добавил сам.

@@ -108,10 +108,11 @@ public enum CommaFilter {
         return own + modelMarks
     }
 
-    /// То же слово: знаки — свои плюс запятая модели; написание — модели, если отличается только ё или дефисом.
+    /// То же слово: знаки — свои плюс запятая модели; написание — модели, если отличается дефисом.
+    /// «ё» модели не берём: её ставит наш словарь (свой переключатель, двойные «все/всё» не трогаем, ё → е никогда).
     static func sameWord(original: String, model: String) -> String {
         let o = core(original), m = core(model)
-        let word = o.lowercased() == m.lowercased() ? o : withLeadingCase(of: original, m)
+        let word = Lexicon.normalize(o) == Lexicon.normalize(m) ? o : withLeadingCase(of: original, m)
         return lead(original) + word + ownTrail(original, plus: marks(model))
     }
 
