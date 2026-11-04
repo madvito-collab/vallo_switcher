@@ -1,0 +1,1397 @@
+{
+  "entries": [
+    {
+      "keyCode": 32,
+      "shift": false,
+      "capsLock": false,
+      "char": " "
+    },
+    {
+      "keyCode": 32,
+      "shift": false,
+      "capsLock": true,
+      "char": " "
+    },
+    {
+      "keyCode": 32,
+      "shift": true,
+      "capsLock": false,
+      "char": " "
+    },
+    {
+      "keyCode": 32,
+      "shift": true,
+      "capsLock": true,
+      "char": " "
+    },
+    {
+      "keyCode": 48,
+      "shift": false,
+      "capsLock": false,
+      "char": "0"
+    },
+    {
+      "keyCode": 48,
+      "shift": false,
+      "capsLock": true,
+      "char": "0"
+    },
+    {
+      "keyCode": 48,
+      "shift": true,
+      "capsLock": false,
+      "char": ")"
+    },
+    {
+      "keyCode": 48,
+      "shift": true,
+      "capsLock": true,
+      "char": ")"
+    },
+    {
+      "keyCode": 49,
+      "shift": false,
+      "capsLock": false,
+      "char": "1"
+    },
+    {
+      "keyCode": 49,
+      "shift": false,
+      "capsLock": true,
+      "char": "1"
+    },
+    {
+      "keyCode": 49,
+      "shift": true,
+      "capsLock": false,
+      "char": "!"
+    },
+    {
+      "keyCode": 49,
+      "shift": true,
+      "capsLock": true,
+      "char": "!"
+    },
+    {
+      "keyCode": 50,
+      "shift": false,
+      "capsLock": false,
+      "char": "2"
+    },
+    {
+      "keyCode": 50,
+      "shift": false,
+      "capsLock": true,
+      "char": "2"
+    },
+    {
+      "keyCode": 50,
+      "shift": true,
+      "capsLock": false,
+      "char": "\""
+    },
+    {
+      "keyCode": 50,
+      "shift": true,
+      "capsLock": true,
+      "char": "\""
+    },
+    {
+      "keyCode": 51,
+      "shift": false,
+      "capsLock": false,
+      "char": "3"
+    },
+    {
+      "keyCode": 51,
+      "shift": false,
+      "capsLock": true,
+      "char": "3"
+    },
+    {
+      "keyCode": 51,
+      "shift": true,
+      "capsLock": false,
+      "char": "№"
+    },
+    {
+      "keyCode": 51,
+      "shift": true,
+      "capsLock": true,
+      "char": "№"
+    },
+    {
+      "keyCode": 52,
+      "shift": false,
+      "capsLock": false,
+      "char": "4"
+    },
+    {
+      "keyCode": 52,
+      "shift": false,
+      "capsLock": true,
+      "char": "4"
+    },
+    {
+      "keyCode": 52,
+      "shift": true,
+      "capsLock": false,
+      "char": ";"
+    },
+    {
+      "keyCode": 52,
+      "shift": true,
+      "capsLock": true,
+      "char": ";"
+    },
+    {
+      "keyCode": 53,
+      "shift": false,
+      "capsLock": false,
+      "char": "5"
+    },
+    {
+      "keyCode": 53,
+      "shift": false,
+      "capsLock": true,
+      "char": "5"
+    },
+    {
+      "keyCode": 53,
+      "shift": true,
+      "capsLock": false,
+      "char": "%"
+    },
+    {
+      "keyCode": 53,
+      "shift": true,
+      "capsLock": true,
+      "char": "%"
+    },
+    {
+      "keyCode": 54,
+      "shift": false,
+      "capsLock": false,
+      "char": "6"
+    },
+    {
+      "keyCode": 54,
+      "shift": false,
+      "capsLock": true,
+      "char": "6"
+    },
+    {
+      "keyCode": 54,
+      "shift": true,
+      "capsLock": false,
+      "char": ":"
+    },
+    {
+      "keyCode": 54,
+      "shift": true,
+      "capsLock": true,
+      "char": ":"
+    },
+    {
+      "keyCode": 55,
+      "shift": false,
+      "capsLock": false,
+      "char": "7"
+    },
+    {
+      "keyCode": 55,
+      "shift": false,
+      "capsLock": true,
+      "char": "7"
+    },
+    {
+      "keyCode": 55,
+      "shift": true,
+      "capsLock": false,
+      "char": "?"
+    },
+    {
+      "keyCode": 55,
+      "shift": true,
+      "capsLock": true,
+      "char": "?"
+    },
+    {
+      "keyCode": 56,
+      "shift": false,
+      "capsLock": false,
+      "char": "8"
+    },
+    {
+      "keyCode": 56,
+      "shift": false,
+      "capsLock": true,
+      "char": "8"
+    },
+    {
+      "keyCode": 56,
+      "shift": true,
+      "capsLock": false,
+      "char": "*"
+    },
+    {
+      "keyCode": 56,
+      "shift": true,
+      "capsLock": true,
+      "char": "*"
+    },
+    {
+      "keyCode": 57,
+      "shift": false,
+      "capsLock": false,
+      "char": "9"
+    },
+    {
+      "keyCode": 57,
+      "shift": false,
+      "capsLock": true,
+      "char": "9"
+    },
+    {
+      "keyCode": 57,
+      "shift": true,
+      "capsLock": false,
+      "char": "("
+    },
+    {
+      "keyCode": 57,
+      "shift": true,
+      "capsLock": true,
+      "char": "("
+    },
+    {
+      "keyCode": 65,
+      "shift": false,
+      "capsLock": false,
+      "char": "ф"
+    },
+    {
+      "keyCode": 65,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ф"
+    },
+    {
+      "keyCode": 65,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ф"
+    },
+    {
+      "keyCode": 65,
+      "shift": true,
+      "capsLock": true,
+      "char": "ф"
+    },
+    {
+      "keyCode": 66,
+      "shift": false,
+      "capsLock": false,
+      "char": "и"
+    },
+    {
+      "keyCode": 66,
+      "shift": false,
+      "capsLock": true,
+      "char": "И"
+    },
+    {
+      "keyCode": 66,
+      "shift": true,
+      "capsLock": false,
+      "char": "И"
+    },
+    {
+      "keyCode": 66,
+      "shift": true,
+      "capsLock": true,
+      "char": "и"
+    },
+    {
+      "keyCode": 67,
+      "shift": false,
+      "capsLock": false,
+      "char": "с"
+    },
+    {
+      "keyCode": 67,
+      "shift": false,
+      "capsLock": true,
+      "char": "С"
+    },
+    {
+      "keyCode": 67,
+      "shift": true,
+      "capsLock": false,
+      "char": "С"
+    },
+    {
+      "keyCode": 67,
+      "shift": true,
+      "capsLock": true,
+      "char": "с"
+    },
+    {
+      "keyCode": 68,
+      "shift": false,
+      "capsLock": false,
+      "char": "в"
+    },
+    {
+      "keyCode": 68,
+      "shift": false,
+      "capsLock": true,
+      "char": "В"
+    },
+    {
+      "keyCode": 68,
+      "shift": true,
+      "capsLock": false,
+      "char": "В"
+    },
+    {
+      "keyCode": 68,
+      "shift": true,
+      "capsLock": true,
+      "char": "в"
+    },
+    {
+      "keyCode": 69,
+      "shift": false,
+      "capsLock": false,
+      "char": "у"
+    },
+    {
+      "keyCode": 69,
+      "shift": false,
+      "capsLock": true,
+      "char": "У"
+    },
+    {
+      "keyCode": 69,
+      "shift": true,
+      "capsLock": false,
+      "char": "У"
+    },
+    {
+      "keyCode": 69,
+      "shift": true,
+      "capsLock": true,
+      "char": "у"
+    },
+    {
+      "keyCode": 70,
+      "shift": false,
+      "capsLock": false,
+      "char": "а"
+    },
+    {
+      "keyCode": 70,
+      "shift": false,
+      "capsLock": true,
+      "char": "А"
+    },
+    {
+      "keyCode": 70,
+      "shift": true,
+      "capsLock": false,
+      "char": "А"
+    },
+    {
+      "keyCode": 70,
+      "shift": true,
+      "capsLock": true,
+      "char": "а"
+    },
+    {
+      "keyCode": 71,
+      "shift": false,
+      "capsLock": false,
+      "char": "п"
+    },
+    {
+      "keyCode": 71,
+      "shift": false,
+      "capsLock": true,
+      "char": "П"
+    },
+    {
+      "keyCode": 71,
+      "shift": true,
+      "capsLock": false,
+      "char": "П"
+    },
+    {
+      "keyCode": 71,
+      "shift": true,
+      "capsLock": true,
+      "char": "п"
+    },
+    {
+      "keyCode": 72,
+      "shift": false,
+      "capsLock": false,
+      "char": "р"
+    },
+    {
+      "keyCode": 72,
+      "shift": false,
+      "capsLock": true,
+      "char": "Р"
+    },
+    {
+      "keyCode": 72,
+      "shift": true,
+      "capsLock": false,
+      "char": "Р"
+    },
+    {
+      "keyCode": 72,
+      "shift": true,
+      "capsLock": true,
+      "char": "р"
+    },
+    {
+      "keyCode": 73,
+      "shift": false,
+      "capsLock": false,
+      "char": "ш"
+    },
+    {
+      "keyCode": 73,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ш"
+    },
+    {
+      "keyCode": 73,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ш"
+    },
+    {
+      "keyCode": 73,
+      "shift": true,
+      "capsLock": true,
+      "char": "ш"
+    },
+    {
+      "keyCode": 74,
+      "shift": false,
+      "capsLock": false,
+      "char": "о"
+    },
+    {
+      "keyCode": 74,
+      "shift": false,
+      "capsLock": true,
+      "char": "О"
+    },
+    {
+      "keyCode": 74,
+      "shift": true,
+      "capsLock": false,
+      "char": "О"
+    },
+    {
+      "keyCode": 74,
+      "shift": true,
+      "capsLock": true,
+      "char": "о"
+    },
+    {
+      "keyCode": 75,
+      "shift": false,
+      "capsLock": false,
+      "char": "л"
+    },
+    {
+      "keyCode": 75,
+      "shift": false,
+      "capsLock": true,
+      "char": "Л"
+    },
+    {
+      "keyCode": 75,
+      "shift": true,
+      "capsLock": false,
+      "char": "Л"
+    },
+    {
+      "keyCode": 75,
+      "shift": true,
+      "capsLock": true,
+      "char": "л"
+    },
+    {
+      "keyCode": 76,
+      "shift": false,
+      "capsLock": false,
+      "char": "д"
+    },
+    {
+      "keyCode": 76,
+      "shift": false,
+      "capsLock": true,
+      "char": "Д"
+    },
+    {
+      "keyCode": 76,
+      "shift": true,
+      "capsLock": false,
+      "char": "Д"
+    },
+    {
+      "keyCode": 76,
+      "shift": true,
+      "capsLock": true,
+      "char": "д"
+    },
+    {
+      "keyCode": 77,
+      "shift": false,
+      "capsLock": false,
+      "char": "ь"
+    },
+    {
+      "keyCode": 77,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ь"
+    },
+    {
+      "keyCode": 77,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ь"
+    },
+    {
+      "keyCode": 77,
+      "shift": true,
+      "capsLock": true,
+      "char": "ь"
+    },
+    {
+      "keyCode": 78,
+      "shift": false,
+      "capsLock": false,
+      "char": "т"
+    },
+    {
+      "keyCode": 78,
+      "shift": false,
+      "capsLock": true,
+      "char": "Т"
+    },
+    {
+      "keyCode": 78,
+      "shift": true,
+      "capsLock": false,
+      "char": "Т"
+    },
+    {
+      "keyCode": 78,
+      "shift": true,
+      "capsLock": true,
+      "char": "т"
+    },
+    {
+      "keyCode": 79,
+      "shift": false,
+      "capsLock": false,
+      "char": "щ"
+    },
+    {
+      "keyCode": 79,
+      "shift": false,
+      "capsLock": true,
+      "char": "Щ"
+    },
+    {
+      "keyCode": 79,
+      "shift": true,
+      "capsLock": false,
+      "char": "Щ"
+    },
+    {
+      "keyCode": 79,
+      "shift": true,
+      "capsLock": true,
+      "char": "щ"
+    },
+    {
+      "keyCode": 80,
+      "shift": false,
+      "capsLock": false,
+      "char": "з"
+    },
+    {
+      "keyCode": 80,
+      "shift": false,
+      "capsLock": true,
+      "char": "З"
+    },
+    {
+      "keyCode": 80,
+      "shift": true,
+      "capsLock": false,
+      "char": "З"
+    },
+    {
+      "keyCode": 80,
+      "shift": true,
+      "capsLock": true,
+      "char": "з"
+    },
+    {
+      "keyCode": 81,
+      "shift": false,
+      "capsLock": false,
+      "char": "й"
+    },
+    {
+      "keyCode": 81,
+      "shift": false,
+      "capsLock": true,
+      "char": "Й"
+    },
+    {
+      "keyCode": 81,
+      "shift": true,
+      "capsLock": false,
+      "char": "Й"
+    },
+    {
+      "keyCode": 81,
+      "shift": true,
+      "capsLock": true,
+      "char": "й"
+    },
+    {
+      "keyCode": 82,
+      "shift": false,
+      "capsLock": false,
+      "char": "к"
+    },
+    {
+      "keyCode": 82,
+      "shift": false,
+      "capsLock": true,
+      "char": "К"
+    },
+    {
+      "keyCode": 82,
+      "shift": true,
+      "capsLock": false,
+      "char": "К"
+    },
+    {
+      "keyCode": 82,
+      "shift": true,
+      "capsLock": true,
+      "char": "к"
+    },
+    {
+      "keyCode": 83,
+      "shift": false,
+      "capsLock": false,
+      "char": "ы"
+    },
+    {
+      "keyCode": 83,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ы"
+    },
+    {
+      "keyCode": 83,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ы"
+    },
+    {
+      "keyCode": 83,
+      "shift": true,
+      "capsLock": true,
+      "char": "ы"
+    },
+    {
+      "keyCode": 84,
+      "shift": false,
+      "capsLock": false,
+      "char": "е"
+    },
+    {
+      "keyCode": 84,
+      "shift": false,
+      "capsLock": true,
+      "char": "Е"
+    },
+    {
+      "keyCode": 84,
+      "shift": true,
+      "capsLock": false,
+      "char": "Е"
+    },
+    {
+      "keyCode": 84,
+      "shift": true,
+      "capsLock": true,
+      "char": "е"
+    },
+    {
+      "keyCode": 85,
+      "shift": false,
+      "capsLock": false,
+      "char": "г"
+    },
+    {
+      "keyCode": 85,
+      "shift": false,
+      "capsLock": true,
+      "char": "Г"
+    },
+    {
+      "keyCode": 85,
+      "shift": true,
+      "capsLock": false,
+      "char": "Г"
+    },
+    {
+      "keyCode": 85,
+      "shift": true,
+      "capsLock": true,
+      "char": "г"
+    },
+    {
+      "keyCode": 86,
+      "shift": false,
+      "capsLock": false,
+      "char": "м"
+    },
+    {
+      "keyCode": 86,
+      "shift": false,
+      "capsLock": true,
+      "char": "М"
+    },
+    {
+      "keyCode": 86,
+      "shift": true,
+      "capsLock": false,
+      "char": "М"
+    },
+    {
+      "keyCode": 86,
+      "shift": true,
+      "capsLock": true,
+      "char": "м"
+    },
+    {
+      "keyCode": 87,
+      "shift": false,
+      "capsLock": false,
+      "char": "ц"
+    },
+    {
+      "keyCode": 87,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ц"
+    },
+    {
+      "keyCode": 87,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ц"
+    },
+    {
+      "keyCode": 87,
+      "shift": true,
+      "capsLock": true,
+      "char": "ц"
+    },
+    {
+      "keyCode": 88,
+      "shift": false,
+      "capsLock": false,
+      "char": "ч"
+    },
+    {
+      "keyCode": 88,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ч"
+    },
+    {
+      "keyCode": 88,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ч"
+    },
+    {
+      "keyCode": 88,
+      "shift": true,
+      "capsLock": true,
+      "char": "ч"
+    },
+    {
+      "keyCode": 89,
+      "shift": false,
+      "capsLock": false,
+      "char": "н"
+    },
+    {
+      "keyCode": 89,
+      "shift": false,
+      "capsLock": true,
+      "char": "Н"
+    },
+    {
+      "keyCode": 89,
+      "shift": true,
+      "capsLock": false,
+      "char": "Н"
+    },
+    {
+      "keyCode": 89,
+      "shift": true,
+      "capsLock": true,
+      "char": "н"
+    },
+    {
+      "keyCode": 90,
+      "shift": false,
+      "capsLock": false,
+      "char": "я"
+    },
+    {
+      "keyCode": 90,
+      "shift": false,
+      "capsLock": true,
+      "char": "Я"
+    },
+    {
+      "keyCode": 90,
+      "shift": true,
+      "capsLock": false,
+      "char": "Я"
+    },
+    {
+      "keyCode": 90,
+      "shift": true,
+      "capsLock": true,
+      "char": "я"
+    },
+    {
+      "keyCode": 96,
+      "shift": false,
+      "capsLock": false,
+      "char": "0"
+    },
+    {
+      "keyCode": 96,
+      "shift": false,
+      "capsLock": true,
+      "char": "0"
+    },
+    {
+      "keyCode": 97,
+      "shift": false,
+      "capsLock": false,
+      "char": "1"
+    },
+    {
+      "keyCode": 97,
+      "shift": false,
+      "capsLock": true,
+      "char": "1"
+    },
+    {
+      "keyCode": 98,
+      "shift": false,
+      "capsLock": false,
+      "char": "2"
+    },
+    {
+      "keyCode": 98,
+      "shift": false,
+      "capsLock": true,
+      "char": "2"
+    },
+    {
+      "keyCode": 99,
+      "shift": false,
+      "capsLock": false,
+      "char": "3"
+    },
+    {
+      "keyCode": 99,
+      "shift": false,
+      "capsLock": true,
+      "char": "3"
+    },
+    {
+      "keyCode": 100,
+      "shift": false,
+      "capsLock": false,
+      "char": "4"
+    },
+    {
+      "keyCode": 100,
+      "shift": false,
+      "capsLock": true,
+      "char": "4"
+    },
+    {
+      "keyCode": 101,
+      "shift": false,
+      "capsLock": false,
+      "char": "5"
+    },
+    {
+      "keyCode": 101,
+      "shift": false,
+      "capsLock": true,
+      "char": "5"
+    },
+    {
+      "keyCode": 102,
+      "shift": false,
+      "capsLock": false,
+      "char": "6"
+    },
+    {
+      "keyCode": 102,
+      "shift": false,
+      "capsLock": true,
+      "char": "6"
+    },
+    {
+      "keyCode": 103,
+      "shift": false,
+      "capsLock": false,
+      "char": "7"
+    },
+    {
+      "keyCode": 103,
+      "shift": false,
+      "capsLock": true,
+      "char": "7"
+    },
+    {
+      "keyCode": 104,
+      "shift": false,
+      "capsLock": false,
+      "char": "8"
+    },
+    {
+      "keyCode": 104,
+      "shift": false,
+      "capsLock": true,
+      "char": "8"
+    },
+    {
+      "keyCode": 105,
+      "shift": false,
+      "capsLock": false,
+      "char": "9"
+    },
+    {
+      "keyCode": 105,
+      "shift": false,
+      "capsLock": true,
+      "char": "9"
+    },
+    {
+      "keyCode": 106,
+      "shift": false,
+      "capsLock": false,
+      "char": "*"
+    },
+    {
+      "keyCode": 106,
+      "shift": false,
+      "capsLock": true,
+      "char": "*"
+    },
+    {
+      "keyCode": 106,
+      "shift": true,
+      "capsLock": false,
+      "char": "*"
+    },
+    {
+      "keyCode": 106,
+      "shift": true,
+      "capsLock": true,
+      "char": "*"
+    },
+    {
+      "keyCode": 107,
+      "shift": false,
+      "capsLock": false,
+      "char": "+"
+    },
+    {
+      "keyCode": 107,
+      "shift": false,
+      "capsLock": true,
+      "char": "+"
+    },
+    {
+      "keyCode": 107,
+      "shift": true,
+      "capsLock": false,
+      "char": "+"
+    },
+    {
+      "keyCode": 107,
+      "shift": true,
+      "capsLock": true,
+      "char": "+"
+    },
+    {
+      "keyCode": 109,
+      "shift": false,
+      "capsLock": false,
+      "char": "-"
+    },
+    {
+      "keyCode": 109,
+      "shift": false,
+      "capsLock": true,
+      "char": "-"
+    },
+    {
+      "keyCode": 109,
+      "shift": true,
+      "capsLock": false,
+      "char": "-"
+    },
+    {
+      "keyCode": 109,
+      "shift": true,
+      "capsLock": true,
+      "char": "-"
+    },
+    {
+      "keyCode": 110,
+      "shift": false,
+      "capsLock": false,
+      "char": ","
+    },
+    {
+      "keyCode": 110,
+      "shift": false,
+      "capsLock": true,
+      "char": ","
+    },
+    {
+      "keyCode": 110,
+      "shift": true,
+      "capsLock": false,
+      "char": ","
+    },
+    {
+      "keyCode": 110,
+      "shift": true,
+      "capsLock": true,
+      "char": ","
+    },
+    {
+      "keyCode": 111,
+      "shift": false,
+      "capsLock": false,
+      "char": "/"
+    },
+    {
+      "keyCode": 111,
+      "shift": false,
+      "capsLock": true,
+      "char": "/"
+    },
+    {
+      "keyCode": 111,
+      "shift": true,
+      "capsLock": false,
+      "char": "/"
+    },
+    {
+      "keyCode": 111,
+      "shift": true,
+      "capsLock": true,
+      "char": "/"
+    },
+    {
+      "keyCode": 186,
+      "shift": false,
+      "capsLock": false,
+      "char": "ж"
+    },
+    {
+      "keyCode": 186,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ж"
+    },
+    {
+      "keyCode": 186,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ж"
+    },
+    {
+      "keyCode": 186,
+      "shift": true,
+      "capsLock": true,
+      "char": "ж"
+    },
+    {
+      "keyCode": 187,
+      "shift": false,
+      "capsLock": false,
+      "char": "="
+    },
+    {
+      "keyCode": 187,
+      "shift": false,
+      "capsLock": true,
+      "char": "="
+    },
+    {
+      "keyCode": 187,
+      "shift": true,
+      "capsLock": false,
+      "char": "+"
+    },
+    {
+      "keyCode": 187,
+      "shift": true,
+      "capsLock": true,
+      "char": "+"
+    },
+    {
+      "keyCode": 188,
+      "shift": false,
+      "capsLock": false,
+      "char": "б"
+    },
+    {
+      "keyCode": 188,
+      "shift": false,
+      "capsLock": true,
+      "char": "Б"
+    },
+    {
+      "keyCode": 188,
+      "shift": true,
+      "capsLock": false,
+      "char": "Б"
+    },
+    {
+      "keyCode": 188,
+      "shift": true,
+      "capsLock": true,
+      "char": "б"
+    },
+    {
+      "keyCode": 189,
+      "shift": false,
+      "capsLock": false,
+      "char": "-"
+    },
+    {
+      "keyCode": 189,
+      "shift": false,
+      "capsLock": true,
+      "char": "-"
+    },
+    {
+      "keyCode": 189,
+      "shift": true,
+      "capsLock": false,
+      "char": "_"
+    },
+    {
+      "keyCode": 189,
+      "shift": true,
+      "capsLock": true,
+      "char": "_"
+    },
+    {
+      "keyCode": 190,
+      "shift": false,
+      "capsLock": false,
+      "char": "ю"
+    },
+    {
+      "keyCode": 190,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ю"
+    },
+    {
+      "keyCode": 190,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ю"
+    },
+    {
+      "keyCode": 190,
+      "shift": true,
+      "capsLock": true,
+      "char": "ю"
+    },
+    {
+      "keyCode": 191,
+      "shift": false,
+      "capsLock": false,
+      "char": "."
+    },
+    {
+      "keyCode": 191,
+      "shift": false,
+      "capsLock": true,
+      "char": "."
+    },
+    {
+      "keyCode": 191,
+      "shift": true,
+      "capsLock": false,
+      "char": ","
+    },
+    {
+      "keyCode": 191,
+      "shift": true,
+      "capsLock": true,
+      "char": ","
+    },
+    {
+      "keyCode": 192,
+      "shift": false,
+      "capsLock": false,
+      "char": "ё"
+    },
+    {
+      "keyCode": 192,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ё"
+    },
+    {
+      "keyCode": 192,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ё"
+    },
+    {
+      "keyCode": 192,
+      "shift": true,
+      "capsLock": true,
+      "char": "ё"
+    },
+    {
+      "keyCode": 219,
+      "shift": false,
+      "capsLock": false,
+      "char": "х"
+    },
+    {
+      "keyCode": 219,
+      "shift": false,
+      "capsLock": true,
+      "char": "Х"
+    },
+    {
+      "keyCode": 219,
+      "shift": true,
+      "capsLock": false,
+      "char": "Х"
+    },
+    {
+      "keyCode": 219,
+      "shift": true,
+      "capsLock": true,
+      "char": "х"
+    },
+    {
+      "keyCode": 220,
+      "shift": false,
+      "capsLock": false,
+      "char": "\\"
+    },
+    {
+      "keyCode": 220,
+      "shift": false,
+      "capsLock": true,
+      "char": "\\"
+    },
+    {
+      "keyCode": 220,
+      "shift": true,
+      "capsLock": false,
+      "char": "/"
+    },
+    {
+      "keyCode": 220,
+      "shift": true,
+      "capsLock": true,
+      "char": "/"
+    },
+    {
+      "keyCode": 221,
+      "shift": false,
+      "capsLock": false,
+      "char": "ъ"
+    },
+    {
+      "keyCode": 221,
+      "shift": false,
+      "capsLock": true,
+      "char": "Ъ"
+    },
+    {
+      "keyCode": 221,
+      "shift": true,
+      "capsLock": false,
+      "char": "Ъ"
+    },
+    {
+      "keyCode": 221,
+      "shift": true,
+      "capsLock": true,
+      "char": "ъ"
+    },
+    {
+      "keyCode": 222,
+      "shift": false,
+      "capsLock": false,
+      "char": "э"
+    },
+    {
+      "keyCode": 222,
+      "shift": false,
+      "capsLock": true,
+      "char": "Э"
+    },
+    {
+      "keyCode": 222,
+      "shift": true,
+      "capsLock": false,
+      "char": "Э"
+    },
+    {
+      "keyCode": 222,
+      "shift": true,
+      "capsLock": true,
+      "char": "э"
+    }
+  ],
+  "language": "ru"
+}
