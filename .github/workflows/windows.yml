@@ -1,0 +1,23 @@
+name: windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test
+        run: dotnet test windows/Vallo.sln
+      - name: Dump layouts
+        run: dotnet run --project windows/tools/DumpLayouts -- "${{ runner.temp }}/layouts"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layouts
+          path: ${{ runner.temp }}/layouts

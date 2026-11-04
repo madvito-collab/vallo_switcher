@@ -4,3 +4,5 @@ build/
 .DS_Store
 .swiftpm/
 .claude/settings.local.json
+windows/**/bin/
+windows/**/obj/
