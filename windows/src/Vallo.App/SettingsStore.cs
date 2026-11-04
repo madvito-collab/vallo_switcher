@@ -3,20 +3,27 @@ using Vallo.Core;
 namespace Vallo.App;
 
 /// Текущие настройки в памяти + запись на диск при каждом изменении.
+/// Меняют из разных потоков (трей, исполнитель свитчера) — изменения по одному.
 sealed class SettingsStore(string path)
 {
-    public AppSettings Current { get; private set; } = AppSettings.Load(path);
+    readonly object gate = new();
+    volatile AppSettings current = AppSettings.Load(path);
+
+    public AppSettings Current => current;
 
     public void Update(Func<AppSettings, AppSettings> change)
     {
-        Current = change(Current);
-        try
+        lock (gate)
         {
-            Current.Save(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            // не записалось — живём с настройками в памяти, в следующий раз попробуем снова
+            current = change(current);
+            try
+            {
+                current.Save(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // не записалось — живём с настройками в памяти, в следующий раз попробуем снова
+            }
         }
     }
 }

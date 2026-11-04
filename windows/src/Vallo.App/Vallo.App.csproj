@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Vallo.Core/Vallo.Core.csproj" />
+    <ProjectReference Include="../Vallo.Platform/Vallo.Platform.csproj" />
   </ItemGroup>
   <!-- Рядом с exe: словари, правила, картинки «ё» для трея. Раскладки снимаются с системы на ходу. -->
   <ItemGroup>

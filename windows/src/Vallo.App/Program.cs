@@ -15,6 +15,16 @@ static class Program
             store.Update(s => s with { FirstRunDone = true });
 
         using var tray = new Tray(store, Path.Combine(AppContext.BaseDirectory, "Icons"));
-        return tray.Run();
+        // словари грузятся секунду-другую — значок в трее показываем, не дожидаясь
+        SwitcherService? switcher = null;
+        var starting = Task.Run(() =>
+        {
+            try { switcher = SwitcherService.Start(store); }
+            catch { } // без свитчера трей всё равно работает
+        });
+        var code = tray.Run();
+        starting.Wait();
+        switcher?.Dispose();
+        return code;
     }
 }

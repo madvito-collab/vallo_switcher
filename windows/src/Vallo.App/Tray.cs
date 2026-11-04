@@ -76,8 +76,13 @@ sealed unsafe class Tray : IDisposable
     [UnmanagedCallersOnly]
     static nint WndProc(nint hwnd, uint msg, nuint wParam, nint lParam)
     {
-        var t = current;
-        if (t is not null && t.Handle(hwnd, msg, wParam, lParam, out var result)) return result;
+        // исключение из [UnmanagedCallersOnly] роняет процесс
+        try
+        {
+            var t = current;
+            if (t is not null && t.Handle(hwnd, msg, wParam, lParam, out var result)) return result;
+        }
+        catch { }
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 

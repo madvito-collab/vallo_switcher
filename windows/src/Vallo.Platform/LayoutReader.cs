@@ -38,6 +38,14 @@ public static class LayoutReader
         IntPtr hkl = LoadKeyboardLayout(klid, KLF_NOTELLSHELL);
         if (hkl == IntPtr.Zero)
             throw new InvalidOperationException($"LoadKeyboardLayout({klid}) failed: {Marshal.GetLastWin32Error()}");
+        return Read(hkl);
+    }
+
+    /// <summary>Same table for an already loaded layout (e.g. one from GetKeyboardLayoutList).</summary>
+    public static List<LayoutEntry> Read(IntPtr hkl)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("LayoutReader works on Windows only.");
 
         var result = new List<LayoutEntry>();
         var sb = new StringBuilder(8);

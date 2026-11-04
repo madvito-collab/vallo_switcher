@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Vallo.App;
 
-/// Минимум Win32 для трея: окно-невидимка, цикл сообщений, значок, всплывающее меню.
+/// Минимум Win32: трей (окно-невидимка, цикл сообщений, значок, меню), перехват, ввод, раскладки.
 static unsafe partial class Native
 {
     public const uint WM_NULL = 0x0000;
@@ -162,6 +162,109 @@ static unsafe partial class Native
     [LibraryImport("shell32.dll", EntryPoint = "Shell_NotifyIconW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool Shell_NotifyIcon(uint message, in NOTIFYICONDATAW data);
+
+    // --- перехват клавиатуры и мыши, ввод, раскладки ---
+
+    public const int WH_KEYBOARD_LL = 13, WH_MOUSE_LL = 14;
+    public const uint WM_QUIT = 0x0012;
+    public const uint WM_INPUTLANGCHANGEREQUEST = 0x0050;
+    public const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, WM_SYSKEYDOWN = 0x0104, WM_SYSKEYUP = 0x0105;
+    public const uint WM_LBUTTONDOWN = 0x0201, WM_RBUTTONDOWN = 0x0204, WM_MBUTTONDOWN = 0x0207, WM_XBUTTONDOWN = 0x020B;
+    public const uint LLKHF_EXTENDED = 0x01;
+    public const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    public const uint WINEVENT_OUTOFCONTEXT = 0x0000, WINEVENT_SKIPOWNPROCESS = 0x0002;
+
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x0001, KEYEVENTF_KEYUP = 0x0002, KEYEVENTF_UNICODE = 0x0004;
+    public const uint MAPVK_VK_TO_VSC = 0;
+    public const int VK_CAPITAL = 0x14;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KBDLLHOOKSTRUCT
+    {
+        public uint vkCode;
+        public uint scanCode;
+        public uint flags;
+        public uint time;
+        public nuint dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT
+    {
+        public int dx, dy;
+        public uint mouseData, dwFlags, time;
+        public nuint dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBDINPUT
+    {
+        public ushort wVk, wScan;
+        public uint dwFlags, time;
+        public nuint dwExtraInfo;
+    }
+
+    /// В C — union; MOUSEINPUT самый большой, он и задаёт размер (на x64 INPUT = 40 байт).
+    [StructLayout(LayoutKind.Explicit)]
+    public struct InputUnion
+    {
+        [FieldOffset(0)] public MOUSEINPUT mi;
+        [FieldOffset(0)] public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT
+    {
+        public uint type;
+        public InputUnion u;
+    }
+
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowsHookExW", SetLastError = true)]
+    public static partial nint SetWindowsHookEx(int idHook, delegate* unmanaged<int, nuint, nint, nint> proc, nint hMod, uint threadId);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnhookWindowsHookEx(nint hook);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint CallNextHookEx(nint hook, int code, nuint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetWinEventHook(uint eventMin, uint eventMax, nint hmod,
+        delegate* unmanaged<nint, uint, nint, int, int, uint, uint, void> proc, uint processId, uint threadId, uint flags);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnhookWinEvent(nint hook);
+
+    [LibraryImport("user32.dll", EntryPoint = "PostThreadMessageW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool PostThreadMessage(uint threadId, uint msg, nuint wParam, nint lParam);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial uint GetCurrentThreadId();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial uint SendInput(uint count, INPUT* inputs, int size);
+
+    [LibraryImport("user32.dll", EntryPoint = "MapVirtualKeyW")]
+    public static partial uint MapVirtualKey(uint code, uint mapType);
+
+    [LibraryImport("user32.dll")]
+    public static partial short GetKeyState(int vk);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetForegroundWindow();
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetWindowThreadProcessId(nint hwnd, uint* processId);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetKeyboardLayout(uint threadId);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetKeyboardLayoutList(int count, nint* list);
 
     public static short LoWord(nint v) => (short)(v & 0xFFFF);
     public static short HiWord(nint v) => (short)((v >> 16) & 0xFFFF);
