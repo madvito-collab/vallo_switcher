@@ -30,6 +30,9 @@ cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/
 cp Data/switcher-rules.json "$APP/Contents/Resources/wordlists/"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
+# плагин для Фигмы: человек импортирует manifest.json из «Настройки → Типографика»
+mkdir -p "$APP/Contents/Resources/figma-plugin"
+cp figma-plugin/manifest.json figma-plugin/code.js figma-plugin/ui.html "$APP/Contents/Resources/figma-plugin/"
 
 # подписываем изнутри наружу: сначала помощники Sparkle, потом фреймворк, потом приложение
 SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"

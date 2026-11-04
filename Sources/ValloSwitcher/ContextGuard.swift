@@ -80,6 +80,28 @@ enum ContextGuard {
         return value as? String
     }
 
+    /// Заголовок активного окна переднего приложения (в Фигме — имя открытого файла).
+    static func frontWindowTitle() -> String? {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, axTimeout)
+        var window: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &window) == .success,
+              let window else { return nil }
+        return string(window as! AXUIElement, kAXTitleAttribute)
+    }
+
+    /// Курсор в изменяемом текстовом поле (в Фигме: текст слоя, имя слоя, поле свойств) —
+    /// значит, это редактирование текста, а не выделенные слои.
+    static func focusIsEditableText() -> Bool {
+        guard let element = focusedElement() else { return false }
+        let role = string(element, kAXRoleAttribute)
+        guard role == kAXTextFieldRole || role == kAXTextAreaRole || role == kAXComboBoxRole else { return false }
+        var settable: DarwinBoolean = false
+        AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
+        return settable.boolValue
+    }
+
     /// Разведка: все атрибуты фокусного поля в журнал (только в режиме отладки).
     static func dumpFocusedElement() {
         guard let element = focusedElement() else {

@@ -32,6 +32,8 @@ final class KeyboardTap {
     let yo: Yoficator
     /// Запятые по сочетанию (модель).
     let commas = CommaService()
+    /// Связь с плагином Фигмы.
+    var figma: FigmaBridge? { didSet { listenToFigma() } }
     /// Человек отменил исправление опечатки — слово в «Не исправлять».
     var onTypoUndone: ((String) -> Void)?
     private var tap: CFMachPort?
@@ -265,6 +267,17 @@ final class KeyboardTap {
     /// Двойной правый Shift по выделенному: опечатки → «ё» → запятые (если модель скачана) → типографика.
     private func typographySelection() {
         guard store.typographyHotkeyEnabled, !ContextGuard.secureInputActive else { return }
+        // Фигма, выделены слои (не редактируется текст) — тексты слоёв через плагин Vallo
+        if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == FigmaLauncher.figmaBundleID,
+           store.figmaPluginSeen, figma != nil, !ContextGuard.focusIsEditableText() {
+            figmaPress()
+            return
+        }
+        typographyOfSelectedText()
+    }
+
+    /// Выделенный текст: опечатки → «ё» → запятые → типографика.
+    private func typographyOfSelectedText() {
         SelectionReader.selectedText { [self] text in
             guard let text else { return }
             // пока модель думает, человек мог уйти в другое окно или начать печатать — тогда не вставляем
@@ -273,7 +286,9 @@ final class KeyboardTap {
             let corrected = typos.correctPhrase(text)
             let typoFixed = store.yoEnabled ? yo.fixPhrase(corrected) : corrected
             // модель думает на фоне; без модели, при ошибке или дольше 3 с — без запятых
-            commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled) { [self] withCommas in
+            // в Фигме регистр и точку в конце не трогаем никогда (решение автора: это вопрос редполитики макета)
+            let inFigma = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == FigmaLauncher.figmaBundleID
+            commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled && !inFigma) { [self] withCommas in
                 guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app, inputGeneration == generation else {
                     log.debug("right shift: focus changed while waiting — skipped")
                     return
@@ -284,6 +299,70 @@ final class KeyboardTap {
                 engine.reset()
                 live.reset()
                 EventPoster.replaceSelection(formatted)
+            }
+        }
+    }
+
+    // MARK: - Фигма
+
+    private var figmaPressID = 0
+    /// Плагин запущен нами и ещё не вышел на связь — до этого времени новые нажатия не запускают его снова.
+    private var figmaLaunchingUntil: Date?
+    private lazy var figmaBatch = FigmaBatch(store: store, commas: commas)
+
+    /// Двойной правый Shift на слоях Фигмы: спросить плагин файла спереди; плагина нет — запустить.
+    private func figmaPress() {
+        guard let figma, let file = ContextGuard.frontWindowTitle() else {
+            log.debug("figma: no window title — hint")
+            return FigmaLauncher.showHint()
+        }
+        if figmaBatch.isRunning { return log.debug("figma: batch running — press ignored") }
+        // плагин уже запускается — второй ⌘/ перезапустил бы его и потерял работу
+        if let until = figmaLaunchingUntil, until > Date() { return log.debug("figma: launch in flight — press ignored") }
+        // плагин ещё открыт (висит окошко итога) — сразу к нему
+        if figma.connectedFiles.contains(file) { return sendPress(to: file) }
+        // иначе запускаем: только что запущенный плагин скажет hello(fresh), и мы пошлём ему press
+        log.debug("figma: launching plugin")
+        FigmaLauncher.launch()
+        let deadline = Date().addingTimeInterval(5)
+        figmaLaunchingUntil = deadline
+        func check() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [self] in
+                if self.figma?.connectedFiles.contains(file) == true { self.figmaLaunchingUntil = nil; return }
+                if Date() < deadline { return check() }
+                log.debug("figma: plugin did not connect — hint")
+                FigmaLauncher.showHint()
+            }
+        }
+        check()
+    }
+
+    private func sendPress(to file: String) {
+        figmaPressID += 1
+        figma?.send(.press(id: figmaPressID), toFile: file)
+    }
+
+    private func listenToFigma() {
+        figma?.onMessage = { [weak self] message, file in self?.figmaMessage(message, from: file) }
+    }
+
+    private func figmaMessage(_ message: FigmaMessage, from file: String) {
+        // плагин только что запущен (нами по сочетанию или человеком из меню) — сразу за работу
+        if case .hello(_, _, true) = message {
+            figmaLaunchingUntil = nil
+            if !figmaBatch.isRunning { sendPress(to: file) }
+            return
+        }
+        guard case let .mode(id, mode, skipped) = message, id == figmaPressID else { return }
+        switch mode {
+        case .text:
+            log.debug("figma: plugin says text editing — selected text path")
+            typographyOfSelectedText()
+        case .empty:
+            break
+        case .layers(let texts):
+            figmaBatch.run(texts, typos: typos, yo: yo) { [weak self] edits, stats in
+                self?.figma?.send(.result(id: id, edits: edits, stats: stats, skipped: skipped), toFile: file)
             }
         }
     }

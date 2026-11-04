@@ -1,0 +1,98 @@
+<!-- Окно плагина: пока работает — невидимое — держит связь со свитчером и пересылает сообщения code.js ↔ свитчер.
+     После работы показывает итог: что исправлено. -->
+<style>
+  body { margin: 0; font: 11px/16px Inter, system-ui, sans-serif; color: var(--figma-color-text); background: var(--figma-color-bg); }
+  #stats { padding: 12px 16px 12px; }
+  h1 { font-size: 12px; font-weight: 600; margin: 0 0 8px; }
+  .row { display: flex; justify-content: space-between; }
+  .row span:last-child { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--figma-color-text-secondary); }
+  .sep { height: 1px; background: var(--figma-color-border); margin: 8px 0; }
+  button { margin-top: 12px; width: 100%; height: 32px; border: 0; border-radius: 5px; font: inherit; font-weight: 500;
+           background: var(--figma-color-bg-brand); color: var(--figma-color-text-onbrand); cursor: pointer; }
+</style>
+<div id="stats"></div>
+<script>
+const URL = "ws://localhost:48731";
+let socket = null;
+let file = null;
+let fresh = true;   // первое подключение этого запуска — свитчер сразу пришлёт работу
+
+function connect() {
+  try { socket = new WebSocket(URL); } catch (e) { return retry(); }
+  socket.onopen = () => { if (file !== null) hello(); };
+  socket.onmessage = (e) => {
+    try { parent.postMessage({ pluginMessage: { from: "switcher", message: JSON.parse(e.data) } }, "*"); } catch (_) {}
+  };
+  socket.onclose = retry;
+  socket.onerror = () => {};   // onclose придёт следом
+}
+
+let retryTimer = null;
+function retry() {
+  socket = null;
+  if (retryTimer) return;
+  retryTimer = setTimeout(() => { retryTimer = null; connect(); }, 2000);
+}
+
+function hello() {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  send({ type: "hello", version: 1, file, fresh });
+  fresh = false;
+}
+
+function send(message) {
+  if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+}
+
+const LABELS = [
+  ["commas", "Запятые"], ["typos", "Опечатки"], ["yo", "Ё"], ["nbsp", "Неразрывные пробелы"],
+  ["dashes", "Тире"], ["quotes", "Кавычки"], ["other", "Другие знаки"],
+];
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function row(label, value, cls) {
+  const r = el("div", "row" + (cls ? " " + cls : ""));
+  r.append(el("span", "", label), el("span", "", String(value)));
+  return r;
+}
+
+function showStats(stats, skipped) {
+  const box = document.getElementById("stats");
+  box.replaceChildren();
+  const rows = LABELS.filter(([k]) => stats[k] > 0);
+  if (rows.length === 0) {
+    box.append(el("h1", "", "Всё уже в порядке"), el("div", "muted", "Исправлять нечего"));
+  } else {
+    box.append(el("h1", "", "Готово"));
+    for (const [k, label] of rows) box.append(row(label, stats[k]));
+    box.append(el("div", "sep"), row("Слоёв изменено", stats.layers, "muted"));
+  }
+  if (skipped > 0) box.append(row("Пропущено (нет шрифта)", skipped, "muted"));
+  const ok = el("button", "", "Готово");
+  ok.onclick = () => parent.postMessage({ pluginMessage: { type: "hide" } }, "*");
+  box.append(ok);
+  parent.postMessage({ pluginMessage: { type: "show", height: Math.ceil(box.getBoundingClientRect().height) } }, "*");
+}
+
+window.onmessage = (e) => {
+  const m = e.data.pluginMessage;
+  if (!m) return;
+  if (m.type === "file") {
+    file = m.name;
+    hello();
+  } else if (m.type === "send") {
+    send(m.message);
+  } else if (m.type === "stats") {
+    showStats(m.stats, m.skipped);
+  }
+};
+
+connect();
+</script>

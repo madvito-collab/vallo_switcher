@@ -315,6 +315,14 @@ struct TypographyTab: View {
                                 subtitle: "\(model.hotkey(.typography).byPhrase.prefix(1).uppercased())\(model.hotkey(.typography).byPhrase.dropFirst())",
                                 isOn: $model.typographyHotkey)
             }
+            Section("Фигма") {
+                Text(T("Чтобы причёсывать фреймы целиком, установите плагин Vallo: в Фигме откройте «Плагины → Разработка → Импорт плагина из манифеста…» и выберите файл manifest.json. Дальше выделите фреймы и нажмите то же сочетание."))
+                    .font(.callout).foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Показать плагин для Фигмы") { FigmaBridge.revealPlugin() }
+                }
+            }
             Section("Примеры замен") {
                 ForEach(examples, id: \.0) { before, after in
                     LabeledContent(before) { Text(after) }

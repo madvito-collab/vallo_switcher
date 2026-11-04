@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var yo: Yoficator!
     private let modelStore = ModelStore()
     private var updater: Updater!
+    /// Связь с плагином Фигмы (живёт дольше перехвата: перехват пересоздаётся при смене разрешений).
+    private lazy var figma = FigmaBridge(store: store)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // свитчер уже запущен (например, второй раз из «Программ» или из DMG) — второй экземпляр не нужен:
@@ -26,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         updater = Updater()
+        figma.start()
         Updater.announceIfUpdated()
         menu = StatusMenu(store: store, modelStore: modelStore)
         menu.onCheckUpdates = { [weak self] in self?.updater.checkNow() }
@@ -93,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startTap() {
         guard tap == nil else { return }
         let tap = KeyboardTap(engine: engine, store: store, layouts: layouts, typos: typos, yo: yo)
+        tap.figma = figma
         modelStore.onChange = { [weak tap] in tap?.commas.unload() }
         tap.commas.onLoadFailed = { [weak self] in self?.modelStore.markBroken() }
         tap.onTypoUndone = { [weak self] word in

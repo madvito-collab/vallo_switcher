@@ -1,0 +1,13 @@
+{
+  "name": "Vallo",
+  "id": "vallo-switcher-typography",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["ws://localhost:48731"],
+    "reasoning": "Плагин связывается с приложением Vallo Switcher на этом же компьютере: тексты обрабатываются в нём, в интернет ничего не уходит."
+  }
+}

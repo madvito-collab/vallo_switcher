@@ -17,6 +17,7 @@ final class SettingsStore {
             "typoIgnoredWords": [String](),
             "typoCapitalizeEnabled": false,
             "typographyHotkeyEnabled": true,
+            "figmaPluginSeen": false,
             "typographyExcludedBundleIDs": ["com.apple.Terminal", "com.googlecode.iterm2", "com.microsoft.VSCode",
                                             "com.apple.dt.Xcode", "com.todesktop.230313mzl4w4u92"],
         ])
@@ -45,6 +46,12 @@ final class SettingsStore {
     var typographyLiveEnabled: Bool {
         get { defaults.bool(forKey: "typographyLiveEnabled") }
         set { defaults.set(newValue, forKey: "typographyLiveEnabled") }
+    }
+
+    /// Плагин Vallo в Фигме хоть раз был на связи — только тогда свитчер сам его запускает.
+    var figmaPluginSeen: Bool {
+        get { defaults.bool(forKey: "figmaPluginSeen") }
+        set { defaults.set(newValue, forKey: "figmaPluginSeen") }
     }
 
     var typographyHotkeyEnabled: Bool {
