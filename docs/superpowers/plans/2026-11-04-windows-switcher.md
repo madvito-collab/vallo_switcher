@@ -257,3 +257,49 @@ windows/
 - [ ] **Step 2:** Автор ставит `Setup.exe` на свой комп, проходит чек-листы Task 9–11.
 - [ ] **Step 3:** Проверка обновления: тег `win-v0.1.1` (любая мелкая правка) → у автора «Проверить обновления…» находит и ставит.
 - [ ] **Step 4:** HANDOFF: состояние винды, как выпускать (`win-v*` тег), где журнал. Commit `docs: windows release process, README Windows section`.
+
+## Как реализовано: решения и отложенное (2026-11-04)
+
+Сделаны задачи 1–10 (MVP). Задачи 11–12 (окно настроек на WinUI 3, приветствие, «О программе», справка, журнал отладки, автообновление, установщик) — следующим шагом. Проверка автором — `docs/windows-mvp-check.md`.
+
+### Решения ассистента
+
+- Ruling: work on main, commits local by implementer, author pushes — HANDOFF records "пушим в main"; author pushes per memory — cost if wrong: history rewrite never needed, author can still review before push.
+- Ruling: shared layout-reading code goes to new class library windows/src/Vallo.Platform (net10.0-windows), referenced by DumpLayouts (Task 3 creates it) and Vallo.App (Task 9 reuses) — console tool must not reference a WinUI app — cost if wrong: one project move.
+- Ruling: MVP tray menu (Task 8) = «Автопереключение» toggle + «Завершить Vallo Switcher» only; other items arrive with Tasks 11–12 — spec items need windows that don't exist yet; dead menu items would mislead — cost: author sees a short menu in MVP.
+- Ruling: MVP autostart path = current exe path (no Velopack yet); Task 8 CI also publishes self-contained artifact ValloSwitcher-win-x64.zip (WindowsAppSDKSelfContained=true) for the author to install by unzipping — cost: manual unzip until Task 12 installer.
+- Task 1: Ruling: install.sh not run by implementer (would replace author's running app) — build-app.sh verified bundle contains switcher-rules.json; author checks live at next Mac check — cost: a missing-resource crash would show at author's next install (fatalError message names the file).
+- Task 2: Ruling: plan expected GHBDTN → «ПРИВЕТ»; Mac keeps all-caps as abbreviation (author's decision 2026-10-30) — expectation follows Mac — cost: none, plan text was wrong.
+- Task 2: Ruling: fix round 2 re-review done by controller reading the 3-line doc-only diff (README paragraph now lists only cross-platform keys + rule banning `/~ and \/| with both mappings) — dispatching a reviewer for 3 doc lines costs more than it buys — cost if wrong: a README wording slip the C# port would surface as a failing case.
+- Task 3: Ruling: Task 3 creates windows/src/Vallo.Platform (LayoutReader) per pre-flight ruling; split at the push — implementer does scaffold+workflow+commit, author pushes, controller downloads layout artifact and commits snapshots.
+- Task 4: Ruling: numpad VKs (0x60–0x6F) sort below OEM keys on Windows, so 'smallest keyCode' would pick Num Decimal for '.'; reverse lookup prefers non-numpad (Converter.IsNumpad) — matches Swift intent 'main block, not numpad' — cost: none known.
+- Task 6: Ruling: MisspellingsPipeline/YoPipeline engine tests not ported — they need TypoCorrector/Yoficator (phases 3–4) — port them with those phases — cost: none for phase 1.
+- Task 6: Ruling: C# Judge is a reference type shared with Engine (Swift struct copy) — app holds exactly one Engine and sets Learned through it — cost: if two engines ever share a judge, learned words leak between them.
+- Task 8: Ruling: MVP app (Tasks 8–10) has no windows, so Vallo.App is a plain net10.0-windows WinExe with Win32 P/Invoke (hidden message window, Shell_NotifyIcon, native TrackPopupMenuEx menu — renders in Windows 11 style) instead of WinUI 3 + H.NotifyIcon.WinUI; WinUI 3 arrives with Task 11 windows — WinUI/XAML cannot compile on macOS, so every app iteration would need an author push; plain Win32 compiles locally with EnableWindowsTargeting — cost if wrong: Task 11 adds the Windows App SDK to an existing project (moderate).
+- Task 8: Ruling: hidden top-level tool window (WS_POPUP+WS_EX_TOOLWINDOW) instead of message-only — message-only windows miss broadcast WM_SETTINGCHANGE/TaskbarCreated needed for theme switching — cost: none.
+- Task 9: Ruling: CapsLock = Modifier (no buffer reset, as on Mac); modifier pressed while another held resets buffer (Ctrl+Shift layout hotkey never fires double Shift) — mirrors Mac otherInput — cost: none known.
+- Task 9: Ruling: while corrections are queued, later real keys are swallowed and re-sent in order — guarantees ordering of fix vs next letter — cost: injected keys lose hardware scan info (rare app issues).
+- Task 10: Ruling: in excluded apps and console windows the clipboard selection path is not used (double Shift = typed text only); skipped on third layout — Ctrl+C is SIGINT in consoles and copies the whole line in VS Code with no selection — cost: selection conversion unavailable in terminals/editors (author can remove an app from exclusions for editors).
+- Final: Ruling: games get their own fully silent list `SilentApps` (default ["javaw.exe"]), separate from ExcludedApps (terminals/editors keep Mac parity: buffer, manual double Shift works) — spec «Майнкрафт молчит»; double left Shift is sneak in Minecraft — cost: author may prefer one list; easy to merge later.
+- Final: Ruling: fullscreen exempts any IsZoomed window regardless of caption (frameless Electron/Qt apps maximized with hidden taskbar) — cost: a game that reports itself zoomed would not be silenced (rare; add it to SilentApps).
+- Final: Ruling: residual #3 parked — needs a clipboard owner with no message loop that hangs WM_DESTROYCLIPBOARD; rare; fix in phase-1 follow-up (save → pendingRestore before EmptyClipboard) — cost if wrong: in that rare case the user's clipboard is lost once.
+
+### Отложенные мелочи
+
+- Task 1: minor (deferred): switcher-rules.json "en": [] pretty-printed across lines, no trailing newline.
+- Task 1: minor (deferred): SpecialText.domains made public (unneeded surface).
+- Task 2: minor (deferred): duplicate rows (ru ghbdtn, ru Pdf), misleading notes on lines 74/99, weak `en PDF` case; precondition/fatalError on malformed rows; `as!` cast.
+- Task 3: minor (deferred): UnloadKeyboardLayout unused; redundant dead-key flush with wFlags=0; no empty-dump guard in DumpLayouts; floating test package versions (17.*, 2.*); runner.temp in PS string; dotnet run rebuild.
+- Task 4: minor (deferred): char vs Character edge cases (non-BMP, \r\n, decomposed й) — data unaffected; WordForms trims ASCII spaces only.
+- Task 5: minor (deferred): UTF-16 vs grapheme lengths in Judge (decomposed ё) — keyboard input never produces it; static smallJudge must stay unmutated.
+- Task 6: minor (deferred): Swift TypoCorrectorTests.fastEnough flaky (2/5 runs) — pre-existing timing test.
+- Task 6: minor (deferred): double Shift with selection is also silent on a third layout (untested; product call — ask author if it matters); UTF-16 lengths; PassThrough is a static instance (compare with ==); Learned aliasing per ruling.
+- Task 7: minor (deferred): mutable struct DoubleTapDetector copy trap (comment for app layer); precedence parentheses in KeyName; no tests for unknown VK / malformed kind.
+- Task 8: minor (deferred → carried into Task 9 dispatch): top-level try/catch in WndProc Handle (UnmanagedCallersOnly fail-fast).
+- Task 8: minor (deferred): NIN_KEYSELECT double fire; unused Autostart.Disable/IsEnabled; pdb + duplicate ico in artifact; SelfContained only on CI cmdline; DPI from primary taskbar only; menu stays light in dark theme (uxtheme #135 undocumented).
+- Task 9: minor (deferred): shutdown race drops one key; HotkeyConvert read once (no live reload); third-party injected events update TrackModifier/overtake queue; 250 ms lag after manual layout switch (poke on modifier-chord release).
+- Task 9: minor (deferred → carried into Task 10): try/catch around WarmUp so a failed warm-up can't disable the switcher.
+- Task 9: minor (deferred): swallowed.Clear() while pending>0 lets a stray key-up through; KeyboardHook callbacks not pre-JITted; Judge.Learned.Any(lambda) linear scan on hook path (prefix set later); ResyncModifiers on each capital letter.
+- Task 10: minor (deferred): timed-out clipboard call still runs later; OLE bookkeeping formats restored raw (Excel paste check); typing during selection job feeds engine (undo branch may win); 300 ms paste timing; first ms after focus into password field.
+- Task 10: minor (deferred): guard's InExcludedApp/WindowClass lag up to 500 ms after a window switch.
+- Final: minor (deferred): second double Shift within 700 ms after a skipped restore can overwrite pendingRestore; WTSRegisterSessionNotification not retried at early logon (resume path still works); "2,5" selection → "2б5" in Google Sheets/LibreOffice (Mac does the same on selection); old settings keep javaw.exe in ExcludedApps (silent wins).
