@@ -22,6 +22,7 @@ sealed unsafe class ContextGuard : IDisposable
     int focusDirty = 1;
 
     volatile bool excluded, fullscreen, password;
+    volatile string windowClass = "";
 
     // --- только поток охранника ---
     uint lastPid;
@@ -46,6 +47,12 @@ sealed unsafe class ContextGuard : IDisposable
 
     /// Двойной Shift: в исключениях можно, в игре и в поле пароля — нет.
     public bool ManualAllowed() => !fullscreen && !password;
+
+    /// Приложение в исключениях: набор помним, но сами не переключаем и выделение через Ctrl+C не читаем.
+    public bool InExcludedApp => excluded;
+
+    /// Класс активного окна (консоль узнаём по нему).
+    public string WindowClass => windowClass;
 
     /// Из перехвата: только отметить и разбудить — сам ни о чём не спрашивает.
     public void Invalidate()
@@ -74,6 +81,7 @@ sealed unsafe class ContextGuard : IDisposable
             {
                 // не поняли, где мы, — не мешаем
                 excluded = fullscreen = password = false;
+                windowClass = "";
             }
         }
     }
@@ -84,10 +92,13 @@ sealed unsafe class ContextGuard : IDisposable
         if (hwnd == 0)
         {
             excluded = fullscreen = password = false;
+            windowClass = "";
             return;
         }
         excluded = ExclusionMatcher.IsExcluded(ExeName(hwnd), store.Current.ExcludedApps);
-        fullscreen = IsFullscreen(hwnd);
+        var cls = ClassOf(hwnd);
+        windowClass = cls;
+        fullscreen = IsFullscreen(hwnd, cls);
         if (Interlocked.Exchange(ref focusDirty, 0) == 1)
             probe.Ask(PasswordBudgetMs);
     }
@@ -118,7 +129,14 @@ sealed unsafe class ContextGuard : IDisposable
         return exe;
     }
 
-    static bool IsFullscreen(nint hwnd)
+    static string ClassOf(nint hwnd)
+    {
+        var buf = stackalloc char[256];
+        var len = GetClassName(hwnd, buf, 256);
+        return len > 0 ? new string(buf, 0, len) : "";
+    }
+
+    static bool IsFullscreen(nint hwnd, string cls)
     {
         if (!GetWindowRect(hwnd, out var w)) return false;
         var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -126,9 +144,6 @@ sealed unsafe class ContextGuard : IDisposable
         if (monitor == 0 || !GetMonitorInfo(monitor, ref info)) return false;
         var m = info.rcMonitor; // весь монитор, не рабочая область
 
-        var buf = stackalloc char[64];
-        var len = GetClassName(hwnd, buf, 64);
-        var cls = len > 0 ? new string(buf, 0, len) : "";
         var shell = cls is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
         var maximizedWithCaption = IsZoomed(hwnd) && ((long)GetWindowLongPtr(hwnd, GWL_STYLE) & WS_CAPTION) == WS_CAPTION;
 

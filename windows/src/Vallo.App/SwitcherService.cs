@@ -149,6 +149,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         HookFilter.Classify(0x41, 0, 0, false, false, false);
         _ = guard.AutoSwitchAllowed();
         _ = guard.ManualAllowed();
+        _ = guard.InExcludedApp;
+        _ = SelectionPolicy.MayCopy(false, guard.WindowClass, false);
         _ = GetKeyState(VK_CAPITAL);
         _ = GetAsyncKeyState(0xA0);
     }
@@ -182,8 +184,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         // обычная клавиша
         if (!k.Down) return swallowed.Remove(k.Vk) || PassOrQueue(k);
         if (hasTap) tap.OtherInput();
-        // исключение, игра на весь экран, поле пароля — не вмешиваемся и ничего не запоминаем
-        if (!guard.AutoSwitchAllowed())
+        // игра на весь экран, поле пароля — не вмешиваемся и ничего не запоминаем
+        if (!guard.ManualAllowed())
         {
             lock (gate) engine.Reset();
             return PassOrQueue(k);
@@ -192,7 +194,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         EngineOutput output;
         lock (gate)
         {
-            engine.AutoSwitchEnabled = store.Current.AutoSwitchEnabled;
+            // исключённое приложение: набор помним (двойной Shift его переведёт), сами не переключаем — как на Маке
+            engine.AutoSwitchEnabled = store.Current.AutoSwitchEnabled && !guard.InExcludedApp;
             output = engine.HandleKey(new KeyEvent(stroke, HasCtrlOrAlt: false));
             if (output is EngineOutput.Consume c && HasSwitch(c.Actions)) lastSwitchTick = Environment.TickCount64;
         }
@@ -249,8 +252,10 @@ sealed class SwitcherService : IHookSink, IDisposable
         {
             // откат важнее выделения; есть откат или свежий набор — выделения быть не может, Ctrl+C не нужен
             // (в VS Code Ctrl+C без выделения копирует всю строку)
-            readSelection = !engine.CanUndo && !engine.HasTypedText;
-            if (!readSelection)
+            var nothingTyped = !engine.CanUndo && !engine.HasTypedText;
+            // в терминалах и редакторах (исключения), в консоли, на третьей раскладке Ctrl+C вслепую не шлём
+            readSelection = nothingTyped && SelectionPolicy.MayCopy(guard.InExcludedApp, guard.WindowClass, engine.IsForeignLayout);
+            if (!nothingTyped)
             {
                 actions = engine.HandleDoubleShift(null);
                 if (HasSwitch(actions)) lastSwitchTick = Environment.TickCount64;

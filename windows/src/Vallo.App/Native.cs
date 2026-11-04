@@ -375,6 +375,13 @@ static unsafe partial class Native
     [LibraryImport("user32.dll")]
     public static partial uint GetClipboardSequenceNumber();
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsClipboardFormatAvailable(uint format);
+
+    [LibraryImport("user32.dll", EntryPoint = "RegisterClipboardFormatW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint RegisterClipboardFormat(string name);
+
     [LibraryImport("kernel32.dll")]
     public static partial nint GlobalAlloc(uint flags, nuint bytes);
 

@@ -36,6 +36,13 @@ sealed unsafe class SelectionReader : IDisposable
     /// Номер содержимого буфера сразу после нашей подмены: изменился — человек скопировал своё, не трогаем.
     uint ourSequence;
     Timer? restoreTimer;
+    /// Номер подмены: таймер прошлой подмены, сработавший посреди новой, ничего не трогает.
+    int generation;
+
+    /// Наши записи в буфер не должны попасть в журнал буфера Windows (Win+V) и в облако — текст никуда не пишется.
+    static readonly uint ExcludeFromMonitor = RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing");
+    static readonly uint CanIncludeInHistory = RegisterClipboardFormat("CanIncludeInClipboardHistory");
+    static readonly uint CanUploadToCloud = RegisterClipboardFormat("CanUploadToCloudClipboard");
 
     public SelectionReader(InputSender sender)
     {
@@ -47,7 +54,7 @@ sealed unsafe class SelectionReader : IDisposable
 
     public void Dispose()
     {
-        lock (restoreGate) restoreTimer?.Dispose();
+        CancelTimer();
         RestoreNow();
         if (threadId != 0) PostThreadMessage(threadId, WM_QUIT, 0, 0);
         if (thread.IsAlive) thread.Join(1000);
@@ -56,7 +63,9 @@ sealed unsafe class SelectionReader : IDisposable
     /// Выделенный текст или null. Null — буфер уже возвращён. Не null — потом обязательно Paste или Restore.
     public string? Copy()
     {
-        RestoreNow(); // прошлая подмена ещё висит — сперва вернуть исходное, иначе сохраним свою же
+        // прошлая подмена ещё висит — сперва вернуть исходное (если человек не скопировал своё), иначе сохраним свою же
+        CancelTimer();
+        RestoreCall(gen: null, onlyIfOurs: true);
         var saved = OnClipboard(() => Open() ? Use(() => { var s = Save(); EmptyClipboard(); return s; }) : null);
         if (saved is null) return null; // буфер занят — лучше ничего не делать, чем потерять чужое
         lock (restoreGate) pendingRestore = saved;
@@ -68,8 +77,11 @@ sealed unsafe class SelectionReader : IDisposable
             RestoreNow();
             return null;
         }
+        // первая смена номера — ещё не текст (программа могла только очистить буфер или положить другой формат первым)
         var deadline = Environment.TickCount64 + CopyWaitMs;
-        while (GetClipboardSequenceNumber() == sequence && Environment.TickCount64 < deadline) Thread.Sleep(10);
+        while (Environment.TickCount64 < deadline
+               && !(GetClipboardSequenceNumber() != sequence && IsClipboardFormatAvailable(CF_UNICODETEXT)))
+            Thread.Sleep(10);
 
         var after = GetClipboardSequenceNumber() == sequence ? null : OnClipboard(() => Open() ? Use(ReadText) : null);
         if (SelectionDecision.Decide(before, after) is SelectionDecision.Result.Selected s) return s.Text;
@@ -80,7 +92,13 @@ sealed unsafe class SelectionReader : IDisposable
     /// Заменить выделение: текст в буфер, Ctrl+V, исходный буфер — обратно через 300 мс.
     public bool Paste(string text)
     {
-        var put = OnClipboard(() => Open() && Use(() => { EmptyClipboard(); return SetText(text); }));
+        var put = OnClipboard(() => Open() && Use(() =>
+        {
+            EmptyClipboard();
+            var ok = SetText(text);
+            MarkPrivate();
+            return ok;
+        }));
         if (!put)
         {
             RestoreNow();
@@ -90,7 +108,8 @@ sealed unsafe class SelectionReader : IDisposable
         {
             ourSequence = GetClipboardSequenceNumber();
             restoreTimer?.Dispose();
-            restoreTimer = new Timer(_ => RestoreIfOurs(), null, RestoreDelayMs, Timeout.Infinite);
+            var gen = ++generation;
+            restoreTimer = new Timer(_ => RestoreCall(gen, onlyIfOurs: true), null, RestoreDelayMs, Timeout.Infinite);
         }
         return sender.Shortcut(VK_CONTROL, VK_V);
     }
@@ -98,30 +117,45 @@ sealed unsafe class SelectionReader : IDisposable
     /// Вставлять нечего — вернуть исходный буфер сразу.
     public void Restore() => RestoreNow();
 
-    void RestoreIfOurs()
+    void RestoreNow() => RestoreCall(gen: null, onlyIfOurs: false);
+
+    void CancelTimer()
+    {
+        lock (restoreGate)
+        {
+            generation++;
+            restoreTimer?.Dispose();
+            restoreTimer = null;
+        }
+    }
+
+    /// Вернуть исходный буфер. Всё решается на потоке «буфера», где вызовы идут строго по одному:
+    /// опоздавший таймер (`gen` устарел) не вклинится между сохранением и Ctrl+C новой подмены.
+    /// `onlyIfOurs` — после вставки: если человек успел скопировать своё, его новое важнее старого.
+    void RestoreCall(int? gen, bool onlyIfOurs)
     {
         try
         {
-            lock (restoreGate)
+            OnClipboard(() =>
             {
-                // человек успел скопировать своё — его новое важнее старого
-                if (GetClipboardSequenceNumber() != ourSequence) pendingRestore = null;
-            }
-            RestoreNow();
+                Saved? saved;
+                lock (restoreGate)
+                {
+                    if (gen is { } g && g != generation) return false;
+                    saved = pendingRestore;
+                    pendingRestore = null;
+                    if (saved is null) return false;
+                    if (onlyIfOurs && GetClipboardSequenceNumber() != ourSequence) return false;
+                }
+                return Open() && Use(() =>
+                {
+                    Put(saved);
+                    MarkPrivate();
+                    return true;
+                });
+            });
         }
         catch { }
-    }
-
-    void RestoreNow()
-    {
-        Saved? saved;
-        lock (restoreGate)
-        {
-            saved = pendingRestore;
-            pendingRestore = null;
-        }
-        if (saved is null) return;
-        OnClipboard(() => Open() && Use(() => { Put(saved); return true; }));
     }
 
     // ---- Поток «буфера»: окно-невидимка и цикл сообщений
@@ -240,6 +274,15 @@ sealed unsafe class SelectionReader : IDisposable
     {
         EmptyClipboard();
         foreach (var (format, data) in saved.Formats) SetBytes(format, data);
+    }
+
+    /// Не в журнал Win+V и не в облако. Вызывать при открытом буфере, после своих данных.
+    static void MarkPrivate()
+    {
+        var zero = new byte[4]; // DWORD 0
+        if (ExcludeFromMonitor != 0) SetBytes(ExcludeFromMonitor, zero);
+        if (CanIncludeInHistory != 0) SetBytes(CanIncludeInHistory, zero);
+        if (CanUploadToCloud != 0) SetBytes(CanUploadToCloud, zero);
     }
 
     static bool SetText(string text)

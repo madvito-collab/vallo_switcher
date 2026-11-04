@@ -86,6 +86,9 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
     /// Двойной Shift сейчас откатит автоисправление (тогда выделение не читаем).
     public bool CanUndo => undo != null;
 
+    /// Третья раскладка (не RU и не EN) — движок молчит.
+    public bool IsForeignLayout => foreignLayout;
+
     // ---- Нажатия
 
     public EngineOutput HandleKey(KeyEvent e)
