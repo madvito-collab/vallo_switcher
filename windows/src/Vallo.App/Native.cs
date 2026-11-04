@@ -255,6 +255,9 @@ static unsafe partial class Native
     public static partial short GetKeyState(int vk);
 
     [LibraryImport("user32.dll")]
+    public static partial short GetAsyncKeyState(int vk);
+
+    [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
 
     [LibraryImport("user32.dll")]

@@ -5,17 +5,19 @@ namespace Vallo.App;
 
 /// «Руки»: стирают, печатают, жмут клавиши, переключают раскладку. Только поток-исполнитель.
 /// Все события помечены HookFilter.OurMarker — перехват их пропускает.
-sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store)
+/// `switchPosted` — сразу после просьбы окну сменить раскладку.
+sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Action switchPosted)
 {
     const ushort VK_BACK = 0x08;
 
-    /// Когда последний раз просили сменить раскладку (Environment.TickCount64).
-    public long LastSwitchTick;
-
     readonly List<INPUT> batch = new();
+    /// Все ли события текущего Perform/Replay система приняла.
+    bool delivered;
 
-    public void Perform(IReadOnlyList<EngineAction> actions)
+    /// false — SendInput принял не всё: экран больше не совпадает с памятью движка.
+    public bool Perform(IReadOnlyList<EngineAction> actions)
     {
+        delivered = true;
         foreach (var action in actions)
         {
             switch (action)
@@ -44,13 +46,16 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store)
             }
         }
         Flush();
+        return delivered;
     }
 
     /// Повторить проглоченное, пока мы работали, нажатие — как было.
-    public void Replay(ushort vk, ushort scan, bool extended, bool up)
+    public bool Replay(ushort vk, ushort scan, bool extended, bool up)
     {
+        delivered = true;
         Add(vk, scan, (extended ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0));
         Flush();
+        return delivered;
     }
 
     void Key(ushort vk)
@@ -94,7 +99,10 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store)
         if (batch.Count == 0) return;
         var arr = batch.ToArray();
         batch.Clear();
-        fixed (INPUT* p = arr) SendInput((uint)arr.Length, p, sizeof(INPUT));
+        uint sent;
+        fixed (INPUT* p = arr) sent = SendInput((uint)arr.Length, p, sizeof(INPUT));
+        // TODO(задача 11): в журнал отладки — sent из arr.Length (только числа, без текста)
+        if (sent != arr.Length) delivered = false;
     }
 
     void SwitchLayout(Language l)
@@ -102,8 +110,8 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store)
         var hkl = layouts.Hkl(l);
         var hwnd = GetForegroundWindow();
         if (hkl == 0 || hwnd == 0) return;
-        Interlocked.Exchange(ref LastSwitchTick, Environment.TickCount64);
         PostMessage(hwnd, WM_INPUTLANGCHANGEREQUEST, 0, hkl);
+        switchPosted();
     }
 
     void Learn(string word) => store.Update(s =>
