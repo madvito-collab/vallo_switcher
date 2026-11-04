@@ -13,16 +13,36 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.5</string>
+    <string>0.6</string>
     <key>CFBundleVersion</key>
-    <string>5</string>
+    <string>6</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Shmelev Vitaliy</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <!-- окна Sparkle по-русски -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>ru</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>ru</string>
+    </array>
+    <!-- автообновление: список версий лежит в репозитории, DMG — в GitHub Releases -->
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/madvito-collab/vallo_switcher/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>6CTCZaTcX4BHG0Vq50H8+tlcT/PpYt1jy0qszZ3lE+Q=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAutomaticallyUpdate</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>

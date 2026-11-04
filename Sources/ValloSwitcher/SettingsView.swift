@@ -6,6 +6,7 @@ import ValloCore
 /// Модель окна настроек поверх SettingsStore.
 final class SettingsModel: ObservableObject {
     private let store: SettingsStore
+    private let updater: Updater
     /// Список запомненных слов поменялся — движку надо обновить судью.
     var onLearnedChanged: (([String]) -> Void)?
     /// «Не исправлять» поменялись — исправлятору надо обновить.
@@ -14,6 +15,8 @@ final class SettingsModel: ObservableObject {
     var onHotkeysChanged: (() -> Void)?
 
     @Published var autoSwitch: Bool { didSet { store.autoSwitchEnabled = autoSwitch } }
+    /// Хранит сам Sparkle — у него своя настройка.
+    @Published var autoUpdate: Bool { didSet { updater.automaticallyUpdates = autoUpdate } }
     @Published var debugMode: Bool {
         didSet {
             store.debugMode = debugMode
@@ -54,9 +57,11 @@ final class SettingsModel: ObservableObject {
         }
     }
 
-    init(store: SettingsStore) {
+    init(store: SettingsStore, updater: Updater) {
         self.store = store
+        self.updater = updater
         autoSwitch = store.autoSwitchEnabled
+        autoUpdate = updater.automaticallyUpdates
         debugMode = store.debugMode
         excluded = store.excludedBundleIDs
         typographyLive = store.typographyLiveEnabled
@@ -209,6 +214,9 @@ struct GeneralTab: View {
             Section {
                 Toggle("Автоматически переключать раскладку", isOn: $model.autoSwitch)
                 Toggle("Запускать при входе в систему", isOn: $model.launchAtLogin)
+                SubtitledToggle(title: "Обновлять автоматически",
+                                subtitle: "Новая версия скачивается сама и ставится при перезапуске. Выключено — свитчер спросит перед обновлением.",
+                                isOn: $model.autoUpdate)
                 Toggle(T("Режим отладки"), isOn: $model.debugMode)
             } footer: {
                 BelowBlock(hint: "\(model.hotkey(.convert).pressInstruction), чтобы переключить раскладку набранного или выделенного текста. Работает, даже если автоматическое переключение выключено.") {
@@ -606,7 +614,7 @@ final class SettingsWindow {
             item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
             tabs.addTabViewItem(item)
         }
-        add("Основное", "gearshape", height: 230, GeneralTab(model: model))
+        add("Основное", "gearshape", height: 290, GeneralTab(model: model))
         add("Исключения", "nosign", height: 520, ExclusionsTab(model: model))
         add("Типографика", "textformat", height: 600, TypographyTab(model: model))
         add("Сочетания", "keyboard", height: 260, HotkeysTab(model: model))

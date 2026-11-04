@@ -2,9 +2,11 @@
 
 Переключатель раскладки для macOS: исправляет текст, набранный не в той раскладке (RU ↔ EN). Бесплатная замена Caramba Switcher и Punto Switcher.
 
+Автор — **Shmelev Vitaliy**, [t.me/madvito](https://t.me/madvito).
+
 `ghbdtn` → «привет», `,eltn` → «будет», `руддщ` → «hello».
 
-Работает офлайн (интернет — только для скачивания модели запятых по кнопке). Набранный текст никуда не сохраняется и не отправляется.
+Работает офлайн (интернет — только для скачивания модели запятых по кнопке и проверки обновлений раз в день). Набранный текст никуда не сохраняется и не отправляется.
 
 ## Что умеет
 
@@ -43,6 +45,7 @@ swift test              # автотесты логики
 scripts/build-app.sh    # build/Vallo Switcher.app
 scripts/install.sh      # собрать и поставить в /Applications
 scripts/package.sh      # собрать DMG для раздачи в build/
+scripts/release.sh      # выпуск для автообновления: DMG + подпись + appcast.xml
 scripts/build-typo-dictionary.py путь/к/ruwiki.txt # пересобрать словарь опечаток
 scripts/render-guide.sh # пересобрать «Как установить.pdf» из Support/Guide/guide.html (нужен Chrome)
 ```
@@ -64,3 +67,9 @@ scripts/render-guide.sh # пересобрать «Как установить.p
 ```
 
 В журнал пишутся только виды действий и длины, сам текст туда не попадает.
+
+## Автор и лицензия
+
+**Shmelev Vitaliy** — [t.me/madvito](https://t.me/madvito).
+
+Код — [MIT](LICENSE): можно брать и дорабатывать, сохранив имя автора. Словари — под своими лицензиями, см. [Data/wordlists/README.md](Data/wordlists/README.md).

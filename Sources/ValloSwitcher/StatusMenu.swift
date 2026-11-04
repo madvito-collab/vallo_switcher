@@ -18,16 +18,17 @@ final class StatusMenu: NSObject {
     private let menu = NSMenu()
 
     var onOpenSettings: (() -> Void)?
+    var onCheckUpdates: (() -> Void)?
     var onGivePermissions: (() -> Void)?
     /// «Скачать модель запятых» — открыть вкладку «Опечатки» и начать скачивание.
     var onDownloadModel: (() -> Void)?
 
     /// Иконка ученика (шаблон: Мак сам красит её под светлую и тёмную строку меню).
     private static let icon: NSImage? = {
-        // PNG 1x/2x, а не SVG: SVG старые macOS могут прочитать «пустым» (scripts/render-menubar-icon.swift)
+        // PNG 1x/2x из набора ученика (Support/Icons, «ё» 16/32 px): SVG старые macOS могут прочитать «пустым»
         guard let image = Bundle.main.image(forResource: "MenuBarIcon") else { return nil }
         image.isTemplate = true
-        image.size = NSSize(width: 18, height: 18)
+        image.size = NSSize(width: 16, height: 16)
         return image
     }()
 
@@ -40,21 +41,32 @@ final class StatusMenu: NSObject {
         permissionsItem.target = self
         modelItem.target = self
         // без сочетаний и стандартных названий-действий: иначе macOS сама дорисует иконки,
-        // и текст пунктов поедет по вертикали
+        // и текст пунктов поедет по вертикали (в macOS 27 иконки ещё и прячем явно — см. ниже)
         let settings = NSMenuItem(title: "Настройки…", action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
+        let updates = NSMenuItem(title: "Проверить обновления…", action: #selector(checkUpdates), keyEquivalent: "")
+        updates.target = self
         let help = NSMenuItem(title: "Справка", action: #selector(openHelp), keyEquivalent: "")
         help.target = self
-        let quit = NSMenuItem(title: "Выйти из Vallo Switcher", action: #selector(quit), keyEquivalent: "")
+        let about = NSMenuItem(title: "О программе", action: #selector(openAbout), keyEquivalent: "")
+        about.target = self
+        let quit = NSMenuItem(title: "Завершить Vallo Switcher", action: #selector(quit), keyEquivalent: "")
         quit.target = self
+        // три группы: автопереключение / настройки и обновления / справка, о программе, завершить
         menu.addItem(autoItem)
         menu.addItem(.separator())
         menu.addItem(permissionsItem)
         menu.addItem(modelItem)
         menu.addItem(settings)
-        menu.addItem(help)
+        menu.addItem(updates)
         menu.addItem(.separator())
+        menu.addItem(help)
+        menu.addItem(about)
         menu.addItem(quit)
+        // macOS 27 сам подставляет значки к «Настройкам…», «Завершить» и т. п. (шестерёнка) — ученику не нужны
+        if #available(macOS 27, *) {
+            for i in menu.items { i.preferredImageVisibility = .hidden }
+        }
         menu.delegate = self
         item.menu = menu
         set(state: .working)
@@ -98,6 +110,8 @@ final class StatusMenu: NSObject {
 
     @objc private func givePermissions() { onGivePermissions?() }
     @objc private func openSettings() { onOpenSettings?() }
+    @objc private func checkUpdates() { onCheckUpdates?() }
+    @objc private func openAbout() { Updater.showAbout() }
     @objc private func downloadModel() { onDownloadModel?() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func openHelp() {
@@ -115,7 +129,7 @@ final class SwitchRowView: NSView {
         self.onChange = onChange
         super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 34))
         label.stringValue = title
-        label.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+        label.font = .menuFont(ofSize: 0)
         toggle.onChange = { [weak self] in self?.onChange($0) }
         for v in [label, toggle] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false

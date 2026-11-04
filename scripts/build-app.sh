@@ -11,8 +11,12 @@ swift build -c release --product ValloSwitcher
 BIN="$(swift build -c release --show-bin-path)/ValloSwitcher"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/wordlists"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/wordlists" "$APP/Contents/Frameworks"
 cp "$BIN" "$APP/Contents/MacOS/ValloSwitcher"
+# Sparkle (автообновление). ditto — чтобы не сломать символьные ссылки внутри фреймворка.
+# XPC-сервисы нужны только приложениям в песочнице, у нас её нет — выкидываем.
+ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
 # SwiftPM записывает в бинарник «собрано под SDK 14», и macOS рисует старый дизайн.
 # Ставим реальную версию SDK — тогда включается Liquid Glass.
 # `--sdk macosx` обязателен: без него xcrun иногда не находит SDK и отдаёт пустоту — бинарник получал «sdk n/a»,
@@ -26,5 +30,10 @@ cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
 
+# подписываем изнутри наружу: сначала помощники Sparkle, потом фреймворк, потом приложение
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+codesign --force --options runtime --sign "$SIGN_ID" "$SPARKLE/Autoupdate"
+codesign --force --options runtime --sign "$SIGN_ID" "$SPARKLE/Updater.app"
+codesign --force --options runtime --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
 codesign --force --options runtime --sign "$SIGN_ID" "$APP"
 echo "Готово: $APP"

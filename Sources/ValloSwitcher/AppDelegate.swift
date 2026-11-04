@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var typos: TypoCorrector!
     private var yo: Yoficator!
     private let modelStore = ModelStore()
+    private var updater: Updater!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // свитчер уже запущен (например, второй раз из «Программ» или из DMG) — второй экземпляр не нужен:
@@ -24,7 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        updater = Updater()
+        Updater.announceIfUpdated()
         menu = StatusMenu(store: store, modelStore: modelStore)
+        menu.onCheckUpdates = { [weak self] in self?.updater.checkNow() }
         DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
@@ -39,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fail("Не получилось запуститься: \(error)")
             return
         }
-        let model = SettingsModel(store: store)
+        let model = SettingsModel(store: store, updater: updater)
         model.onLearnedChanged = { [weak self] words in self?.engine.judge.learned = Set(words) }
         model.onTypoWordsChanged = { [weak self] words in
             self?.typos.ignored = Set(words.map(Lexicon.normalize))
