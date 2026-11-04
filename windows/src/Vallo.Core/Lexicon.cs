@@ -68,7 +68,7 @@ public sealed class Lexicon
         return sum / tris.Count;
     }
 
-    static bool IsInAlphabet(char ch, Language language) => language switch
+    public static bool IsInAlphabet(char ch, Language language) => language switch
     {
         Language.En => ch >= 'a' && ch <= 'z',
         _ => (ch >= 'а' && ch <= 'я') || ch == 'ё',
