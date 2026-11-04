@@ -118,7 +118,7 @@ public struct LiveOptions: Sendable { public var typography: Bool; public var ty
 
 **Produces:** `SettingsStore.typoLiveEnabled`, `typoIgnoredWords`, `typoCapitalizeEnabled`; `KeyboardTap.typos: TypoCorrector` (загружается из `wordlists/ru.txt` с limit 50 000 при старте); `live.typed(…, options:)` с `typos: store.typoLiveEnabled ? typos : nil`, `typography: store.typographyLiveEnabled`; живой путь работает, если включено хоть что-то из двух и приложение не в исключениях типографики. После `live.backspace()` с `undoneTypoWord` — добавить слово в `typoIgnoredWords` и в `typos.ignored`. Вкладка «Слова»: разделы «Не переключать раскладку» и «Не исправлять». Раздел исключений переименовать в «Типографика и опечатки на лету».
 - [ ] **Step 1:** Реализовать, `swift build -c release` и `swift test` PASS.
-- [ ] **Step 2: Ручная проверка с учеником** (TextEdit, Telegram, Chrome): `првет`, `приввет`, `пожалуста`, `ктото` + пробел; Backspace сразу после — вернулось и слово появилось в «Не исправлять»; `фигма`, `хз`, `Сбербанк` не трогаются; **Review Focus 1, 2**: `yfgbie` + пробел, затем двойной левый Shift — текст не портится.
+- [ ] **Step 2: Ручная проверка с автором** (TextEdit, Telegram, Chrome): `првет`, `приввет`, `пожалуста`, `ктото` + пробел; Backspace сразу после — вернулось и слово появилось в «Не исправлять»; `фигма`, `хз`, `Сбербанк` не трогаются; **Review Focus 1, 2**: `yfgbie` + пробел, затем двойной левый Shift — текст не портится.
 - [ ] **Step 3:** Коммит `feat: typos in the app, my words`.
 
 ### Task 5: Экспорт и публикация модели
@@ -128,7 +128,7 @@ public struct LiveOptions: Sendable { public var typography: Bool; public var ty
 - [ ] **Step 1:** Проверить лицензию `ai-forever/sage-fredt5-distilled-95m` на Hugging Face; записать в `Data/models/README.md` (название, лицензия, источник, размер).
 - [ ] **Step 2:** `optimum-cli export onnx --model ai-forever/sage-fredt5-distilled-95m --task text2text-generation-with-past` → encoder/decoder ONNX; квантование int8 (`optimum.onnxruntime.ORTQuantizer`, dynamic). Ожидается: суммарно ≤ 150 МБ.
 - [ ] **Step 3:** Сравнить в Python ответы int8 и исходной модели на 34 фразах эксперимента; расхождений по запятым ≤ 2.
-- [ ] **Step 4:** Упаковать `encoder.onnx`, `decoder.onnx`, `tokenizer.json`, `config.json`, `LICENSE` в `sage-fredt5-95m-int8.zip`, посчитать SHA-256. **Перед загрузкой спросить ученика**, затем выложить в релиз `models-1` репозитория `madvito-collab/vallo-models` (через `git push` тега и загрузку файла — ученик создаёт репозиторий заранее).
+- [ ] **Step 4:** Упаковать `encoder.onnx`, `decoder.onnx`, `tokenizer.json`, `config.json`, `LICENSE` в `sage-fredt5-95m-int8.zip`, посчитать SHA-256. **Перед загрузкой спросить автора**, затем выложить в релиз `models-1` репозитория `madvito-collab/vallo-models` (через `git push` тега и загрузку файла — автор создаёт репозиторий заранее).
 - [ ] **Step 5:** Коммит `chore: model export script`.
 
 ### Task 6: Модель в Swift (ONNX Runtime)
@@ -142,7 +142,7 @@ final class CommaModel {
     func run(_ text: String) throws -> String       // жадная генерация, max 128 токенов
 }
 ```
-- [ ] **Step 1:** Разведка: собрать CLI-цель `model-check` (временно), прогнать 5 фраз, сравнить с Python int8. Ожидается: совпадение текста; время ≤ 0,5 с на фразу. Если ONNX Runtime или токенизатор не собираются под нашу сборку — **стоп, спросить ученика** (запасной путь — Core ML).
+- [ ] **Step 1:** Разведка: собрать CLI-цель `model-check` (временно), прогнать 5 фраз, сравнить с Python int8. Ожидается: совпадение текста; время ≤ 0,5 с на фразу. Если ONNX Runtime или токенизатор не собираются под нашу сборку — **стоп, спросить автора** (запасной путь — Core ML).
 - [ ] **Step 2:** Реализовать `CommaModel` (кэш `past_key_values`, жадный поиск, стоп по eos). Удалить `model-check`.
 - [ ] **Step 3:** Проверить, что `scripts/build-app.sh` кладёт библиотеки ONNX Runtime в `.app` и подпись проходит (`codesign --verify --strict`).
 - [ ] **Step 4:** Коммит `feat: comma model runtime`.

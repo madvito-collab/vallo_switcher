@@ -23,9 +23,9 @@ final class StatusMenu: NSObject {
     /// «Скачать модель запятых» — открыть вкладку «Опечатки» и начать скачивание.
     var onDownloadModel: (() -> Void)?
 
-    /// Иконка ученика (шаблон: Мак сам красит её под светлую и тёмную строку меню).
+    /// Иконка автора (шаблон: Мак сам красит её под светлую и тёмную строку меню).
     private static let icon: NSImage? = {
-        // PNG 1x/2x из набора ученика (Support/Icons, «ё» 16/32 px): SVG старые macOS могут прочитать «пустым»
+        // PNG 1x/2x из набора автора (Support/Icons, «ё» 16/32 px): SVG старые macOS могут прочитать «пустым»
         guard let image = Bundle.main.image(forResource: "MenuBarIcon") else { return nil }
         image.isTemplate = true
         image.size = NSSize(width: 16, height: 16)
@@ -63,7 +63,7 @@ final class StatusMenu: NSObject {
         menu.addItem(help)
         menu.addItem(about)
         menu.addItem(quit)
-        // macOS 27 сам подставляет значки к «Настройкам…», «Завершить» и т. п. (шестерёнка) — ученику не нужны
+        // macOS 27 сам подставляет значки к «Настройкам…», «Завершить» и т. п. (шестерёнка) — автору не нужны
         if #available(macOS 27, *) {
             for i in menu.items { i.preferredImageVisibility = .hidden }
         }

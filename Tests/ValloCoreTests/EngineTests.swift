@@ -280,7 +280,7 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
     }
 
     @Test func capsAbbreviationsStayInTheirLayout() {
-        // просьба ученика: «ВГСЧ» → «DUC», «ЖКХ» → «:R{», «PDF» → «ЗВА» — так было; аббревиатуры не переводим
+        // просьба автора: «ВГСЧ» → «DUC», «ЖКХ» → «:R{», «PDF» → «ЗВА» — так было; аббревиатуры не переводим
         for w in ["ВГСЧ ", "ЖКХ ", "СПГ ", "ЧС ", "МЧС ", "СНИЛС "] { #expect(!consumed(w, .ru), "\(w)") }
         for w in ["PDF ", "API ", "KPI ", "SDK "] { #expect(!consumed(w, .en), "\(w)") }
     }

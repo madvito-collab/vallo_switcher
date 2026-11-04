@@ -16,12 +16,12 @@
 - Bundle ID `com.vallo.switcher`, имя `Vallo Switcher`.
 - Работает **полностью офлайн**. Никаких сетевых запросов в коде приложения.
 - Набранный текст **нигде не сохраняется**, только буфер в памяти (не больше 200 нажатий). В UserDefaults лежат только: `autoSwitchEnabled: Bool` (по умолчанию `true`), `excludedBundleIDs: [String]` (по умолчанию `["com.apple.Terminal", "com.googlecode.iterm2", "com.microsoft.VSCode"]`), `learnedWords: [String]`, `debugMode: Bool` (по умолчанию `false`).
-- Языки только RU и EN. Раскладки берутся **из системы** (у ученика «Русская» маковская + ABC/U.S., клавиатура ANSI), с учётом типа клавиатуры (ANSI/ISO/JIS).
+- Языки только RU и EN. Раскладки берутся **из системы** (у автора «Русская» маковская + ABC/U.S., клавиатура ANSI), с учётом типа клавиатуры (ANSI/ISO/JIS).
 - Двойной Shift: только **левый** Shift (keyCode 56), два чистых нажатия, второе нажатие начинается не позже **0,3 с** после первого отпускания.
 - Автопереключение: решение не раньше **3-й буквы**; слова из 1–2 букв автоматически не трогаются; переключение назад — максимум один раз за слово.
 - Нормализация словарей и проверок: `lowercased()`, `ё → е`.
 - Свои синтетические события помечаются `eventSourceUserData = 0x56414C4C` («VALL»), и тап их игнорирует.
-- Коммиты без строки `Co-Authored-By` (правило ученика).
+- Коммиты без строки `Co-Authored-By` (правило автора).
 - **Уточнение спеки (сценарий Б).** Автоисправление теперь бывает посреди слова, поэтому откат действует, пока ты дописываешь это слово, и сразу после его конца. Откат сбрасывается, когда начинается следующее слово, на клик, смену окна или раскладки.
 
 ## Review Focus
@@ -58,13 +58,13 @@ Tests/ValloCoreTests/*.swift
 
 ---
 
-### Task 0: Подготовка Мака (делает ученик, ассистент диктует)
+### Task 0: Подготовка Мака (делает автор, ассистент диктует)
 
-- [ ] **Step 1:** Ученик в Терминале переключает инструменты на Xcode и принимает лицензию:
+- [ ] **Step 1:** Автор в Терминале переключает инструменты на Xcode и принимает лицензию:
   `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -license accept`
-- [ ] **Step 2:** Ученик открывает Xcode → Settings → Accounts → «+» → Apple ID. Входит своим Apple ID и создаёт сертификат (Manage Certificates → «+» → Apple Development).
+- [ ] **Step 2:** Автор открывает Xcode → Settings → Accounts → «+» → Apple ID. Входит своим Apple ID и создаёт сертификат (Manage Certificates → «+» → Apple Development).
 - [ ] **Step 3: Проверка.** Ассистент запускает `swift --version` (должна быть версия Swift без ошибки про лицензию) и `security find-identity -v -p codesigning` (ожидается строка `Apple Development: …`).
-- [ ] **Step 4:** `git init` в `plug`, первый коммит со спекой и планом. Как именно делаем git, решаем с учеником перед этим шагом.
+- [ ] **Step 4:** `git init` в `plug`, первый коммит со спекой и планом. Как именно делаем git, решаем с автором перед этим шагом.
 
 ### Task 1: Каркас пакета, модель нажатий, фикстуры раскладок
 
@@ -130,7 +130,7 @@ public struct Lexicon: Sendable {
 }
 ```
 
-- [ ] **Step 1:** Данные — частотные списки hermitdave/FrequencyWords (OpenSubtitles 2018, `en_50k.txt`, `ru_50k.txt`). **Перед скачиванием спросить ученика** (файл, источник, размер ~1 МБ каждый), потом скачать в `Data/wordlists/en.txt` и `ru.txt`. В `Data/wordlists/README.md` указать источник и лицензию (CC-BY-SA-4.0).
+- [ ] **Step 1:** Данные — частотные списки hermitdave/FrequencyWords (OpenSubtitles 2018, `en_50k.txt`, `ru_50k.txt`). **Перед скачиванием спросить автора** (файл, источник, размер ~1 МБ каждый), потом скачать в `Data/wordlists/en.txt` и `ru.txt`. В `Data/wordlists/README.md` указать источник и лицензию (CC-BY-SA-4.0).
 - [ ] **Step 2: Тесты** (маленький лексикон `["привет","при","hello"]`): `isPrefix("пр")`, `isPrefix("при")`, `!isPrefix("прф")`, `isWord("при")`, `!isWord("прив")`; `isWord("ёж")` для лексикона `["еж"]`. На реальных списках: `ru.isWord("привет")`, `ru.isWord("будет")`, `en.isWord("hello")`, `!en.isPrefix("ghb")`, `ru.isPrefix("при")`, `ru.trigramScore("привет") > ru.trigramScore("ghbdtn")`.
 - [ ] **Step 3:** Запустить тесты. Ожидается: FAIL.
 - [ ] **Step 4:** Реализовать: `Set<String>` слов, `Set<String>` префиксов, `[String: Int]` триграмм.
@@ -259,7 +259,7 @@ enum Permissions { static var accessibility: Bool; static var inputMonitoring: B
 - [ ] **Step 1:** `Info.plist`: `CFBundleIdentifier com.vallo.switcher`, `CFBundleName Vallo Switcher`, `LSUIElement true`, `LSMinimumSystemVersion 14.0`. Скрипт `build-app.sh`: `swift build -c release --product ValloSwitcher`, собирает `build/Vallo Switcher.app` (бинарник, Info.plist, `Data/wordlists` → `Contents/Resources/wordlists`), выполняет `codesign --force --options runtime --sign "${SIGN_ID:-Apple Development}"`.
 - [ ] **Step 2:** Реализовать файлы из списка. Словари загружаются из `Bundle.main.resourceURL/wordlists`.
 - [ ] **Step 3:** `scripts/build-app.sh && open "build/Vallo Switcher.app"`. Ожидается: иконка в меню, окно разрешений.
-- [ ] **Step 4: Ручная проверка с учеником** в TextEdit (дать разрешения, перезапустить): `ghbdtn` → «привет» с переключением на 3-й букве; откат двойным Shift и повторный набор `ghbdtn` (не трогается); `ghbdtn rfr ltkf` при выключенном авто + Shift → «привет как дела»; `Ghbdtn` → «Привет»; **Review Focus 1:** быстро набрать «ghbdtn vbh» без пауз, ни одна буква не теряется.
+- [ ] **Step 4: Ручная проверка с автором** в TextEdit (дать разрешения, перезапустить): `ghbdtn` → «привет» с переключением на 3-й букве; откат двойным Shift и повторный набор `ghbdtn` (не трогается); `ghbdtn rfr ltkf` при выключенном авто + Shift → «привет как дела»; `Ghbdtn` → «Привет»; **Review Focus 1:** быстро набрать «ghbdtn vbh» без пауз, ни одна буква не теряется.
 - [ ] **Step 5: Пересборка не сбрасывает разрешения.** Пересобрать, запустить и убедиться, что Мак не спрашивает разрешения заново.
 - [ ] **Step 6:** Коммит `feat: menubar app with tap and replacement`.
 
@@ -297,6 +297,6 @@ enum ContextGuard { static func autoSwitchAllowed(store: SettingsStore) -> Bool;
 ### Task 10: Финальная проверка по чек-листу
 
 - [ ] **Step 1:** `swift test`. Ожидается: всё PASS.
-- [ ] **Step 2:** Ученик проходит чек-лист спеки: TextEdit, Telegram, браузер, Figma, Заметки; поле пароля; приложение-исключение; откат; выделение с сохранением буфера обмена; внешняя клавиатура, если есть; **Review Focus 2:** набор в Заметках и Telegram с их автозаменой, чтобы не было каши.
+- [ ] **Step 2:** Автор проходит чек-лист спеки: TextEdit, Telegram, браузер, Figma, Заметки; поле пароля; приложение-исключение; откат; выделение с сохранением буфера обмена; внешняя клавиатура, если есть; **Review Focus 2:** набор в Заметках и Telegram с их автозаменой, чтобы не было каши.
 - [ ] **Step 3:** Что бесит, записываем отдельными пунктами и правим по одному.
 - [ ] **Step 4:** Коммит и тег `v0.1`.

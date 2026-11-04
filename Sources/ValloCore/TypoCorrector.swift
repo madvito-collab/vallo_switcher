@@ -27,7 +27,7 @@ public struct TypoCorrector: Sendable {
         pattern: "(?i)(?<![\\p{L}])(\\p{L}+) (то|нибудь|либо|таки)(?![\\p{L}])")
 
     /// Частые ошибки «как слышится» — то, что поиск промахов не ловит (две правки, замена буквы).
-    /// Точное совпадение, ключи нормализованы (ё → е). Список согласован с учеником 2026-10-30.
+    /// Точное совпадение, ключи нормализованы (ё → е). Список согласован с автором 2026-10-30.
     public static let misspellings: [String: String] = [
         // слитно → раздельно или через дефис
         "помоему": "по-моему", "помоиму": "по-моему", "помойму": "по-моему",
@@ -133,7 +133,7 @@ public struct TypoCorrector: Sendable {
         if let fixed = TypoCorrector.misspellings[w] {
             return ignored.contains(w) ? nil : Self.withCase(of: word, fixed)
         }
-        // забытый «ь» в конце: «можеш» → «можешь» (решение ученика) — узкое исключение из «окончания не трогаем»
+        // забытый «ь» в конце: «можеш» → «можешь» (решение автора) — узкое исключение из «окончания не трогаем»
         if w.count >= 4, w.hasSuffix("ш"), w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
            frequency[w] == nil, !ignored.contains(w), isKnown(w + "ь") {
             return Self.withCase(of: word, (display[w + "ь"] ?? w + "ь"))
