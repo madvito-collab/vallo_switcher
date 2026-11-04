@@ -16,7 +16,7 @@ jobs:
       - name: Test
         run: dotnet test windows/Vallo.sln
       - name: Publish app
-        run: dotnet publish windows/src/Vallo.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o "${{ runner.temp }}/ValloSwitcher"
+        run: dotnet publish windows/src/Vallo.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -o "${{ runner.temp }}/ValloSwitcher"
       - uses: actions/upload-artifact@v4
         with:
           name: ValloSwitcher-win-x64

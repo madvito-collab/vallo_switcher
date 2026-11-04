@@ -12,8 +12,12 @@ namespace Vallo.App;
 sealed unsafe class SelectionReader : IDisposable
 {
     const int CopyWaitMs = 300;
-    const int RestoreDelayMs = 300;
-    const int OpenTries = 20;
+    /// Electron и Figma читают буфер поздно — раньше вернём исходное, вставится оно (на Маке тоже 0,7 с).
+    const int RestoreDelayMs = 700;
+    /// Сколько ждём один вызов на потоке «буфера». Завис — дальше не ждём вовсе (см. `stuck`):
+    /// вся операция замирает не больше чем на ~1 с.
+    const int CallWaitMs = 250;
+    const int OpenTries = 10;
     const int OpenRetryMs = 10;
     /// Больше не копируем: огромная картинка в памяти дважды — дороже, чем потерять её копию.
     const long MaxSavedBytes = 64L << 20;
@@ -29,6 +33,26 @@ sealed unsafe class SelectionReader : IDisposable
     readonly ConcurrentQueue<Action> calls = new();
     uint threadId;
     nint hwnd;
+    /// Вызов, которого не дождались и который ещё не закончился: пока он висит, новые не ставим и не ждём.
+    volatile Call? stuck;
+
+    /// Один вызов на потоке «буфера». Ждавший ушёл по таймауту — вызов отменён и буфер уже не очищает:
+    /// иначе он сотрёт буфер человека, когда сохранять его будет уже некому.
+    sealed class Call
+    {
+        const int Pending = 0, Committed = 1, Cancelled = 2;
+        int state;
+        public readonly ManualResetEventSlim Done = new();
+        public volatile bool Finished;
+
+        public bool IsCancelled => Volatile.Read(ref state) == Cancelled;
+
+        /// Поток «буфера», прямо перед EmptyClipboard. false — ждавший ушёл, буфер не трогаем.
+        public bool Commit() => Interlocked.CompareExchange(ref state, Committed, Pending) != Cancelled;
+
+        /// Ждавший, по таймауту. false — вызов уже начал менять буфер, его надо дождаться.
+        public bool Cancel() => Interlocked.CompareExchange(ref state, Cancelled, Pending) != Committed;
+    }
 
     readonly object restoreGate = new();
     /// Исходный буфер, который ещё надо вернуть после вставки.
@@ -66,11 +90,17 @@ sealed unsafe class SelectionReader : IDisposable
         // прошлая подмена ещё висит — сперва вернуть исходное (если человек не скопировал своё), иначе сохраним свою же
         CancelTimer();
         RestoreCall(gen: null, onlyIfOurs: true);
-        var saved = OnClipboard(() => Open() ? Use(() => { var s = Save(); EmptyClipboard(); return s; }) : null);
+        var saved = OnClipboard(call => Open() ? Use(() =>
+        {
+            var s = Save();
+            if (!call.Commit()) return null;
+            EmptyClipboard();
+            return s;
+        }) : null);
         if (saved is null) return null; // буфер занят — лучше ничего не делать, чем потерять чужое
         lock (restoreGate) pendingRestore = saved;
 
-        var before = OnClipboard(() => Open() ? Use(ReadText) : null); // после очистки — обычно пусто
+        var before = OnClipboard(_ => Open() ? Use(ReadText) : null); // после очистки — обычно пусто
         var sequence = GetClipboardSequenceNumber();
         if (!sender.Shortcut(VK_CONTROL, VK_C))
         {
@@ -83,17 +113,18 @@ sealed unsafe class SelectionReader : IDisposable
                && !(GetClipboardSequenceNumber() != sequence && IsClipboardFormatAvailable(CF_UNICODETEXT)))
             Thread.Sleep(10);
 
-        var after = GetClipboardSequenceNumber() == sequence ? null : OnClipboard(() => Open() ? Use(ReadText) : null);
+        var after = GetClipboardSequenceNumber() == sequence ? null : OnClipboard(_ => Open() ? Use(ReadText) : null);
         if (SelectionDecision.Decide(before, after) is SelectionDecision.Result.Selected s) return s.Text;
         RestoreNow();
         return null;
     }
 
-    /// Заменить выделение: текст в буфер, Ctrl+V, исходный буфер — обратно через 300 мс.
+    /// Заменить выделение: текст в буфер, Ctrl+V, исходный буфер — обратно через 700 мс.
     public bool Paste(string text)
     {
-        var put = OnClipboard(() => Open() && Use(() =>
+        var put = OnClipboard(call => Open() && Use(() =>
         {
+            if (!call.Commit()) return false;
             EmptyClipboard();
             var ok = SetText(text);
             MarkPrivate();
@@ -104,20 +135,34 @@ sealed unsafe class SelectionReader : IDisposable
             RestoreNow();
             return false;
         }
-        lock (restoreGate)
-        {
-            ourSequence = GetClipboardSequenceNumber();
-            restoreTimer?.Dispose();
-            var gen = ++generation;
-            restoreTimer = new Timer(_ => RestoreCall(gen, onlyIfOurs: true), null, RestoreDelayMs, Timeout.Infinite);
-        }
+        ScheduleRestore(GetClipboardSequenceNumber());
         return sender.Shortcut(VK_CONTROL, VK_V);
     }
 
     /// Вставлять нечего — вернуть исходный буфер сразу.
     public void Restore() => RestoreNow();
 
-    void RestoreNow() => RestoreCall(gen: null, onlyIfOurs: false);
+    void RestoreNow()
+    {
+        var sequence = GetClipboardSequenceNumber();
+        RestoreCall(gen: null, onlyIfOurs: false);
+        // не дождались потока «буфера» — исходное ещё у нас: вернём попозже, если буфер с тех пор не трогали
+        bool left;
+        lock (restoreGate) left = pendingRestore is not null;
+        if (left) ScheduleRestore(sequence);
+    }
+
+    /// Вернуть исходный буфер через RestoreDelayMs, если номер содержимого всё ещё `sequence`.
+    void ScheduleRestore(uint sequence)
+    {
+        lock (restoreGate)
+        {
+            ourSequence = sequence;
+            restoreTimer?.Dispose();
+            var gen = ++generation;
+            restoreTimer = new Timer(_ => RestoreCall(gen, onlyIfOurs: true), null, RestoreDelayMs, Timeout.Infinite);
+        }
+    }
 
     void CancelTimer()
     {
@@ -136,19 +181,27 @@ sealed unsafe class SelectionReader : IDisposable
     {
         try
         {
-            OnClipboard(() =>
+            OnClipboard(call =>
             {
-                Saved? saved;
                 lock (restoreGate)
-                {
-                    if (gen is { } g && g != generation) return false;
-                    saved = pendingRestore;
-                    pendingRestore = null;
-                    if (saved is null) return false;
-                    if (onlyIfOurs && GetClipboardSequenceNumber() != ourSequence) return false;
-                }
+                    if (pendingRestore is null || (gen is { } g0 && g0 != generation)) return false;
                 return Open() && Use(() =>
                 {
+                    if (!call.Commit()) return false;
+                    Saved? saved;
+                    lock (restoreGate)
+                    {
+                        if (gen is { } g && g != generation) return false;
+                        if (pendingRestore is null) return false;
+                        // человек скопировал своё — его новое важнее старого
+                        if (onlyIfOurs && GetClipboardSequenceNumber() != ourSequence)
+                        {
+                            pendingRestore = null;
+                            return false;
+                        }
+                        saved = pendingRestore;
+                        pendingRestore = null;
+                    }
                     Put(saved);
                     MarkPrivate();
                     return true;
@@ -197,21 +250,39 @@ sealed unsafe class SelectionReader : IDisposable
         }
     }
 
-    /// Выполнить на потоке «буфера» и дождаться. Поток не отвечает — как будто буфер недоступен.
-    T? OnClipboard<T>(Func<T> f)
+    /// Выполнить на потоке «буфера» и дождаться. Поток не отвечает — как будто буфер недоступен;
+    /// брошенный вызов отменён и буфер не очистит (`Call.Commit` перед каждым EmptyClipboard).
+    T? OnClipboard<T>(Func<Call, T> f)
     {
         if (hwnd == 0) return default;
+        // прошлый брошенный вызов ещё висит — новый встанет за ним, ждать бесполезно
+        if (stuck is { Finished: false }) return default;
         T? result = default;
         // без using: опоздавший вызов ещё дёрнет Set — событие должно быть живо
-        var done = new ManualResetEventSlim();
+        var call = new Call();
         calls.Enqueue(() =>
         {
-            try { result = f(); }
+            try
+            {
+                if (!call.IsCancelled) result = f(call);
+            }
             catch { }
-            done.Set();
+            finally
+            {
+                call.Finished = true;
+                call.Done.Set();
+            }
         });
-        if (!PostThreadMessage(threadId, WM_APP, 0, 0)) return default;
-        return done.Wait(2000) ? result : default;
+        if (!PostThreadMessage(threadId, WM_APP, 0, 0))
+        {
+            call.Cancel();
+            return default;
+        }
+        if (call.Done.Wait(CallWaitMs)) return result;
+        // уже меняет буфер — отменять поздно, остались миллисекунды: дождаться
+        if (!call.Cancel() && call.Done.Wait(CallWaitMs)) return result;
+        stuck = call;
+        return default;
     }
 
     /// Буфер держит другая программа — пробуем ещё немного.

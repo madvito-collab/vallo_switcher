@@ -39,8 +39,15 @@ static class Autostart
     {
         get
         {
-            using var key = Registry.CurrentUser.OpenSubKey(RunKey);
-            return key?.GetValue(ValueName) is string;
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(RunKey);
+                return key?.GetValue(ValueName) is string;
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or SecurityException or IOException)
+            {
+                return false;
+            }
         }
     }
 }

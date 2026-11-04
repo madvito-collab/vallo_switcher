@@ -9,16 +9,21 @@ public class FullscreenRuleTests
 
     [Fact]
     public void WindowEqualToMonitorIsFullscreen() =>
-        Assert.True(FullscreenRule.IsFullscreen(Monitor, Monitor, isDesktopOrShell: false, isMaximizedWithCaption: false));
+        Assert.True(FullscreenRule.IsFullscreen(Monitor, Monitor, isDesktopOrShell: false, isMaximized: false));
 
     [Fact]
     public void WorkAreaWithoutTaskbarIsNot() =>
         Assert.False(FullscreenRule.IsFullscreen(new Rect(0, 0, 1920, 1040), Monitor, false, false));
 
     [Fact]
-    public void MaximizedWindowWithCaptionIsNot() =>
+    public void MaximizedWindowIsNot() =>
         // панель задач скрывается сама — развёрнутое окно (с рамкой за краями) накрывает монитор
-        Assert.False(FullscreenRule.IsFullscreen(new Rect(-8, -8, 1928, 1088), Monitor, false, isMaximizedWithCaption: true));
+        Assert.False(FullscreenRule.IsFullscreen(new Rect(-8, -8, 1928, 1088), Monitor, false, isMaximized: true));
+
+    [Fact]
+    public void MaximizedFramelessWindowIsNot() =>
+        // Telegram/Figma без рамки, развёрнуты, панель задач прячется сама — ровно во весь монитор, но не игра
+        Assert.False(FullscreenRule.IsFullscreen(Monitor, Monitor, isDesktopOrShell: false, isMaximized: true));
 
     [Fact]
     public void BorderlessWindowedGameIsFullscreen() =>

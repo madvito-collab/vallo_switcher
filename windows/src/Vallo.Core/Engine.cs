@@ -300,6 +300,8 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
             var latin = selection.Count(c => Lexicon.IsInAlphabet(char.ToLowerInvariant(c), Language.En));
             var from = cyrillic > latin ? Language.Ru : Language.En;
             var converted = Converter.Convert(selection, layouts.Layout(from), layouts.Layout(from.Other()));
+            // переводить нечего (числа, ячейка Excel) — не вставляем то же самое и раскладку не трогаем
+            if (converted == selection) return [];
             Reset();
             CurrentLanguage = from.Other();
             return [new EngineAction.ReplaceSelection(converted), new EngineAction.SwitchLayout(from.Other())];

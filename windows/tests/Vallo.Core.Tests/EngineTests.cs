@@ -129,6 +129,16 @@ public class EngineTests
     }
 
     [Fact]
+    public void DoubleShiftSelectionWithNothingToConvertDoesNothing()
+    {
+        // Excel: Ctrl+C вслепую скопировал ячейку с числом — вставлять обратно то же самое незачем
+        var engine = MakeEngine();
+        Assert.Empty(engine.HandleDoubleShift("123"));
+        Assert.Empty(engine.HandleDoubleShift("1\t25\r\n"));
+        Assert.Equal(Language.En, engine.CurrentLanguage);
+    }
+
+    [Fact]
     public void DoubleShiftWithNothingDoesNothing()
     {
         var engine = MakeEngine();

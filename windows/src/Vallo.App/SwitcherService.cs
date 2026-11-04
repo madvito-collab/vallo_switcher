@@ -72,16 +72,36 @@ sealed class SwitcherService : IHookSink, IDisposable
         watcher = new Thread(Watch) { IsBackground = true, Name = "Vallo layouts" };
     }
 
-    /// null — свитчер не запустить (нет EN/RU раскладки, нет словарей, не дали перехват). Трей живёт и без него.
-    public static SwitcherService? Start(SettingsStore store)
+    /// null — свитчер не запустить, `problem` — почему (покажем в меню трея). Трей живёт и без него.
+    public static SwitcherService? Start(SettingsStore store, out StartProblem problem)
     {
-        var layouts = SystemLayouts.Create();
-        if (layouts is null) return null;
-
+        problem = StartProblem.Unknown;
         var data = Path.Combine(AppContext.BaseDirectory, "Data", "wordlists");
-        var en = Lexicon.Load(Path.Combine(data, "en.txt"), Language.En);
-        var ru = Lexicon.Load(Path.Combine(data, "ru.txt"), Language.Ru,
-            extra: WordForms.Load(Path.Combine(data, "ru-modern.txt")));
+        string[] files = ["en.txt", "ru.txt", "ru-modern.txt"];
+        if (!files.All(f => File.Exists(Path.Combine(data, f))))
+        {
+            problem = StartProblem.NoData;
+            return null;
+        }
+        var layouts = SystemLayouts.Create();
+        if (layouts is null)
+        {
+            problem = StartProblem.NoLayouts;
+            return null;
+        }
+
+        Lexicon en, ru;
+        try
+        {
+            en = Lexicon.Load(Path.Combine(data, "en.txt"), Language.En);
+            ru = Lexicon.Load(Path.Combine(data, "ru.txt"), Language.Ru,
+                extra: WordForms.Load(Path.Combine(data, "ru-modern.txt")));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            problem = StartProblem.NoData;
+            return null;
+        }
         var judge = new Judge(en, ru, learned: new HashSet<string>(store.Current.LearnedWords));
         try { WarmUp(layouts.Pair, en, ru); }
         catch { } // прогрев не удался — первое нажатие будет медленнее, но свитчер работает
@@ -100,11 +120,15 @@ sealed class SwitcherService : IHookSink, IDisposable
         if (!service.hook.Start())
         {
             service.Dispose();
+            problem = StartProblem.NoHook;
             return null;
         }
         service.watcher.Start();
         return service;
     }
+
+    /// Проснулись или разблокировали сеанс — перехват мог тихо пропасть.
+    public void ReinstallHooks() => hook.Reinstall();
 
     public void Dispose()
     {
@@ -150,7 +174,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         _ = guard.AutoSwitchAllowed();
         _ = guard.ManualAllowed();
         _ = guard.InExcludedApp;
-        _ = SelectionPolicy.MayCopy(false, guard.WindowClass, false);
+        _ = SelectionPolicy.MayCopy(false, guard.ExeName, guard.WindowClass, false);
         _ = GetKeyState(VK_CAPITAL);
         _ = GetAsyncKeyState(0xA0);
     }
@@ -184,7 +208,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         // обычная клавиша
         if (!k.Down) return swallowed.Remove(k.Vk) || PassOrQueue(k);
         if (hasTap) tap.OtherInput();
-        // игра на весь экран, поле пароля — не вмешиваемся и ничего не запоминаем
+        // игра (на весь экран или «тихая»), поле пароля — не вмешиваемся и ничего не запоминаем
         if (!guard.ManualAllowed())
         {
             lock (gate) engine.Reset();
@@ -244,7 +268,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Отпускание модификатора уже ушло в систему (или в очередь) — теперь исправление.
     void DoubleTap()
     {
-        // в игре и в поле пароля молчим; в исключённом приложении — можно, человек попросил сам
+        // в игре (на весь экран или «тихой») и в поле пароля молчим; в исключённом приложении — можно, человек попросил сам
         if (!guard.ManualAllowed()) return;
         IReadOnlyList<EngineAction> actions = [];
         bool readSelection;
@@ -253,8 +277,9 @@ sealed class SwitcherService : IHookSink, IDisposable
             // откат важнее выделения; есть откат или свежий набор — выделения быть не может, Ctrl+C не нужен
             // (в VS Code Ctrl+C без выделения копирует всю строку)
             var nothingTyped = !engine.CanUndo && !engine.HasTypedText;
-            // в терминалах и редакторах (исключения), в консоли, на третьей раскладке Ctrl+C вслепую не шлём
-            readSelection = nothingTyped && SelectionPolicy.MayCopy(guard.InExcludedApp, guard.WindowClass, engine.IsForeignLayout);
+            // в терминалах и редакторах (исключения), в консоли, в Excel, на третьей раскладке Ctrl+C вслепую не шлём
+            readSelection = nothingTyped
+                && SelectionPolicy.MayCopy(guard.InExcludedApp, guard.ExeName, guard.WindowClass, engine.IsForeignLayout);
             if (!nothingTyped)
             {
                 actions = engine.HandleDoubleShift(null);

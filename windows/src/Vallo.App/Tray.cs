@@ -23,6 +23,12 @@ sealed unsafe class Tray : IDisposable
     nint hIcon;
     string? iconFile;
     bool added;
+    bool sessionNotify;
+    /// Свитчер не запустился — первой строкой меню. Пишет поток запуска, читает поток трея.
+    volatile string? problem;
+
+    /// Проснулись после сна или разблокировали сеанс. Зовётся на потоке трея.
+    public Action? Resumed { get; set; }
 
     public Tray(SettingsStore store, string iconsDir)
     {
@@ -50,7 +56,12 @@ sealed unsafe class Tray : IDisposable
             throw new InvalidOperationException($"CreateWindowEx: {Marshal.GetLastPInvokeError()}");
 
         AddIcon();
+        // разблокировку сеанса окну сообщают только по подписке; про сон (WM_POWERBROADCAST) — всем окнам верхнего уровня
+        sessionNotify = WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
     }
+
+    /// Показать в меню, почему свитчер не работает. С любого потока.
+    public void ShowProblem(string text) => problem = text;
 
     /// Цикл сообщений до «Завершить».
     public int Run()
@@ -66,6 +77,8 @@ sealed unsafe class Tray : IDisposable
     public void Dispose()
     {
         RemoveIcon();
+        if (sessionNotify && hwnd != 0) WTSUnRegisterSessionNotification(hwnd);
+        sessionNotify = false;
         if (hwnd != 0) DestroyWindow(hwnd);
         hwnd = 0;
         if (hIcon != 0) DestroyIcon(hIcon);
@@ -114,6 +127,10 @@ sealed unsafe class Tray : IDisposable
             case WM_DISPLAYCHANGE:
                 RefreshIcon();
                 return false;
+            case WM_POWERBROADCAST when wParam == PBT_APMRESUMEAUTOMATIC:
+            case WM_WTSSESSION_CHANGE when wParam == WTS_SESSION_UNLOCK:
+                Resumed?.Invoke();
+                return false;
             case WM_CLOSE:
             case WM_ENDSESSION when wParam != 0:
                 Quit();
@@ -131,6 +148,11 @@ sealed unsafe class Tray : IDisposable
         if (menu == 0) return;
         try
         {
+            if (problem is { } p)
+            {
+                AppendMenu(menu, MF_STRING | MF_GRAYED, 0, p);
+                AppendMenu(menu, MF_SEPARATOR, 0, null);
+            }
             var autoFlags = MF_STRING | (store.Current.AutoSwitchEnabled ? MF_CHECKED : 0);
             AppendMenu(menu, autoFlags, CmdAutoSwitch, "Автопереключение");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
@@ -161,6 +183,8 @@ sealed unsafe class Tray : IDisposable
     void Quit()
     {
         RemoveIcon();
+        if (sessionNotify && hwnd != 0) WTSUnRegisterSessionNotification(hwnd);
+        sessionNotify = false;
         if (hwnd != 0)
         {
             var h = hwnd;

@@ -13,6 +13,9 @@ static unsafe partial class Native
     public const uint WM_CONTEXTMENU = 0x007B;
     public const uint WM_DISPLAYCHANGE = 0x007E;
     public const uint WM_DPICHANGED = 0x02E0;
+    public const uint WM_POWERBROADCAST = 0x0218, WM_WTSSESSION_CHANGE = 0x02B1;
+    public const nuint PBT_APMRESUMEAUTOMATIC = 0x12, WTS_SESSION_UNLOCK = 0x8;
+    public const uint NOTIFY_FOR_THIS_SESSION = 0;
     public const uint WM_APP = 0x8000;
 
     public const uint WS_POPUP = 0x80000000;
@@ -23,7 +26,7 @@ static unsafe partial class Native
     public const uint NOTIFYICON_VERSION_4 = 4;
     public const uint NIN_SELECT = 0x0400, NIN_KEYSELECT = 0x0401;
 
-    public const uint MF_STRING = 0x0000, MF_CHECKED = 0x0008, MF_SEPARATOR = 0x0800;
+    public const uint MF_STRING = 0x0000, MF_GRAYED = 0x0001, MF_CHECKED = 0x0008, MF_SEPARATOR = 0x0800;
     public const uint TPM_LEFTALIGN = 0x0000, TPM_RIGHTALIGN = 0x0008, TPM_BOTTOMALIGN = 0x0020;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_RETURNCMD = 0x0100;
     public const int SM_MENUDROPALIGNMENT = 40;
@@ -159,6 +162,14 @@ static unsafe partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool DestroyIcon(nint icon);
 
+    [LibraryImport("wtsapi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool WTSRegisterSessionNotification(nint hwnd, uint flags);
+
+    [LibraryImport("wtsapi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool WTSUnRegisterSessionNotification(nint hwnd);
+
     [LibraryImport("shell32.dll", EntryPoint = "Shell_NotifyIconW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool Shell_NotifyIcon(uint message, in NOTIFYICONDATAW data);
@@ -274,8 +285,6 @@ static unsafe partial class Native
     public const uint EVENT_OBJECT_FOCUS = 0x8005;
     public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
     public const uint MONITOR_DEFAULTTONEAREST = 2;
-    public const int GWL_STYLE = -16;
-    public const long WS_CAPTION = 0x00C00000;
     public const uint COINIT_MULTITHREADED = 0x0;
     public const uint CLSCTX_INPROC_SERVER = 0x1;
     public const ushort VT_BOOL = 11;
@@ -319,8 +328,18 @@ static unsafe partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool IsZoomed(nint hwnd);
 
-    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
-    public static partial nint GetWindowLongPtr(nint hwnd, int index);
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GUITHREADINFO
+    {
+        public uint cbSize;
+        public uint flags;
+        public nint hwndActive, hwndFocus, hwndCapture, hwndMenuOwner, hwndMoveSize, hwndCaret;
+        public RECT rcCaret;
+    }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetGUIThreadInfo(uint threadId, ref GUITHREADINFO info);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     public static partial nint OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);

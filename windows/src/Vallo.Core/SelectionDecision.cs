@@ -16,7 +16,7 @@ public static class SelectionDecision
 
 /// Можно ли читать выделение через Ctrl+C. В терминалах и редакторах кода (исключения) Ctrl+C — не «копировать»:
 /// прерывание процесса или копирование всей строки. Консоль — даже если её убрали из исключений.
-/// На третьей раскладке переводить не во что.
+/// В Excel Ctrl+C без выделения текста копирует ячейку или диапазон целиком. На третьей раскладке переводить не во что.
 public static class SelectionPolicy
 {
     static readonly HashSet<string> ConsoleClasses = new(StringComparer.Ordinal)
@@ -24,6 +24,10 @@ public static class SelectionPolicy
         "ConsoleWindowClass", "CASCADIA_HOSTING_WINDOW_CLASS",
     };
 
-    public static bool MayCopy(bool excludedApp, string? windowClass, bool foreignLayout) =>
-        !excludedApp && !foreignLayout && !(windowClass is not null && ConsoleClasses.Contains(windowClass));
+    static readonly HashSet<string> NeverCopyApps = new(StringComparer.OrdinalIgnoreCase) { "excel.exe" };
+
+    public static bool MayCopy(bool excludedApp, string? exeName, string? windowClass, bool foreignLayout) =>
+        !excludedApp && !foreignLayout
+        && !(exeName is not null && NeverCopyApps.Contains(exeName))
+        && !(windowClass is not null && ConsoleClasses.Contains(windowClass));
 }

@@ -6,11 +6,15 @@ namespace Vallo.Core;
 public sealed record AppSettings
 {
     public static readonly IReadOnlyList<string> DefaultExcludedApps =
-        ["windowsterminal.exe", "cmd.exe", "powershell.exe", "pwsh.exe", "code.exe", "cursor.exe", "javaw.exe"];
+        ["windowsterminal.exe", "cmd.exe", "powershell.exe", "pwsh.exe", "code.exe", "cursor.exe"];
+    /// Игры в окне (Майнкрафт): молчим, как в полноэкранной игре, — даже двойной Shift.
+    public static readonly IReadOnlyList<string> DefaultSilentApps = ["javaw.exe"];
 
     public bool AutoSwitchEnabled { get; init; } = true;
     /// Имена exe в нижнем регистре.
     public IReadOnlyList<string> ExcludedApps { get; init; } = DefaultExcludedApps;
+    /// Имена exe в нижнем регистре.
+    public IReadOnlyList<string> SilentApps { get; init; } = DefaultSilentApps;
     public IReadOnlyList<string> LearnedWords { get; init; } = [];
     public Hotkey HotkeyConvert { get; init; } = Hotkey.DefaultConvert;
     public bool DebugMode { get; init; }
@@ -38,6 +42,7 @@ public sealed record AppSettings
             return s with
             {
                 ExcludedApps = s.ExcludedApps ?? d.ExcludedApps,
+                SilentApps = s.SilentApps ?? d.SilentApps,
                 LearnedWords = s.LearnedWords ?? d.LearnedWords,
                 HotkeyConvert = s.HotkeyConvert ?? d.HotkeyConvert,
             };

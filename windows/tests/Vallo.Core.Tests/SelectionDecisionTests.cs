@@ -25,21 +25,28 @@ public class SelectionPolicyTests
 {
     [Fact]
     public void OrdinaryWindowMayCopy() =>
-        Assert.True(SelectionPolicy.MayCopy(excludedApp: false, windowClass: "Chrome_WidgetWin_1", foreignLayout: false));
+        Assert.True(SelectionPolicy.MayCopy(excludedApp: false, exeName: "chrome.exe", windowClass: "Chrome_WidgetWin_1", foreignLayout: false));
 
     [Fact]
     public void ExcludedAppNeverCopies() =>
-        Assert.False(SelectionPolicy.MayCopy(excludedApp: true, windowClass: "SunAwtFrame", foreignLayout: false));
+        Assert.False(SelectionPolicy.MayCopy(excludedApp: true, exeName: "idea64.exe", windowClass: "SunAwtFrame", foreignLayout: false));
 
     [Theory]
     [InlineData("ConsoleWindowClass")]
     [InlineData("CASCADIA_HOSTING_WINDOW_CLASS")]
     public void ConsoleNeverCopiesEvenIfNotExcluded(string cls) =>
-        Assert.False(SelectionPolicy.MayCopy(excludedApp: false, windowClass: cls, foreignLayout: false));
+        Assert.False(SelectionPolicy.MayCopy(excludedApp: false, exeName: "conhost.exe", windowClass: cls, foreignLayout: false));
+
+    [Theory]
+    [InlineData("EXCEL.EXE")]
+    [InlineData("excel.exe")]
+    public void ExcelNeverCopies(string exe) =>
+        // Ctrl+C в Excel без выделения текста копирует ячейку целиком — «выделения» там нет
+        Assert.False(SelectionPolicy.MayCopy(excludedApp: false, exeName: exe, windowClass: "XLMAIN", foreignLayout: false));
 
     [Fact]
     public void ThirdLayoutNeverCopies() =>
-        Assert.False(SelectionPolicy.MayCopy(excludedApp: false, windowClass: "Notepad", foreignLayout: true));
+        Assert.False(SelectionPolicy.MayCopy(excludedApp: false, exeName: "notepad.exe", windowClass: "Notepad", foreignLayout: true));
 }
 
 public class EngineForeignLayoutTests

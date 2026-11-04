@@ -7,7 +7,7 @@ namespace Vallo.App;
 /// сам ответ считается на своём потоке при смене окна/фокуса (и раз в полсекунды: F11 окно не меняет).
 ///
 /// - приложение в исключениях → молчит автопереключение, двойной Shift работает (как на Маке);
-/// - игра/видео на весь экран, поле пароля → молчит всё.
+/// - «тихое» приложение (игра в окне), игра/видео на весь экран, поле пароля → молчит всё.
 sealed unsafe class ContextGuard : IDisposable
 {
     const int RecheckMs = 500;
@@ -21,8 +21,8 @@ sealed unsafe class ContextGuard : IDisposable
     /// Сменились окно или фокус — спросить про пароль заново.
     int focusDirty = 1;
 
-    volatile bool excluded, fullscreen, password;
-    volatile string windowClass = "";
+    volatile bool excluded, silent, fullscreen, password;
+    volatile string windowClass = "", exeName = "";
 
     // --- только поток охранника ---
     uint lastPid;
@@ -42,17 +42,19 @@ sealed unsafe class ContextGuard : IDisposable
         changed.Set(); // первое окно — сразу, не через полсекунды
     }
 
-    /// Автопереключение: не исключение, не полный экран, не пароль.
-    public bool AutoSwitchAllowed() => !excluded && !fullscreen && !password;
+    public bool AutoSwitchAllowed() => GuardRule.AutoSwitchAllowed(excluded, silent, fullscreen, password);
 
     /// Двойной Shift: в исключениях можно, в игре и в поле пароля — нет.
-    public bool ManualAllowed() => !fullscreen && !password;
+    public bool ManualAllowed() => GuardRule.ManualAllowed(silent, fullscreen, password);
 
     /// Приложение в исключениях: набор помним, но сами не переключаем и выделение через Ctrl+C не читаем.
     public bool InExcludedApp => excluded;
 
     /// Класс активного окна (консоль узнаём по нему).
     public string WindowClass => windowClass;
+
+    /// Имя exe активного окна; не узнали — пусто.
+    public string ExeName => exeName;
 
     /// Из перехвата: только отметить и разбудить — сам ни о чём не спрашивает.
     public void Invalidate()
@@ -80,8 +82,8 @@ sealed unsafe class ContextGuard : IDisposable
             catch
             {
                 // не поняли, где мы, — не мешаем
-                excluded = fullscreen = password = false;
-                windowClass = "";
+                excluded = silent = fullscreen = password = false;
+                windowClass = exeName = "";
             }
         }
     }
@@ -91,11 +93,14 @@ sealed unsafe class ContextGuard : IDisposable
         var hwnd = GetForegroundWindow();
         if (hwnd == 0)
         {
-            excluded = fullscreen = password = false;
-            windowClass = "";
+            excluded = silent = fullscreen = password = false;
+            windowClass = exeName = "";
             return;
         }
-        excluded = ExclusionMatcher.IsExcluded(ExeName(hwnd), store.Current.ExcludedApps);
+        var exe = ExeOf(hwnd);
+        exeName = exe;
+        excluded = ExclusionMatcher.IsExcluded(exe, store.Current.ExcludedApps);
+        silent = ExclusionMatcher.IsExcluded(exe, store.Current.SilentApps);
         var cls = ClassOf(hwnd);
         windowClass = cls;
         fullscreen = IsFullscreen(hwnd, cls);
@@ -104,7 +109,7 @@ sealed unsafe class ContextGuard : IDisposable
     }
 
     /// Имя exe активного окна; не узнали (процесс с правами администратора) — пусто, значит «можно».
-    string ExeName(nint hwnd)
+    string ExeOf(nint hwnd)
     {
         uint pid;
         GetWindowThreadProcessId(hwnd, &pid);
@@ -145,10 +150,8 @@ sealed unsafe class ContextGuard : IDisposable
         var m = info.rcMonitor; // весь монитор, не рабочая область
 
         var shell = cls is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
-        var maximizedWithCaption = IsZoomed(hwnd) && ((long)GetWindowLongPtr(hwnd, GWL_STYLE) & WS_CAPTION) == WS_CAPTION;
-
         return FullscreenRule.IsFullscreen(new Rect(w.left, w.top, w.right, w.bottom),
-            new Rect(m.left, m.top, m.right, m.bottom), shell, maximizedWithCaption);
+            new Rect(m.left, m.top, m.right, m.bottom), shell, IsZoomed(hwnd));
     }
 
     /// Пишет только PasswordProbe и только под своим замком — ответы не перепутаются.
@@ -159,7 +162,10 @@ sealed unsafe class ContextGuard : IDisposable
     {
         static readonly Guid CLSID_CUIAutomation = new("ff48dba4-60ef-4201-aa87-54103eef594e");
         static readonly Guid IID_IUIAutomation = new("30cbe57d-d9d0-452a-ab13-7ac5ac4825ee");
-        const int UIA_IsPasswordPropertyId = 30019;
+        const int UIA_IsPasswordPropertyId = 30019, UIA_ControlTypePropertyId = 30003;
+        const ushort VT_I4 = 3;
+        /// Через сколько переспросить, если первому ответу верить нельзя (Chromium ещё строит дерево).
+        const int AskAgainMs = 100;
         // номера в таблицах методов: IUIAutomation::GetFocusedElement, IUIAutomationElement::GetCurrentPropertyValue
         const int SlotRelease = 2, SlotGetFocusedElement = 8, SlotGetCurrentPropertyValue = 10;
 
@@ -218,9 +224,14 @@ sealed unsafe class ContextGuard : IDisposable
                     if (stopping) break;
                     int ticket;
                     lock (answerGate) ticket = asked;
-                    var result = false;
-                    try { result = uia != 0 && FocusIsPassword(uia); }
-                    catch { }
+                    var result = Probe(uia, out var askAgain);
+                    // переспрашиваем один раз; фокус сменился за это время — сразу к новому вопросу
+                    if (askAgain)
+                    {
+                        if (request.WaitOne(AskAgainMs)) { request.Set(); continue; }
+                        if (stopping) break;
+                        result = Probe(uia, out _);
+                    }
                     lock (answerGate)
                     {
                         // пока спрашивали, фокус сменился ещё раз — ответ устарел, спросим снова
@@ -239,17 +250,42 @@ sealed unsafe class ContextGuard : IDisposable
             }
         }
 
-        static bool FocusIsPassword(nint uia)
+        /// Пароль ли в фокусе; `askAgain` — первому «нет» верить нельзя.
+        static bool Probe(nint uia, out bool askAgain)
         {
+            askAgain = false;
+            if (uia == 0) return false;
+            try
+            {
+                var isPassword = FocusIsPassword(uia, out var controlType);
+                askAgain = PasswordRecheck.AskAgain(isPassword, FocusWindowClass(), controlType);
+                return isPassword;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        static bool FocusIsPassword(nint uia, out int controlType)
+        {
+            controlType = 0;
             nint element = 0;
             var vt = *(nint**)uia;
             var hr = ((delegate* unmanaged<nint, nint*, int>)vt[SlotGetFocusedElement])(uia, &element);
             if (hr < 0 || element == 0) return false;
             try
             {
-                var v = new VARIANT();
                 var evt = *(nint**)element;
-                hr = ((delegate* unmanaged<nint, int, VARIANT*, int>)evt[SlotGetCurrentPropertyValue])(element, UIA_IsPasswordPropertyId, &v);
+                var get = (delegate* unmanaged<nint, int, VARIANT*, int>)evt[SlotGetCurrentPropertyValue];
+                var v = new VARIANT();
+                if (get(element, UIA_ControlTypePropertyId, &v) >= 0)
+                {
+                    if (v.vt == VT_I4) controlType = (int)(v.data & 0xFFFFFFFF);
+                    VariantClear(ref v);
+                }
+                v = new VARIANT();
+                hr = get(element, UIA_IsPasswordPropertyId, &v);
                 if (hr < 0) return false;
                 var isPassword = v.vt == VT_BOOL && (short)(v.data & 0xFFFF) != 0;
                 VariantClear(ref v);
@@ -259,6 +295,17 @@ sealed unsafe class ContextGuard : IDisposable
             {
                 Release(element);
             }
+        }
+
+        /// Класс окна с фокусом клавиатуры в активном окне (у Chromium — Chrome_RenderWidgetHostHWND).
+        static string FocusWindowClass()
+        {
+            var hwnd = GetForegroundWindow();
+            if (hwnd == 0) return "";
+            var info = new GUITHREADINFO { cbSize = (uint)sizeof(GUITHREADINFO) };
+            var tid = GetWindowThreadProcessId(hwnd, null);
+            if (tid == 0 || !GetGUIThreadInfo(tid, ref info) || info.hwndFocus == 0) return "";
+            return ClassOf(info.hwndFocus);
         }
 
         static void Release(nint unknown) => ((delegate* unmanaged<nint, uint>)(*(nint**)unknown)[SlotRelease])(unknown);

@@ -22,10 +22,15 @@ sealed unsafe class KeyboardHook : IDisposable
 {
     static IHookSink? sink; // перехват один — колбэкам нужен доступ к получателю
 
+    /// Просьба потоку перехвата поставить перехват заново.
+    const uint WM_REINSTALL = WM_APP + 2;
+
     readonly Thread thread;
     readonly ManualResetEventSlim started = new();
     uint threadId;
     bool ok;
+    // --- только поток перехвата ---
+    nint keyboard, mouse;
 
     public KeyboardHook(IHookSink receiver)
     {
@@ -41,6 +46,13 @@ sealed unsafe class KeyboardHook : IDisposable
         return ok;
     }
 
+    /// После сна и после разблокировки Windows могла молча снять перехват (не дождалась ответа) —
+    /// ставим заново. Можно звать с любого потока: сама переустановка — на потоке перехвата.
+    public void Reinstall()
+    {
+        if (threadId != 0) PostThreadMessage(threadId, WM_REINSTALL, 0, 0);
+    }
+
     public void Dispose()
     {
         if (threadId != 0) PostThreadMessage(threadId, WM_QUIT, 0, 0);
@@ -53,8 +65,8 @@ sealed unsafe class KeyboardHook : IDisposable
     {
         threadId = GetCurrentThreadId();
         var module = GetModuleHandle(null);
-        var keyboard = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardProc, module, 0);
-        var mouse = SetWindowsHookEx(WH_MOUSE_LL, &MouseProc, module, 0);
+        keyboard = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardProc, module, 0);
+        mouse = SetWindowsHookEx(WH_MOUSE_LL, &MouseProc, module, 0);
         var foreground = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0, &ForegroundProc,
             0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
         var focus = SetWinEventHook(EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS, 0, &FocusProc,
@@ -67,6 +79,11 @@ sealed unsafe class KeyboardHook : IDisposable
             // колбэки перехвата приходят только пока поток крутит цикл сообщений
             while (GetMessage(out var msg, 0, 0, 0) > 0)
             {
+                if (msg.hwnd == 0 && msg.message == WM_REINSTALL)
+                {
+                    Rehook(module);
+                    continue;
+                }
                 TranslateMessage(in msg);
                 DispatchMessage(in msg);
             }
@@ -78,6 +95,26 @@ sealed unsafe class KeyboardHook : IDisposable
             if (mouse != 0) UnhookWindowsHookEx(mouse);
             if (keyboard != 0) UnhookWindowsHookEx(keyboard);
         }
+    }
+
+    /// Снять и поставить заново. Новый не встал — оставляем старый: вдруг он ещё жив.
+    void Rehook(nint module)
+    {
+        var k = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardProc, module, 0);
+        if (k != 0)
+        {
+            if (keyboard != 0) UnhookWindowsHookEx(keyboard);
+            keyboard = k;
+        }
+        var m = SetWindowsHookEx(WH_MOUSE_LL, &MouseProc, module, 0);
+        if (m != 0)
+        {
+            if (mouse != 0) UnhookWindowsHookEx(mouse);
+            mouse = m;
+        }
+        // пока перехвата не было, нажатия и окна менялись без нас — начинаем с чистого листа
+        try { sink?.OnForegroundChanged(); }
+        catch { }
     }
 
     // Исключение из [UnmanagedCallersOnly] роняет процесс — ловим всё и пропускаем событие дальше.
