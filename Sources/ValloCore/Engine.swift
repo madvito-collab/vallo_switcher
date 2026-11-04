@@ -350,7 +350,7 @@ public final class Engine {
         let before = String(display(0..<wordStart).reversed().drop { $0 == " " || $0 == "." })
         if before.first?.isNumber ?? false { return true }
         let previous = String(before.prefix { $0.isLetter }.reversed())
-        return ["тыс", "млн", "млрд"].contains(previous.lowercased())
+        return SwitcherRules.shared.unitsBeforeUnit.contains(previous.lowercased())
     }
 
     /// Граница слова — клавиша, которая ни в одной раскладке не даёт букву.

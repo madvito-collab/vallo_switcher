@@ -48,12 +48,12 @@ public struct Lexicon: Sendable {
         }
         // частые ошибки («вобщем», «помоему») — тоже русские слова, иначе свитчер примет «воб» за английский
         // и переключит раскладку посреди слова, а исправлятор потом не тронет хвост
-        if language == .ru { list += TypoCorrector.misspellings.keys }
+        if language == .ru { list += SwitcherRules.shared.misspellings.keys }
         // частые ё-слова, которых нет в списке субтитров: без них свитчер переключал раскладку посреди слова
         // и «ё» молча не ставилась (проверяет `YoPipelineTests`)
-        if language == .ru { list += ["сожжен", "туберкулеза"] }
+        if language == .ru { list += SwitcherRules.shared.extraRussianWords }
         // аббревиатуры — слова своего языка: «зва» в RU-раскладке узнаётся как «pdf»
-        list += Judge.abbreviations[language]!
+        list += SwitcherRules.shared.abbreviations[language]!
         list += extra
         return Lexicon(words: list)
     }

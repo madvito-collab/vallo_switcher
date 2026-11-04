@@ -12,53 +12,19 @@ public struct Judge: Sendable {
     /// Раньше этой буквы ничего не решаем.
     public static let minLetters = 3
 
-    /// Частые слова из 1–2 букв: их исправляем на конце слова (решение автора 2026-10-29).
-    /// Остальные короткие слишком легко спутать — только двойным Shift.
-    public static let shortWords: [Language: Set<String>] = [
-        .ru: ["ок", "да", "не", "ну", "ты", "мы", "вы", "он", "на", "по", "за", "до", "то",
-              "я", "и", "в", "с", "а", "о", "у", "к"],
-        .en: ["ok", "hi", "is", "it", "to", "in", "on", "at", "of", "no", "so", "we", "me", "my",
-              "do", "go", "up", "be", "a", "i"],
-    ]
+    /// Частые слова из 1–2 букв: их исправляем на конце слова. Список — `Data/switcher-rules.json`.
+    public static var shortWords: [Language: Set<String>] { SwitcherRules.shared.shortWords }
 
-    /// Разговорные словечки: не ошибка раскладки, даже если их нет в словаре (решение автора 2026-10-30:
-    /// «ща» превращалось в «of»).
-    public static let slang: [Language: Set<String>] = [
-        .ru: ["ща", "щас", "чо", "че", "чё", "ок", "окей", "ага", "угу", "неа", "спс", "пжлст", "пж", "плз", "хз",
-              "мб", "кст", "имхо", "лол", "кек", "тыщ", "тож", "щя", "збс", "норм", "оч", "прив", "пасиб", "нзч"],
-        .en: ["ok", "lol", "omg", "btw", "imo", "tbh", "thx", "pls", "plz", "idk", "brb", "np", "ty"],
-    ]
+    /// Разговорные словечки: не ошибка раскладки, даже если их нет в словаре. Список — `Data/switcher-rules.json`.
+    public static var slang: [Language: Set<String>] { SwitcherRules.shared.slang }
 
-    /// Частые аббревиатуры и расширения файлов (список согласован с автором 2026-10-30). Набранные в чужой
-    /// раскладке переводятся («зва» → «pdf»); хоть одна заглавная — пишутся целиком заглавными («Pdf» → «PDF»).
-    /// Не берём то, что маленькими — обычное слово (it, us, id, ram, по, ос), и смешанный регистр (iOS, Wi-Fi).
-    /// Убраны, потому что в чужой раскладке дают настоящее слово: cv → «см», exe → «учу», рф → «ha», пфр → «gah».
-    public static let abbreviations: [Language: Set<String>] = [
-        .en: [
-            // расширения файлов
-            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "csv", "json", "xml", "html", "css", "js",
-            "svg", "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "psd", "eps", "fig", "mov", "avi", "mkv", "wav",
-            "zip", "rar", "dmg", "apk", "iso",
-            // аббревиатуры
-            "api", "ui", "ux", "kpi", "okr", "hr", "pr", "ceo", "cto", "cfo", "mvp", "qa", "sdk", "url", "usb", "faq",
-            "crm", "erp", "seo", "smm", "saas", "nda", "sla", "roi", "gpu", "cpu", "ssd", "vpn", "ai", "ml",
-            "llm", "gpt", "ctr", "cpa", "cta", "utm", "qr",
-        ],
-        .ru: [
-            "жкх", "мчс", "мвд", "фсб", "гибдд", "гаи", "снг", "ссср", "сша", "оон", "нато", "сми", "ооо", "оао",
-            "зао", "пао", "ип", "инн", "огрн", "кпп", "бик", "снилс", "ндс", "ндфл", "усн", "осаго", "мфц", "фнс",
-            "цб", "мрот", "жк", "тц", "тз", "кп", "пк", "смс", "ржд", "мкад", "тэц", "аэс", "гэс", "спг", "вгсч", "чс",
-            "нии", "мгу", "мфти", "вшэ", "загс",
-        ],
-    ]
+    /// Частые аббревиатуры и расширения файлов: «зва» → «pdf», хоть одна заглавная — пишутся целиком заглавными.
+    /// Список и причины исключений — `Data/switcher-rules.json` и `Data/wordlists/README.md`.
+    public static var abbreviations: [Language: Set<String>] { SwitcherRules.shared.abbreviations }
 
-    /// Сокращения единиц и денег: сразу после числа («850руб», «5 шт») — не ошибка раскладки, хотя «руб» в
-    /// английской раскладке — «he,», а «шт» — «in». Без числа переводим как раньше: «in» в русской раскладке частое.
-    public static let unitsAfterNumber: [Language: Set<String>] = [
-        .ru: ["руб", "коп", "тыс", "млн", "млрд", "долл", "шт", "уп", "экз", "чел", "сек", "мин",
-              "кг", "км", "см", "мм", "мл", "кв"],
-        .en: [],
-    ]
+    /// Сокращения единиц и денег сразу после числа («850руб», «5 шт») — не ошибка раскладки.
+    /// Без числа переводим как раньше. Список — `Data/switcher-rules.json`.
+    public static var unitsAfterNumber: [Language: Set<String>] { SwitcherRules.shared.unitsAfterNumber }
 
     public static func isUnitAfterNumber(_ word: String, _ language: Language) -> Bool {
         unitsAfterNumber[language]!.contains(core(word).lowercased())
@@ -169,7 +135,8 @@ public struct Judge: Sendable {
 
 /// Ссылки, почта, телефоны, наборы с цифрами — автопереключение не трогает.
 public enum SpecialText {
-    static let domains = ["com", "ru", "org", "net", "io", "dev", "app", "me", "co", "ua", "by", "kz", "info"]
+    /// Домены верхнего уровня: слово, оканчивающееся на «.домен», — ссылка. Список — `Data/switcher-rules.json`.
+    public static var domains: [String] { SwitcherRules.shared.domains }
 
     public static func isSpecial(_ raw: String) -> Bool {
         let s = raw.lowercased()
