@@ -9,8 +9,9 @@ namespace Vallo.App;
 /// Потоки:
 /// - перехват (KeyboardHook): сортирует событие, спрашивает движок, решает «пропустить/проглотить», кладёт в очередь;
 /// - исполнитель: SendInput и смена раскладки по очереди, строго по порядку;
-/// - слежение: раскладка активного окна раз в 250 мс и сразу при смене окна.
-/// Движок трогают все трое — только под `gate`.
+/// - слежение: раскладка активного окна раз в 250 мс и сразу при смене окна;
+/// - охранник (ContextGuard): где молчим — считает на своих потоках, перехват только читает ответ.
+/// Движок трогают перехват, исполнитель и слежение — только под `gate`.
 /// Пока в очереди что-то есть, все остальные нажатия тоже идут через очередь — иначе следующая буква
 /// обгонит наше исправление.
 sealed class SwitcherService : IHookSink, IDisposable
@@ -25,10 +26,14 @@ sealed class SwitcherService : IHookSink, IDisposable
     readonly SettingsStore store;
     readonly InputSender sender;
     readonly KeyboardHook hook;
+    readonly ContextGuard guard;
+    readonly SelectionReader selection;
 
     abstract record Work;
     sealed record Run(IReadOnlyList<EngineAction> Actions) : Work;
     sealed record Replay(HookKey Key) : Work;
+    /// Двойной Shift без набранного: перевести выделение (Ctrl+C → перевод → Ctrl+V).
+    sealed record ConvertSelection : Work;
 
     readonly BlockingCollection<Work> queue = new();
     /// Сколько работы в очереди и в исполнении.
@@ -55,6 +60,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         this.layouts = layouts;
         this.engine = engine;
         sender = new InputSender(layouts, store, MarkSwitch);
+        selection = new SelectionReader(sender);
+        guard = new ContextGuard(store);
         if (store.Current.HotkeyConvert is Hotkey.DoubleTap d)
         {
             tap = new DoubleTapDetector(d.Key);
@@ -76,7 +83,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         var ru = Lexicon.Load(Path.Combine(data, "ru.txt"), Language.Ru,
             extra: WordForms.Load(Path.Combine(data, "ru-modern.txt")));
         var judge = new Judge(en, ru, learned: new HashSet<string>(store.Current.LearnedWords));
-        WarmUp(layouts.Pair, en, ru);
+        try { WarmUp(layouts.Pair, en, ru); }
+        catch { } // прогрев не удался — первое нажатие будет медленнее, но свитчер работает
         var hkl = SystemLayouts.Current();
         var current = SystemLayouts.LanguageOf(hkl);
         var engine = new Engine(layouts.Pair, judge, current ?? Language.En)
@@ -87,6 +95,7 @@ sealed class SwitcherService : IHookSink, IDisposable
 
         var service = new SwitcherService(store, layouts, engine) { lastHkl = hkl };
         service.WarmUpHookPath();
+        service.guard.Start();
         service.worker.Start();
         if (!service.hook.Start())
         {
@@ -105,6 +114,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         if (watcher.IsAlive) watcher.Join(1000);
         queue.CompleteAdding();
         if (worker.IsAlive) worker.Join(1000);
+        guard.Dispose();
+        selection.Dispose();
         poke.Dispose();
     }
 
@@ -127,7 +138,8 @@ sealed class SwitcherService : IHookSink, IDisposable
     void WarmUpHookPath()
     {
         foreach (var name in new[] { nameof(OnKey), nameof(PassOrQueue), nameof(Enqueue), nameof(Modifier), nameof(DoubleTap),
-                     nameof(TrackModifier), nameof(ResyncModifiers), nameof(HasSwitch), nameof(OnMouseDown), nameof(OnForegroundChanged) })
+                     nameof(TrackModifier), nameof(ResyncModifiers), nameof(HasSwitch), nameof(OnMouseDown), nameof(OnForegroundChanged),
+                     nameof(OnFocusChanged) })
         {
             var m = typeof(SwitcherService).GetMethod(name,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static
@@ -135,6 +147,8 @@ sealed class SwitcherService : IHookSink, IDisposable
             if (m is not null) System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(m.MethodHandle);
         }
         HookFilter.Classify(0x41, 0, 0, false, false, false);
+        _ = guard.AutoSwitchAllowed();
+        _ = guard.ManualAllowed();
         _ = GetKeyState(VK_CAPITAL);
         _ = GetAsyncKeyState(0xA0);
     }
@@ -168,6 +182,12 @@ sealed class SwitcherService : IHookSink, IDisposable
         // обычная клавиша
         if (!k.Down) return swallowed.Remove(k.Vk) || PassOrQueue(k);
         if (hasTap) tap.OtherInput();
+        // исключение, игра на весь экран, поле пароля — не вмешиваемся и ничего не запоминаем
+        if (!guard.AutoSwitchAllowed())
+        {
+            lock (gate) engine.Reset();
+            return PassOrQueue(k);
+        }
         var stroke = new KeyStroke((ushort)k.Vk, lShift || rShift, (GetKeyState(VK_CAPITAL) & 1) != 0);
         EngineOutput output;
         lock (gate)
@@ -194,8 +214,11 @@ sealed class SwitcherService : IHookSink, IDisposable
         // отпускание проглоченной клавиши могло потеряться — иначе однажды проглотим настоящее отпускание
         swallowed.Clear();
         lock (gate) engine.Reset();
+        guard.Invalidate();
         poke.Set(); // раскладка в новом окне может быть другой
     }
+
+    public void OnFocusChanged() => guard.Invalidate();
 
     /// true — сработало двойное нажатие.
     bool Modifier(in HookKey k)
@@ -218,14 +241,24 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Отпускание модификатора уже ушло в систему (или в очередь) — теперь исправление.
     void DoubleTap()
     {
-        IReadOnlyList<EngineAction> actions;
-        // выделение (задача 10) пока не читаем — только откат и перевод набранного
+        // в игре и в поле пароля молчим; в исключённом приложении — можно, человек попросил сам
+        if (!guard.ManualAllowed()) return;
+        IReadOnlyList<EngineAction> actions = [];
+        bool readSelection;
         lock (gate)
         {
-            actions = engine.HandleDoubleShift(null);
-            if (HasSwitch(actions)) lastSwitchTick = Environment.TickCount64;
+            // откат важнее выделения; есть откат или свежий набор — выделения быть не может, Ctrl+C не нужен
+            // (в VS Code Ctrl+C без выделения копирует всю строку)
+            readSelection = !engine.CanUndo && !engine.HasTypedText;
+            if (!readSelection)
+            {
+                actions = engine.HandleDoubleShift(null);
+                if (HasSwitch(actions)) lastSwitchTick = Environment.TickCount64;
+            }
         }
-        if (actions.Count > 0) Enqueue(new Run(actions));
+        // буфер обмена и ожидание Ctrl+C — на исполнителе: поток перехвата ждать не должен
+        if (readSelection) Enqueue(new ConvertSelection());
+        else if (actions.Count > 0) Enqueue(new Run(actions));
     }
 
     /// Очередь пуста — пропускаем как есть; иначе нажатие встаёт в очередь за нашими действиями.
@@ -303,6 +336,9 @@ sealed class SwitcherService : IHookSink, IDisposable
                     case Replay { Key: var k }:
                         delivered = sender.Replay((ushort)k.Vk, (ushort)k.Scan, (k.Flags & LLKHF_EXTENDED) != 0, !k.Down);
                         break;
+                    case ConvertSelection:
+                        delivered = ConvertSelectionNow();
+                        break;
                 }
                 // система приняла не всё (UIPI, блокировка ввода) — экран и память движка разошлись
                 if (!delivered) lock (gate) engine.Reset();
@@ -316,6 +352,30 @@ sealed class SwitcherService : IHookSink, IDisposable
                 Interlocked.Decrement(ref pending);
             }
         }
+    }
+
+    /// Только исполнитель. Выделенный текст из чужого окна — в журнал ни слова.
+    bool ConvertSelectionNow()
+    {
+        var text = selection.Copy();
+        if (text is null) return true; // выделения нет — делать нечего
+        IReadOnlyList<EngineAction> actions;
+        lock (gate)
+        {
+            actions = engine.HandleDoubleShift(text);
+            if (HasSwitch(actions)) lastSwitchTick = Environment.TickCount64;
+        }
+        var ok = true;
+        var pasted = false;
+        foreach (var a in actions)
+        {
+            if (a is not EngineAction.ReplaceSelection r) continue;
+            ok &= selection.Paste(r.Text);
+            pasted = true;
+        }
+        if (!pasted) selection.Restore();
+        // смена раскладки — после вставки, как велел движок
+        return sender.Perform(actions) && ok;
     }
 
     // ---- Слежение за раскладкой

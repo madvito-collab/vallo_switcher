@@ -13,9 +13,11 @@ interface IHookSink
     bool OnKey(in HookKey key);
     void OnMouseDown();
     void OnForegroundChanged();
+    /// Фокус перешёл на другое поле (в том числе внутри окна). Только отметить — ничего не спрашивать.
+    void OnFocusChanged();
 }
 
-/// «Уши»: WH_KEYBOARD_LL, WH_MOUSE_LL и смена активного окна — на своём потоке с циклом сообщений.
+/// «Уши»: WH_KEYBOARD_LL, WH_MOUSE_LL, смена активного окна и фокуса — на своём потоке с циклом сообщений.
 sealed unsafe class KeyboardHook : IDisposable
 {
     static IHookSink? sink; // перехват один — колбэкам нужен доступ к получателю
@@ -55,6 +57,8 @@ sealed unsafe class KeyboardHook : IDisposable
         var mouse = SetWindowsHookEx(WH_MOUSE_LL, &MouseProc, module, 0);
         var foreground = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0, &ForegroundProc,
             0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+        var focus = SetWinEventHook(EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS, 0, &FocusProc,
+            0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
         ok = keyboard != 0;
         started.Set();
         try
@@ -69,6 +73,7 @@ sealed unsafe class KeyboardHook : IDisposable
         }
         finally
         {
+            if (focus != 0) UnhookWinEvent(focus);
             if (foreground != 0) UnhookWinEvent(foreground);
             if (mouse != 0) UnhookWindowsHookEx(mouse);
             if (keyboard != 0) UnhookWindowsHookEx(keyboard);
@@ -114,6 +119,16 @@ sealed unsafe class KeyboardHook : IDisposable
         try
         {
             sink?.OnForegroundChanged();
+        }
+        catch { }
+    }
+
+    [UnmanagedCallersOnly]
+    static void FocusProc(nint hook, uint ev, nint hwnd, int idObject, int idChild, uint threadId, uint time)
+    {
+        try
+        {
+            sink?.OnFocusChanged();
         }
         catch { }
     }

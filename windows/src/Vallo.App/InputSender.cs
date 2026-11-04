@@ -41,7 +41,7 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Acti
                     Learn(l.Word);
                     break;
                 case EngineAction.ReplaceSelection:
-                    // выделение — задача 10
+                    // замену выделения через буфер обмена делает SelectionReader
                     break;
             }
         }
@@ -54,6 +54,18 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Acti
     {
         delivered = true;
         Add(vk, scan, (extended ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0));
+        Flush();
+        return delivered;
+    }
+
+    /// Сочетание вроде Ctrl+C: модификатор вниз, клавиша, модификатор вверх — одной пачкой.
+    public bool Shortcut(ushort modifier, ushort vk)
+    {
+        delivered = true;
+        var scan = (ushort)MapVirtualKey(modifier, MAPVK_VK_TO_VSC);
+        Add(modifier, scan, 0);
+        Key(vk);
+        Add(modifier, scan, KEYEVENTF_KEYUP);
         Flush();
         return delivered;
     }

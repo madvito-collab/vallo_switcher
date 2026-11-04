@@ -269,6 +269,128 @@ static unsafe partial class Native
     [LibraryImport("user32.dll")]
     public static partial int GetKeyboardLayoutList(int count, nint* list);
 
+    // --- где молчим: окно, процесс, монитор, UI Automation ---
+
+    public const uint EVENT_OBJECT_FOCUS = 0x8005;
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    public const uint MONITOR_DEFAULTTONEAREST = 2;
+    public const int GWL_STYLE = -16;
+    public const long WS_CAPTION = 0x00C00000;
+    public const uint COINIT_MULTITHREADED = 0x0;
+    public const uint CLSCTX_INPROC_SERVER = 0x1;
+    public const ushort VT_BOOL = 11;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int left, top, right, bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    /// VARIANT: тип, три запасных слова, дальше 16 байт (x64) объединения. VT_BOOL — short в начале объединения.
+    [StructLayout(LayoutKind.Sequential)]
+    public struct VARIANT
+    {
+        public ushort vt;
+        public ushort r1, r2, r3;
+        public nint data, data2;
+    }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetWindowRect(nint hwnd, out RECT rect);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint MonitorFromWindow(nint hwnd, uint flags);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetMonitorInfo(nint monitor, ref MONITORINFO info);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetClassNameW")]
+    public static partial int GetClassName(nint hwnd, char* name, int max);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsZoomed(nint hwnd);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    public static partial nint GetWindowLongPtr(nint hwnd, int index);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial nint OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseHandle(nint handle);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool QueryFullProcessImageName(nint process, uint flags, char* name, ref uint size);
+
+    [LibraryImport("ole32.dll")]
+    public static partial int CoInitializeEx(nint reserved, uint coInit);
+
+    [LibraryImport("ole32.dll")]
+    public static partial void CoUninitialize();
+
+    [LibraryImport("ole32.dll")]
+    public static partial int CoCreateInstance(in Guid clsid, nint outer, uint context, in Guid iid, out nint obj);
+
+    [LibraryImport("oleaut32.dll")]
+    public static partial int VariantClear(ref VARIANT v);
+
+    // --- буфер обмена ---
+
+    public const nint HWND_MESSAGE = -3;
+    public const uint CF_UNICODETEXT = 13;
+    public const uint GMEM_MOVEABLE = 0x0002;
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool OpenClipboard(nint owner);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseClipboard();
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EmptyClipboard();
+
+    [LibraryImport("user32.dll")]
+    public static partial uint EnumClipboardFormats(uint format);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetClipboardData(uint format);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetClipboardData(uint format, nint mem);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetClipboardSequenceNumber();
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GlobalAlloc(uint flags, nuint bytes);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial void* GlobalLock(nint mem);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GlobalUnlock(nint mem);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nuint GlobalSize(nint mem);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GlobalFree(nint mem);
+
     public static short LoWord(nint v) => (short)(v & 0xFFFF);
     public static short HiWord(nint v) => (short)((v >> 16) & 0xFFFF);
 }
