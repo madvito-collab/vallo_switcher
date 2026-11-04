@@ -39,21 +39,16 @@ private let fullRU = try! Lexicon.load(url: repoURL("Data/wordlists/ru.txt"), la
 private enum Token { case key(Character), doubleShift, backspace, enter, tab, esc }
 
 private func tokens(_ keys: String) -> [Token] {
+    let known: [String: Token] = ["⇧⇧": .doubleShift, "⌫": .backspace, "⏎": .enter, "⇥": .tab, "ESC": .esc]
     var out: [Token] = []
     var i = keys.startIndex
     while i < keys.endIndex {
-        if keys[i] == "{", let close = keys[i...].firstIndex(of: "}") {
-            switch keys[keys.index(after: i)..<close] {
-            case "⇧⇧": out.append(.doubleShift)
-            case "⌫": out.append(.backspace)
-            case "⏎": out.append(.enter)
-            case "⇥": out.append(.tab)
-            case "ESC": out.append(.esc)
-            default: fatalError("неизвестный токен в \(keys)")
-            }
+        if keys[i] == "{", let close = keys[i...].firstIndex(of: "}"),
+           let t = known[String(keys[keys.index(after: i)..<close])] {
+            out.append(t)
             i = keys.index(after: close)
         } else {
-            out.append(.key(keys[i]))
+            out.append(.key(keys[i]))   // `{` вне известного токена — обычная клавиша (Shift+[)
             i = keys.index(after: i)
         }
     }
