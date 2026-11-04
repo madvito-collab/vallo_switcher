@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>ValloSwitcher</AssemblyName>
+    <RootNamespace>Vallo.App</RootNamespace>
+    <ApplicationIcon>../../../Support/Icons/Windows/ValloSwitcher.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Vallo.Core/Vallo.Core.csproj" />
+  </ItemGroup>
+  <!-- Рядом с exe: словари, правила, картинки «ё» для трея. Раскладки снимаются с системы на ходу. -->
+  <ItemGroup>
+    <None Include="../../../Data/wordlists/en.txt;../../../Data/wordlists/ru.txt;../../../Data/wordlists/ru-modern.txt"
+          LinkBase="Data/wordlists" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../../Data/switcher-rules.json"
+          LinkBase="Data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../../Support/Icons/Windows/yo_*.png;../../../Support/Icons/Windows/ValloSwitcher.ico"
+          LinkBase="Icons" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
