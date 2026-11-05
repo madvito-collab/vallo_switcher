@@ -22,6 +22,19 @@ final class StatusMenu: NSObject {
     var onOpenHelp: (() -> Void)?
     var onOpenAbout: (() -> Void)?
     var onCheckUpdates: (() -> Void)?
+    /// Нажали пункт про новую версию.
+    var onInstallUpdate: (() -> Void)?
+    /// Пункт «Перезапустить и обновить до …» / «Обновить до …» — виден, пока есть новая версия.
+    private let updateItem = NSMenuItem(title: "", action: #selector(installUpdate), keyEquivalent: "")
+    /// Точка-бейдж на значке: вышла новая версия.
+    private let badge: NSView = {
+        let v = NSView(frame: NSRect(x: 0, y: 0, width: 7, height: 7))
+        v.wantsLayer = true
+        v.layer?.backgroundColor = NSColor.systemRed.cgColor
+        v.layer?.cornerRadius = 3.5
+        v.isHidden = true
+        return v
+    }()
     var onGivePermissions: (() -> Void)?
     /// «Скачать модель запятых» — открыть «Исправления» и начать скачивание.
     var onDownloadModel: (() -> Void)?
@@ -56,6 +69,9 @@ final class StatusMenu: NSObject {
         let quit = NSMenuItem(title: "Завершить Vallo Switcher", action: #selector(quit), keyEquivalent: "")
         quit.target = self
         // три группы: автопереключение / настройки и обновления / справка, о программе, завершить
+        updateItem.target = self
+        updateItem.isHidden = true
+        menu.addItem(updateItem)
         menu.addItem(autoItem)
         menu.addItem(.separator())
         menu.addItem(permissionsItem)
@@ -72,6 +88,12 @@ final class StatusMenu: NSObject {
         }
         menu.delegate = self
         item.menu = menu
+        if let button = item.button {
+            // правый верхний угол значка 16×16 по центру кнопки
+            badge.frame.origin = NSPoint(x: button.bounds.midX + 3, y: button.bounds.midY + 2)
+            badge.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+            button.addSubview(badge)
+        }
         set(state: .working)
     }
 
@@ -84,6 +106,17 @@ final class StatusMenu: NSObject {
         }
         item.button?.appearsDisabled = state == .blocked
         permissionsItem.isHidden = state != .needsPermissions
+    }
+
+    /// Новая версия: бейдж на значке и пункт сверху меню. nil — убрать.
+    func show(update: Updater.Pending?) {
+        badge.isHidden = update == nil
+        updateItem.isHidden = update == nil
+        switch update {
+        case .ready(let version): updateItem.title = "Перезапустить и обновить до \(version)"
+        case .available(let version): updateItem.title = "Обновить до \(version)…"
+        case nil: break
+        }
     }
 
     func record(decision: String) {
@@ -114,6 +147,7 @@ final class StatusMenu: NSObject {
     @objc private func givePermissions() { onGivePermissions?() }
     @objc private func openSettings() { onOpenSettings?() }
     @objc private func checkUpdates() { onCheckUpdates?() }
+    @objc private func installUpdate() { onInstallUpdate?() }
     @objc private func openAbout() { onOpenAbout?() }
     @objc private func downloadModel() { onDownloadModel?() }
     @objc private func quit() { NSApp.terminate(nil) }

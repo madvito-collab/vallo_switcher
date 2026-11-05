@@ -6,6 +6,19 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.3</title>
+            <pubDate>Thu, 05 Nov 2026 16:23:09 +0300</pubDate>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.6.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Когда новая версия скачалась, на значке у часов появляется красная точка, а в меню — «Перезапустить и обновить». Свитчер пришлёт уведомление: нажмите, и он обновится за пару секунд.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.3/Vallo-Switcher-0.6.3.dmg" sparkle:edSignature="VaEKqDg8oEXuHbwC3GDdZGcVDDVHUyjZl6ziKAGW/ovbTbxhaCzNx6m+yUULVfuxlPRgaGPz/iKUKb04+qP7DQ==" length="16030172" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.2</title>
             <pubDate>Thu, 05 Nov 2026 16:01:17 +0300</pubDate>
             <sparkle:version>8</sparkle:version>

@@ -37,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Updater.announceIfUpdated()
         menu = StatusMenu(store: store, modelStore: modelStore)
         menu.onCheckUpdates = { [weak self] in self?.updater.checkNow() }
+        menu.onInstallUpdate = { [weak self] in self?.updater.installPending() }
+        updater.onPendingChange = { [weak self] pending in self?.menu.show(update: pending) }
+        // предпросмотр бейджа: open -a "Vallo Switcher" --args --update-badge
+        if CommandLine.arguments.contains("--update-badge") { menu.show(update: .ready("0.9")) }
         DebugLog.enabled = store.debugMode
         do {
             layouts = try SystemLayouts()
