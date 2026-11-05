@@ -17,6 +17,13 @@ cp "$BIN" "$APP/Contents/MacOS/ValloSwitcher"
 # XPC-сервисы нужны только приложениям в песочнице, у нас её нет — выкидываем.
 ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
+# Библиотеки Swift, которых нет в старых macOS (Xcode кладёт их в приложение сам, SwiftPM — нет).
+# Без libswiftCompatibilitySpan свитчер падал при запуске на macOS 14 (2026-11-05, отчёт тестера).
+SWIFT_LIBS="$(dirname "$(xcrun --find swift)")/../lib/swift-6.2/macosx"
+for lib in $(otool -L "$APP/Contents/MacOS/ValloSwitcher" | awk '/@rpath\/libswift.*\.dylib/ {sub("@rpath/", "", $1); print $1}'); do
+    [ -f "$SWIFT_LIBS/$lib" ] || { echo "Нет $lib в $SWIFT_LIBS — приложение не запустится на старых macOS" >&2; exit 1; }
+    cp "$SWIFT_LIBS/$lib" "$APP/Contents/Frameworks/"
+done
 # SwiftPM записывает в бинарник «собрано под SDK 14», и macOS рисует старый дизайн.
 # Ставим реальную версию SDK — тогда включается Liquid Glass.
 # `--sdk macosx` обязателен: без него xcrun иногда не находит SDK и отдаёт пустоту — бинарник получал «sdk n/a»,
@@ -39,5 +46,6 @@ SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
 codesign --force --options runtime --sign "$SIGN_ID" "$SPARKLE/Autoupdate"
 codesign --force --options runtime --sign "$SIGN_ID" "$SPARKLE/Updater.app"
 codesign --force --options runtime --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
+for lib in "$APP"/Contents/Frameworks/*.dylib(N); do codesign --force --options runtime --sign "$SIGN_ID" "$lib"; done
 codesign --force --options runtime --sign "$SIGN_ID" "$APP"
 echo "Готово: $APP"
