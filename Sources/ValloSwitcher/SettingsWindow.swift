@@ -237,7 +237,7 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
             "hotkeyOptions": ModifierKey.allCases.map { ["id": "double:\($0.rawValue)", "title": $0.title] },
             "recording": recording.map { $0 == .convert ? "convert" : "correct" } ?? NSNull(),
             "hotkeyError": hotkeyError,
-            "integrations": ["figma": true],
+            "integrations": ["figma": true, "figmaPublished": FigmaBridge.communityPublished],
             "about": [
                 "autoUpdate": model.autoUpdate,
                 "lastCheck": model.lastUpdateCheck.map { iso.string(from: $0) } ?? NSNull(),

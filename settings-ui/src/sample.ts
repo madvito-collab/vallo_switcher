@@ -27,7 +27,7 @@ export const sample: State = {
   ],
   recording: null,
   hotkeyError: null,
-  integrations: { figma: true },
+  integrations: { figma: true, figmaPublished: false },
   about: {
     autoUpdate: true, lastCheck: new Date().toISOString(),
     model: { state: "notDownloaded", progress: 0, message: "", size: "228 МБ", disk: "470 МБ" },

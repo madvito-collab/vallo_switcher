@@ -103,13 +103,15 @@ function hotkeyDesc(s: State, which: "convert" | "correct", normal: string) {
   return normal
 }
 
-export function FigmaPage() {
+export function FigmaPage({ published }: { published: boolean }) {
   return (
     <>
       <PageTitle>Figma</PageTitle>
       <Card>
         <Row title="Плагин Vallo Typograph" desc="Исправляет все тексты в выделенных фреймах">
-          <Button variant="default" onClick={() => action("openFigmaPlugin")}><ExternalLink />Установить</Button>
+          {published
+            ? <Button variant="default" onClick={() => action("openFigmaPlugin")}><ExternalLink />Установить</Button>
+            : <Button disabled>Скоро</Button>}
         </Row>
       </Card>
       <Note>Ставится один раз. Дальше выделите фреймы и нажмите сочетание исправлений — плагин запустится сам</Note>

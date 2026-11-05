@@ -6,6 +6,24 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.2</title>
+            <pubDate>Thu, 05 Nov 2026 16:01:17 +0300</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>0.6.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Новое окно настроек: всё по разделам, каждая настройка в одном месте, справка и «О программе» прямо в окне.</li>
+<li>Настройки открываются, если запустить свитчер ещё раз — из «Программ», Launchpad или Spotlight.</li>
+<li>Слова в «Не переключать» можно добавлять вручную.</li>
+<li>Кавычка после клика за словом теперь закрывающая, две кавычки подряд дают «».</li>
+<li>Стрелки → и ← ставятся и в русской раскладке: -Ю и Б-.</li>
+<li>Стрелки, Home и End больше не сбивают типографику.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.2/Vallo-Switcher-0.6.2.dmg" sparkle:edSignature="XqI3EvkjkMEs6xz6h05xFnEX3BwpuMcdljrBIurxPzNA9H+SMshuzQ+dVd5qJjP8fZefYM14TQW5s+9B7KvSBA==" length="16022292" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.1</title>
             <pubDate>Thu, 05 Nov 2026 11:07:05 +0300</pubDate>
             <sparkle:version>7</sparkle:version>

@@ -21,7 +21,7 @@ export interface State {
   hotkeyOptions: HotkeyOption[]
   recording: "convert" | "correct" | null
   hotkeyError: { action: "convert" | "correct"; text: string } | null
-  integrations: { figma: boolean }
+  integrations: { figma: boolean; figmaPublished: boolean }
   about: {
     autoUpdate: boolean; lastCheck: string | null
     model: { state: ModelState; progress: number; message: string; size: string; disk: string }

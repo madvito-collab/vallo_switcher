@@ -83,7 +83,7 @@ export default function App() {
           {page === "general" && <GeneralPage s={state} go={go} />}
           {page === "layout" && <LayoutPage s={state} />}
           {page === "correct" && <CorrectPage s={state} />}
-          {page === "figma" && <FigmaPage />}
+          {page === "figma" && <FigmaPage published={state.integrations.figmaPublished} />}
           {page === "help" && <HelpPage s={state} />}
           {page === "about" && <AboutPage s={state} />}
         </div>
