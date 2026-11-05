@@ -44,6 +44,8 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
 
     func show(page: SettingsPage? = nil) {
         model.reload()
+        // пока открыты настройки — значок в Dock, как у обычной программы; закрыли — снова только у часов
+        NSApp.setActivationPolicy(.regular)
         if window == nil { window = makeWindow() }
         pendingPage = page
         schedulePush()
@@ -70,7 +72,17 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         w.titleVisibility = .hidden
         w.titlebarAppearsTransparent = true
         w.title = "Настройки Vallo Switcher"
-        w.contentView = web
+        // страница во всё окно забирает мышь — окно не таскалось. Сверху прозрачная полоса для перетаскивания
+        // (кнопки окна лежат выше неё и нажимаются как обычно); на странице там пусто
+        let container = NSView()
+        web.frame = container.bounds
+        web.autoresizingMask = [.width, .height]
+        container.addSubview(web)
+        let drag = DragStrip(frame: NSRect(x: 0, y: container.bounds.height - DragStrip.height,
+                                           width: container.bounds.width, height: DragStrip.height))
+        drag.autoresizingMask = [.width, .minYMargin]
+        container.addSubview(drag)
+        w.contentView = container
         w.contentMinSize = NSSize(width: 760, height: 480)
         w.isReleasedWhenClosed = false
         w.delegate = self
@@ -79,7 +91,10 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         return w
     }
 
-    func windowWillClose(_ notification: Notification) { stopRecording() }
+    func windowWillClose(_ notification: Notification) {
+        stopRecording()
+        NSApp.setActivationPolicy(.accessory)
+    }
 
     // MARK: - Страница → свитчер
 
@@ -287,6 +302,19 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
             decisionHandler(.cancel)
         } else {
             decisionHandler(.allow)
+        }
+    }
+}
+
+/// Полоса над страницей, за которую таскают окно; двойной щелчок — развернуть, как у заголовка окна.
+private final class DragStrip: NSView {
+    static let height: CGFloat = 32
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            window?.performZoom(nil)
+        } else {
+            window?.performDrag(with: event)
         }
     }
 }
