@@ -6,6 +6,20 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.1</title>
+            <pubDate>Thu, 05 Nov 2026 11:07:05 +0300</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.6.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Исправлен запуск на macOS 14 и 15: свитчер закрывался сразу после открытия.</li>
+<li>Фигма: правый Shift дважды по выделенным фреймам причёсывает все текстовые слои внутри — опечатки, «ё», запятые, типографика. Нужен плагин Vallo, как поставить — в справке.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.1/Vallo-Switcher-0.6.1.dmg" sparkle:edSignature="HhXtw5CfvpbbyOpzWBpZX0tj7kdhVkunZklGg7J0xhTeE8hmxvKBSzJv29qxuiLOVg8oSr5ySdMPDaxIol2lBQ==" length="15942087" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6</title>
             <pubDate>Wed, 04 Nov 2026 12:07:20 +0300</pubDate>
             <sparkle:version>6</sparkle:version>
