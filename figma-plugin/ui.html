@@ -27,12 +27,20 @@ let file = null;
 let fresh = true;   // первое подключение этого запуска — свитчер сразу пришлёт работу
 
 function connect() {
+  let wasOpen = false;
   try { socket = new WebSocket(URL); } catch (e) { return retry(); }
-  socket.onopen = () => { if (file !== null) hello(); };
+  socket.onopen = () => {
+    wasOpen = true;
+    parent.postMessage({ pluginMessage: { type: "connected" } }, "*");
+    if (file !== null) hello();
+  };
   socket.onmessage = (e) => {
     try { parent.postMessage({ pluginMessage: { from: "switcher", message: JSON.parse(e.data) } }, "*"); } catch (_) {}
   };
-  socket.onclose = retry;
+  socket.onclose = () => {
+    if (wasOpen) parent.postMessage({ pluginMessage: { type: "disconnected" } }, "*");
+    retry();
+  };
   socket.onerror = () => {};   // onclose придёт следом
 }
 
@@ -79,7 +87,7 @@ function layersWord(n) {
   return "слоёв";
 }
 
-function showStats(stats, skipped) {
+function showStats(stats, skipped, failed) {
   const box = document.getElementById("stats");
   box.replaceChildren();
   const rows = LABELS.filter(([k]) => stats[k] > 0);
@@ -104,6 +112,7 @@ function showStats(stats, skipped) {
     box.append(summary, group);
   }
   if (skipped > 0) box.append(el("div", "note", `Пропущено слоёв без шрифта: ${skipped}`));
+  if (failed > 0) box.append(el("div", "note", `Не изменены — слой поменяли или удалили во время работы: ${failed}`));
   const ok = el("button", "", "Закрыть");
   ok.onclick = () => parent.postMessage({ pluginMessage: { type: "hide" } }, "*");
   box.append(ok);
@@ -123,7 +132,7 @@ window.onmessage = (e) => {
   } else if (m.type === "send") {
     send(m.message);
   } else if (m.type === "stats") {
-    showStats(m.stats, m.skipped);
+    showStats(m.stats, m.skipped, m.failed || 0);
   }
 };
 

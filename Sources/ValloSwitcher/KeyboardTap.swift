@@ -308,6 +308,8 @@ final class KeyboardTap {
     private var figmaPressID = 0
     /// Плагин запущен нами и ещё не вышел на связь — до этого времени новые нажатия не запускают его снова.
     private var figmaLaunchingUntil: Date?
+    /// Только что запущенный плагин, пришедший, пока шёл другой пакет.
+    private var figmaQueuedFile: String?
     private lazy var figmaBatch = FigmaBatch(store: store, commas: commas)
 
     /// Двойной правый Shift на слоях Фигмы: спросить плагин файла спереди; плагина нет — запустить.
@@ -350,7 +352,8 @@ final class KeyboardTap {
         // плагин только что запущен (нами по сочетанию или человеком из меню) — сразу за работу
         if case .hello(_, _, true) = message {
             figmaLaunchingUntil = nil
-            if !figmaBatch.isRunning { sendPress(to: file) }
+            // свитчер занят другим пакетом — этот файл обслужим следом (плагин ждёт и пишет «занят», а не «не запущен»)
+            if figmaBatch.isRunning { figmaQueuedFile = file } else { sendPress(to: file) }
             return
         }
         guard case let .mode(id, mode, skipped) = message, id == figmaPressID else { return }
@@ -362,7 +365,12 @@ final class KeyboardTap {
             break
         case .layers(let texts):
             figmaBatch.run(texts, typos: typos, yo: yo) { [weak self] edits, stats in
-                self?.figma?.send(.result(id: id, edits: edits, stats: stats, skipped: skipped), toFile: file)
+                guard let self else { return }
+                self.figma?.send(.result(id: id, edits: edits, stats: stats, skipped: skipped), toFile: file)
+                if let queued = self.figmaQueuedFile {
+                    self.figmaQueuedFile = nil
+                    if self.figma?.connectedFiles.contains(queued) == true { self.sendPress(to: queued) }
+                }
             }
         }
     }

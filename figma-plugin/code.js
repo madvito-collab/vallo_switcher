@@ -7,7 +7,19 @@ figma.showUI(__html__, { visible: false, width: 408, height: 80, title: "Vallo T
 figma.ui.postMessage({ type: "file", name: figma.root.name });
 
 // свитчер не ответил на запуск (не запущен) — не висеть с плашкой
-const noSwitcher = setTimeout(() => figma.closePlugin("Нужно запущенное приложение Vallo Switcher (бесплатно): github.com/madvito-collab/vallo_switcher"), 6000);
+let waitTimer = setTimeout(() => figma.closePlugin("Нужно запущенное приложение Vallo Switcher (бесплатно): github.com/madvito-collab/vallo_switcher"), 6000);
+
+// связь есть, но работы нет — свитчер занят другим файлом; ждём дольше и пишем правду
+function onConnected() {
+  if (!waitTimer) return;
+  clearTimeout(waitTimer);
+  waitTimer = setTimeout(() => figma.closePlugin("Vallo Switcher занят — попробуйте ещё раз"), 60000);
+}
+
+// свитчер пропал (перезапуск, выход) посреди работы — сразу закрыться, а не ждать срока
+function onDisconnected() {
+  if (pending.size > 0) figma.closePlugin("Связь с Vallo Switcher прервалась — попробуйте ещё раз");
+}
 
 function toSwitcher(message) {
   figma.ui.postMessage({ type: "send", message });
@@ -38,7 +50,8 @@ function layersWord(n) {
 }
 
 function onPress(id) {
-  clearTimeout(noSwitcher);
+  clearTimeout(waitTimer);
+  waitTimer = null;
   if (figma.currentPage.selectedTextRange) {
     toSwitcher({ type: "mode", id, mode: "text" });
     return setTimeout(() => figma.closePlugin(), 300);
@@ -92,7 +105,7 @@ async function onResult(message) {
   figma.commitUndo();   // один запуск — один шаг ⌘Z
   if (progress) { progress.cancel(); progress = null; }
   const stats = Object.assign({}, message.stats, { layers: message.stats.layers - failed });
-  figma.ui.postMessage({ type: "stats", stats, skipped: message.skipped + failed });
+  figma.ui.postMessage({ type: "stats", stats, skipped: message.skipped, failed });
   toSwitcher({ type: "done", id: message.id });
 }
 
@@ -100,6 +113,8 @@ figma.ui.onmessage = (m) => {
   if (m.type === "show") return figma.ui.show();
   if (m.type === "resize") return figma.ui.resize(408, m.height);
   if (m.type === "hide") return figma.closePlugin();
+  if (m.type === "connected") return onConnected();
+  if (m.type === "disconnected") return onDisconnected();
   if (m.from !== "switcher") return;
   const message = m.message;
   if (message.type === "press") onPress(message.id);
