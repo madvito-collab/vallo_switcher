@@ -23,7 +23,7 @@ enum FigmaLauncher {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "Vallo Switcher"
-            content.body = "Запустите плагин Vallo в Фигме вручную: «Плагины → Разработка → Vallo»"
+            content.body = "Запустите плагин Vallo Typograph в Фигме вручную: «Плагины → Vallo Typograph»"
             center.add(UNNotificationRequest(identifier: "figma-plugin", content: content, trigger: nil))
         }
     }

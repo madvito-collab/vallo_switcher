@@ -3,11 +3,11 @@
 
 // Плагин живёт одно нажатие (решение автора: в фоне он висел бы с плашкой «Running Vallo»):
 // запустили → свитчер прислал press → оттипографировали → окошко итога → «Готово» закрывает плагин.
-figma.showUI(__html__, { visible: false, themeColors: true, width: 240, height: 80, title: "Vallo" });
+figma.showUI(__html__, { visible: false, width: 408, height: 80, title: "Vallo Typograph" });
 figma.ui.postMessage({ type: "file", name: figma.root.name });
 
 // свитчер не ответил на запуск (не запущен) — не висеть с плашкой
-const noSwitcher = setTimeout(() => figma.closePlugin("Vallo Switcher не запущен"), 6000);
+const noSwitcher = setTimeout(() => figma.closePlugin("Нужно запущенное приложение Vallo Switcher (бесплатно): github.com/madvito-collab/vallo_switcher"), 6000);
 
 function toSwitcher(message) {
   figma.ui.postMessage({ type: "send", message });
@@ -97,11 +97,8 @@ async function onResult(message) {
 }
 
 figma.ui.onmessage = (m) => {
-  if (m.type === "show") {
-    figma.ui.resize(240, m.height);
-    figma.ui.show();
-    return;
-  }
+  if (m.type === "show") return figma.ui.show();
+  if (m.type === "resize") return figma.ui.resize(408, m.height);
   if (m.type === "hide") return figma.closePlugin();
   if (m.from !== "switcher") return;
   const message = m.message;
