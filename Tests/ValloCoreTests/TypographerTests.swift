@@ -25,6 +25,18 @@ let nb = "\u{00A0}"
         #expect(f("\"Он сказал \"привет\"\"") == "«Он сказал „привет“»")
     }
 
+    @Test func emptyQuotesClose() {
+        // две кавычки подряд — пустая пара, а не вложенная: решение автора
+        #expect(f("\"\"") == "«»")
+        #expect(f("слово \"\" тут") == "слово «» тут")
+    }
+
+    @Test func arrowsInRussianLayout() {
+        // «->» и «<-», набранные в русской раскладке: Shift+Ю — это «>», Shift+Б — «<»
+        #expect(f("дом -Ю сад") == "дом → сад")
+        #expect(f("дом Б- сад") == "дом ← сад")
+    }
+
     @Test func quotesEnglish() {
         #expect(f("\"Hello\" it's") == "“Hello” it’s")
     }

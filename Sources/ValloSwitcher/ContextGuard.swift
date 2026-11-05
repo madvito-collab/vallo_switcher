@@ -80,6 +80,25 @@ enum ContextGuard {
         return value as? String
     }
 
+    /// Символ сразу перед курсором в поле, где печатают. nil — курсор в начале, есть выделение или приложение не говорит.
+    /// Нужен кавычке после клика: за словом она закрывается, за пробелом — открывается.
+    static func charBeforeCaret() -> Character? {
+        guard let element = focusedElement() else { return nil }
+        var rangeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
+              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range), range.length == 0 else { return nil }
+        guard range.location > 0 else { return "\n" }   // начало поля — как начало строки
+        var before = CFRange(location: range.location - 1, length: 1)
+        guard let param = AXValueCreate(.cfRange, &before) else { return nil }
+        var text: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
+                                                         param, &text) == .success,
+              let char = (text as? String)?.last else { return nil }
+        return char
+    }
+
     /// Заголовок активного окна переднего приложения (в Фигме — имя открытого файла).
     static func frontWindowTitle() -> String? {
         guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }

@@ -100,6 +100,25 @@ public struct LiveTypographer: Sendable {
         lastEditChangedLength = false
     }
 
+    /// Служебный символ клавиши перехода (стрелки, Home/End, Page Up/Down, Delete): курсор ушёл, память надо сбросить.
+    /// Enter и Tab — это набор, их не считаем.
+    public static func isNavigation(_ char: Character) -> Bool {
+        guard let v = char.unicodeScalars.first?.value, char.unicodeScalars.count == 1 else { return false }
+        return (v < 0x20 && v != 0x0A && v != 0x0D && v != 0x09 && v != 0x03) || v == 0x7F
+    }
+
+    /// Память пуста, а что слева — неизвестно (клик посреди текста). Свитчеру стоит спросить у Мака символ перед курсором.
+    public var needsLeftChar: Bool { context.isEmpty && leftUnknown }
+
+    /// Символ перед курсором, прочитанный с экрана: по нему кавычка поймёт, открывать или закрывать.
+    /// Это может быть хвост старого слова — его не исправляем.
+    public mutating func seedLeft(_ char: Character) {
+        guard needsLeftChar else { return }
+        context = [char]
+        frozen = 1
+        startsMidWord = char.isLetter
+    }
+
     private mutating func setContext(_ chars: [Character]) {
         let extra = max(0, chars.count - LiveTypographer.contextLimit)
         context = Array(chars.dropFirst(extra))

@@ -56,6 +56,9 @@ public enum Typographer {
             ("\\+-", "±"),
             ("->", "→"),
             ("<-", "←"),
+            // то же, набранное в русской раскладке: Shift+Ю — это «>», Shift+Б — «<»
+            ("-Ю", "→"),
+            ("Б-", "←"),
             ("(?<![\\d/])1/2(?=[^\\d/]\(end))", "½"),
             // умножение: 5x3, 5*3, 5 х 3 (пробел мог уже стать неразрывным — «число + слово»); не 0x1F
             ("(?<=\\d)(?<!\\b0)[xх*](?=\\d)", "×"),
@@ -117,7 +120,11 @@ public enum Typographer {
             case "’":
                 if stack.last == "‘" { stack.removeLast() }
             case "\"":
-                if isOpeningPosition(prev) {
+                if let prev, let opener = stack.last, prev == opener {
+                    // кавычка сразу за открывающей — пустая пара «», а не вложенная «„ (решение автора)
+                    stack.removeLast()
+                    chars[i] = ["«": "»", "„": "“", "“": "”", "‘": "’"][opener] ?? "»"
+                } else if isOpeningPosition(prev) {
                     let open: Character
                     switch language(around: chars, at: i, hint: hint) {
                     case .ru: open = stack.isEmpty ? "«" : "„"

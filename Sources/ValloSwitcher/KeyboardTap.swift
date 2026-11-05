@@ -204,10 +204,16 @@ final class KeyboardTap {
 
         // типографика на лету
         guard keyCode != Engine.backspaceKey else { return Unmanaged.passUnretained(event) }
+        // стрелки, Home/End, Delete раскладка переводит в служебные символы — это не набор, а переход по тексту
         guard !modified, liveAllowed,
-              let text = layouts.pair.layout(actual).character(for: stroke), text.count == 1, let char = text.first else {
+              let text = layouts.pair.layout(actual).character(for: stroke), text.count == 1, let char = text.first,
+              !LiveTypographer.isNavigation(char) else {
             live.reset()
             return Unmanaged.passUnretained(event)
+        }
+        // кавычка сразу после клика: что слева, свитчер не видел — спрашиваем у Мака
+        if char == "\"" || char == "'", live.needsLeftChar, let left = ContextGuard.charBeforeCaret() {
+            live.seedLeft(left)
         }
         guard let edit = live.typed(char, hint: actual, options: options) else { return Unmanaged.passUnretained(event) }
         log.debug("typography → delete(\(edit.delete)) insert(\(edit.insert.count) chars)")

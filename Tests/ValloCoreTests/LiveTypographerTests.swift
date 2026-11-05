@@ -30,6 +30,19 @@ import Testing
         #expect(edits.last == TypoEdit(delete: 0, insert: "»"))
     }
 
+    @Test func twoQuotesInARowMakeEmptyPair() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let edits = typeAll("\"\"", &live)
+        #expect(edits == [TypoEdit(delete: 0, insert: "«"), TypoEdit(delete: 0, insert: "»")])
+    }
+
+    @Test func arrowTypedInRussianLayout() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect(typeAll("дом -Ю", &live).last == TypoEdit(delete: 1, insert: "→"))
+    }
+
     @Test func nbspAfterPreposition() {
         var live = LiveTypographer()
         live.reset(knownLineStart: true)
@@ -55,6 +68,29 @@ import Testing
         var live = LiveTypographer()
         typeAll("\"да", &live)
         live.reset()
+        #expect(live.typed("\"") == TypoEdit(delete: 0, insert: "«"))
+    }
+
+    @Test func quoteAfterClickBehindWordCloses() {
+        // кликнул в конец старого слова: свитчер спросил у Мака символ слева — это буква, кавычка закрывающая
+        var live = LiveTypographer()
+        #expect(live.needsLeftChar)
+        live.seedLeft("о")
+        #expect(!live.needsLeftChar)
+        #expect(live.typed("\"") == TypoEdit(delete: 0, insert: "»"))
+    }
+
+    @Test func arrowKeysAreNavigationNotTyping() {
+        // стрелки раскладка отдаёт как U+001C…001F — свитчер сбрасывает память, а не печатает их
+        for v in [0x1C, 0x1D, 0x1E, 0x1F, 0x01, 0x04, 0x0B, 0x0C, 0x7F] {
+            #expect(LiveTypographer.isNavigation(Character(Unicode.Scalar(v)!)))
+        }
+        for c: Character in ["\r", "\n", "\t", " ", "а", "\""] { #expect(!LiveTypographer.isNavigation(c)) }
+    }
+
+    @Test func quoteAfterClickBehindSpaceOpens() {
+        var live = LiveTypographer()
+        live.seedLeft(" ")
         #expect(live.typed("\"") == TypoEdit(delete: 0, insert: "«"))
     }
 
