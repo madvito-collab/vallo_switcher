@@ -6,6 +6,20 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.4</title>
+            <pubDate>Thu, 05 Nov 2026 16:30:24 +0300</pubDate>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>0.6.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Окно настроек снова можно двигать — за верхнюю полосу.</li>
+<li>Пока открыты настройки, у свитчера есть значок в Dock и в переключателе программ ⌘Tab.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.4/Vallo-Switcher-0.6.4.dmg" sparkle:edSignature="sPSO1sE6oE1aByX++Gdr8ugZumCiNM+gTUmKtOT3NG1oLHvgLButFS1F9AKGDFtIa2cOe6Hy7St/RGrDtn66Dg==" length="16032411" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.3</title>
             <pubDate>Thu, 05 Nov 2026 16:23:09 +0300</pubDate>
             <sparkle:version>9</sparkle:version>
