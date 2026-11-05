@@ -31,6 +31,10 @@ Vallo Typograph
 
 Vallo Switcher — открытый и бесплатный (лицензия MIT). Он ещё переключает раскладку RU↔EN, когда вы забыли её сменить.
 
+## Category
+
+Design tools → Editing & effects
+
 ## Tags
 
 typography, типографика, russian, текст, copywriting, редактура

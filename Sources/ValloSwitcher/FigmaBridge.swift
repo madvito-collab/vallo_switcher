@@ -19,6 +19,9 @@ final class FigmaBridge {
 
     var connectedFiles: [String] { Array(byFile.keys) }
 
+    /// Страница плагина в Figma Community (опубликован автором 2026-11-05).
+    static let communityURL = URL(string: "https://www.figma.com/community/plugin/1700095930867895220")!
+
     /// Копия плагина вне приложения: в окне выбора файла Фигмы внутрь .app не зайти.
     /// Перезаписывается при каждом запуске — после обновления свитчера Фигма подхватит новый плагин.
     static var pluginFolder: URL {

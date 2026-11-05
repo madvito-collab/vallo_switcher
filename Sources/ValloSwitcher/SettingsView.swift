@@ -316,11 +316,11 @@ struct TypographyTab: View {
                                 isOn: $model.typographyHotkey)
             }
             Section("Фигма") {
-                Text(T("Чтобы причёсывать фреймы целиком, установите плагин Vallo: в Фигме откройте «Плагины → Разработка → Импорт плагина из манифеста…» и выберите файл manifest.json. Дальше выделите фреймы и нажмите то же сочетание."))
+                Text(T("Чтобы причёсывать фреймы целиком, установите плагин Vallo Typograph из Figma Community. Дальше выделите фреймы и нажмите то же сочетание — плагин запустится сам."))
                     .font(.callout).foregroundStyle(.secondary)
                 HStack {
                     Spacer()
-                    Button("Показать плагин для Фигмы") { FigmaBridge.revealPlugin() }
+                    Button("Открыть плагин в Figma Community") { NSWorkspace.shared.open(FigmaBridge.communityURL) }
                 }
             }
             Section("Примеры замен") {
