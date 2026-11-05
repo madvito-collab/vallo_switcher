@@ -23,10 +23,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .filter { $0 != .current }
         if !others.isEmpty {
-            others.first?.activate()
+            // попросить уже запущенный свитчер показать настройки — как будто кликнули по нему самому
+            DistributedNotificationCenter.default().postNotificationName(Self.showSettingsNotification, object: nil,
+                                                                         userInfo: nil, deliverImmediately: true)
             NSApp.terminate(nil)
             return
         }
+        DistributedNotificationCenter.default().addObserver(
+            forName: Self.showSettingsNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.showSettingsOnReopen() }
         updater = Updater()
         figma.start()
         Updater.announceIfUpdated()
@@ -55,9 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onHotkeysChanged = { [weak self] in self?.tap?.reloadHotkeys() }
         settings = SettingsWindow(model: model, modelStore: modelStore)
         menu.onOpenSettings = { [weak self] in self?.settings.show() }
+        menu.onOpenHelp = { [weak self] in self?.settings.show(page: .help) }
+        menu.onOpenAbout = { [weak self] in self?.settings.show(page: .about) }
         menu.onDownloadModel = { [weak self] in
             guard let self else { return }
-            self.settings.show(tab: .typos)
+            self.settings.show(page: .about)
             if case .downloading = self.modelStore.state { return }
             self.modelStore.download()
         }
@@ -87,6 +94,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.set(state: .needsPermissions)
             showOnboarding()
         }
+    }
+
+    /// Второй экземпляр (например, из DMG) просит первый показать настройки.
+    private static let showSettingsNotification = Notification.Name("com.vallo.switcher.showSettings")
+
+    /// Клик по значку свитчера в «Программах», Launchpad или Spotlight, когда он уже запущен, — открыть настройки
+    /// (как у Caramba). Без разрешений — онбординг: настройки без них бесполезны.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettingsOnReopen()
+        return false
+    }
+
+    private func showSettingsOnReopen() {
+        guard settings != nil else { return }
+        if Permissions.allGranted { settings.show() } else { showOnboarding() }
     }
 
     private func showOnboarding(preview: Bool = false) {

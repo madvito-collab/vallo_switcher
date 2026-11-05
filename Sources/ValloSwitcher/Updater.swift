@@ -18,6 +18,8 @@ final class Updater: NSObject, SPUStandardUserDriverDelegate {
         set { controller.updater.automaticallyDownloadsUpdates = newValue }
     }
 
+    var lastCheck: Date? { controller.updater.lastUpdateCheckDate }
+
     /// «Проверить обновления…» в меню.
     func checkNow() {
         NSApp.activate(ignoringOtherApps: true)
@@ -43,27 +45,5 @@ final class Updater: NSObject, SPUStandardUserDriverDelegate {
             content.body = "Обновлено до \(current)"
             center.add(UNNotificationRequest(identifier: "updated", content: content, trigger: nil))
         }
-    }
-
-    /// «О программе»: стандартное окно Мака — значок, название, версия, автор со ссылками.
-    static func showAbout() {
-        let credits = NSMutableAttributedString()
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        func line(_ text: String, link: String? = nil) {
-            var attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: style,
-            ]
-            if let link { attrs[.link] = URL(string: link) }
-            credits.append(NSAttributedString(string: text, attributes: attrs))
-        }
-        line("Автор — Shmelev Vitaliy\n")
-        line("t.me/madvito", link: "https://t.me/madvito")
-        line(" · ")
-        line("GitHub", link: "https://github.com/madvito-collab/vallo_switcher")
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 }

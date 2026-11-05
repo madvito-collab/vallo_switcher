@@ -18,9 +18,12 @@ final class StatusMenu: NSObject {
     private let menu = NSMenu()
 
     var onOpenSettings: (() -> Void)?
+    /// Справка и «О программе» — страницы окна настроек.
+    var onOpenHelp: (() -> Void)?
+    var onOpenAbout: (() -> Void)?
     var onCheckUpdates: (() -> Void)?
     var onGivePermissions: (() -> Void)?
-    /// «Скачать модель запятых» — открыть вкладку «Опечатки» и начать скачивание.
+    /// «Скачать модель запятых» — открыть «Исправления» и начать скачивание.
     var onDownloadModel: (() -> Void)?
 
     /// Иконка автора (шаблон: Мак сам красит её под светлую и тёмную строку меню).
@@ -111,12 +114,10 @@ final class StatusMenu: NSObject {
     @objc private func givePermissions() { onGivePermissions?() }
     @objc private func openSettings() { onOpenSettings?() }
     @objc private func checkUpdates() { onCheckUpdates?() }
-    @objc private func openAbout() { Updater.showAbout() }
+    @objc private func openAbout() { onOpenAbout?() }
     @objc private func downloadModel() { onDownloadModel?() }
     @objc private func quit() { NSApp.terminate(nil) }
-    @objc private func openHelp() {
-        if let url = Bundle.main.url(forResource: "Help", withExtension: "html") { NSWorkspace.shared.open(url) }
-    }
+    @objc private func openHelp() { onOpenHelp?() }
 }
 
 /// Строка меню «название слева — переключатель справа», как «Wi-Fi» в меню Wi-Fi.

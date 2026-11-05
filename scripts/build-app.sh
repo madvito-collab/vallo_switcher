@@ -37,6 +37,9 @@ cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/
 cp Data/switcher-rules.json "$APP/Contents/Resources/wordlists/"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
+# окно настроек — готовая страница (исходники settings-ui/, пересборка — scripts/build-settings-ui.sh)
+mkdir -p "$APP/Contents/Resources/SettingsUI"
+cp Support/SettingsUI/index.html "$APP/Contents/Resources/SettingsUI/"
 # плагин для Фигмы: человек импортирует manifest.json из «Настройки → Типографика»
 mkdir -p "$APP/Contents/Resources/figma-plugin"
 cp figma-plugin/manifest.json figma-plugin/code.js figma-plugin/ui.html "$APP/Contents/Resources/figma-plugin/"
