@@ -6,3 +6,5 @@ build/
 .claude/settings.local.json
 windows/**/bin/
 windows/**/obj/
+# рабочие заметки и договорённости — только локально
+docs/HANDOFF.md
