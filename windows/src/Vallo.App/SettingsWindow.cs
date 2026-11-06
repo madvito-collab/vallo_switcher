@@ -68,8 +68,18 @@ sealed class SettingsWindow : IDisposable
             form = null;
         };
         f.Load += async (_, _) => await StartWeb();
-        // заголовок окна — в тон теме Windows (страница сама следует теме)
-        f.HandleCreated += (_, _) => DarkTitleBar(f.Handle);
+        // заголовок окна — в тон теме Windows (страница сама следует теме). Ставим и при создании окна,
+        // и когда оно уже на экране: иначе Windows иногда оставляет шапку светлой
+        f.HandleCreated += (_, _) => ThemeTitleBar(f.Handle);
+        f.Shown += (_, _) => ThemeTitleBar(f.Handle);
+        // тему переключили, пока окно открыто
+        Microsoft.Win32.UserPreferenceChangedEventHandler themeChanged = (_, e) =>
+        {
+            if (e.Category == Microsoft.Win32.UserPreferenceCategory.General && f.IsHandleCreated)
+                f.BeginInvoke(() => ThemeTitleBar(f.Handle));
+        };
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += themeChanged;
+        f.FormClosed += (_, _) => Microsoft.Win32.SystemEvents.UserPreferenceChanged -= themeChanged;
         return f;
     }
 
@@ -205,11 +215,20 @@ sealed class SettingsWindow : IDisposable
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
 
-    static void DarkTitleBar(nint hwnd)
+    [DllImport("user32.dll")]
+    static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
+
+    /// Тёмная или светлая шапка окна — как приложения в теме Windows.
+    static void ThemeTitleBar(nint hwnd)
     {
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
         var dark = key?.GetValue("AppsUseLightTheme") is int v && v == 0 ? 1 : 0;
-        DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, ref dark, sizeof(int));
+        // 20 — DWMWA_USE_IMMERSIVE_DARK_MODE (Windows 11 и новые Windows 10); 19 — то же в Windows 10 до 20H1
+        if (DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int)) != 0)
+            DwmSetWindowAttribute(hwnd, 19, ref dark, sizeof(int));
+        // перерисовать рамку сейчас, не дожидаясь, пока окно потеряет и вернёт фокус
+        const uint NoSizeNoMoveNoZOrderNoActivateFrameChanged = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020;
+        SetWindowPos(hwnd, 0, 0, 0, 0, 0, NoSizeNoMoveNoZOrderNoActivateFrameChanged);
     }
 
     static void Open(string url)
