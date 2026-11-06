@@ -35,6 +35,8 @@ xcrun vtool -set-build-version macos 14.0 "$SDK_VERSION" -replace \
 cp Support/Info.plist "$APP/Contents/Info.plist"
 cp Data/wordlists/en.txt Data/wordlists/ru.txt Data/wordlists/ru-typos.txt Data/wordlists/ru-yo.txt Data/wordlists/ru-modern.txt Data/wordlists/eyo-LICENSE.txt Data/wordlists/README.md "$APP/Contents/Resources/wordlists/"
 cp Data/switcher-rules.json "$APP/Contents/Resources/wordlists/"
+# все формы русских слов (OpenCorpora): в репозитории сжаты, в приложении — распакованы (свитчер ищет прямо в файле)
+gzip -dc Data/wordlists/ru-forms.txt.gz > "$APP/Contents/Resources/wordlists/ru-forms.txt"
 cp Support/Icons/AppIcon.icns Support/Icons/MenuBarIcon.png Support/Icons/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cp Support/Help.html "$APP/Contents/Resources/"
 # окно настроек — готовая страница (исходники settings-ui/, пересборка — scripts/build-settings-ui.sh)

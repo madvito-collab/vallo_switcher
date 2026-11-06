@@ -51,6 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             yo = try Yoficator.load(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-yo.txt"))
             typos.yoWords = yo
             typos.modernWords = Set(modern.map(Lexicon.normalize))
+            // без словаря форм исправлятор работает по-старому — осторожнее, но и портит больше
+            typos.forms = try? SortedWordFile(url: Bundle.main.resourceURL!.appendingPathComponent("wordlists/ru-forms.txt"))
         } catch {
             fail("Не получилось запуститься: \(error)")
             return
