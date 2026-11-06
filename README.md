@@ -5,7 +5,7 @@
 <p align="center">Забыли переключить раскладку — свитчер исправит сам<br>
 Бесплатно, без рекламы, с открытым кодом</p>
 
-<p align="center"><b><a href="https://github.com/madvito-collab/vallo_switcher/releases/latest">⬇ Скачать для macOS</a></b> · Windows — скоро</p>
+<p align="center"><b><a href="https://github.com/madvito-collab/vallo_switcher/releases/latest">⬇ Скачать для macOS</a></b> · <b><a href="https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.1/ValloSwitcher-win-Setup.exe">⬇ Скачать для Windows</a></b></p>
 
 ---
 
@@ -66,6 +66,15 @@ xattr -dr com.apple.quarantine "/Applications/Vallo Switcher.app"
 Автообновление появилось в версии 0.6. Скачайте новую версию один раз вручную и замените старую в «Программах» — дальше свитчер будет обновляться сам.
 </details>
 
+## Установка на Windows
+
+Версия для Windows пока умеет только переключать раскладку: типографика, опечатки, «ё» и запятые появятся в следующих версиях.
+
+1. [Скачайте](https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.1/ValloSwitcher-win-Setup.exe) `ValloSwitcher-win-Setup.exe` и запустите.
+2. Windows может предупредить, что программа незнакомая: нажмите **«Подробнее» → «Выполнить в любом случае»**. Так нужно один раз.
+
+Готово: в трее у часов появится значок «ё». Свитчер запускается вместе с Windows и обновляется сам. Удалить его можно в «Параметры → Приложения».
+
 ## Частые вопросы
 
 **Это безопасно? Свитчер видит всё, что я печатаю.**
@@ -83,8 +92,8 @@ xattr -dr com.apple.quarantine "/Applications/Vallo Switcher.app"
 **А другие языки?**
 Пока только русский и английский. Остальные раскладки свитчер не трогает.
 
-**Когда будет Windows?**
-Версия для Windows уже в тестировании. Пока она умеет только переключать раскладку.
+**А что умеет версия для Windows?**
+Пока только переключать раскладку — автоматически и по двойному левому Shift. Остальное догоняет Мак по очереди: сначала типографика, потом опечатки, «ё» и запятые.
 
 ## Нашли ошибку или есть идея?
 
