@@ -1,6 +1,6 @@
 // Общие кирпичики страниц: карточка, строка, заголовки, списки приложений и слов, выбор сочетания
 import { useState } from "react"
-import { Plus, Trash2, X, AppWindow } from "lucide-react"
+import { Plus, Trash2, X, AppWindow, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -41,6 +41,29 @@ export function Row({ title, desc, icon, children }: {
       </div>
       {children}
     </div>
+  )
+}
+
+/** Строка-переход на подстраницу, как в Системных настройках Мака: справа счётчик и стрелка */
+export function LinkRow({ title, desc, count, onClick }: { title: string; desc: string; count: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex min-h-[52px] w-full items-center gap-4 px-4 py-3 text-left first:rounded-t-xl last:rounded-b-xl hover:bg-hover">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">{title}</div>
+          <div className="mt-px text-[13px] text-muted-foreground">{desc}</div>
+        </div>
+        {count > 0 && <span className="text-muted-foreground">{count}</span>}
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+    </button>
+  )
+}
+
+/** «‹ Раскладка» над заголовком подстраницы */
+export function BackButton({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="-ml-1.5 mb-2 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-primary hover:bg-hover">
+      <ChevronLeft className="size-4" />{title}
+    </button>
   )
 }
 
@@ -106,7 +129,7 @@ export function AppList({ list, apps }: { list: ListId; apps: AppEntry[] }) {
   )
 }
 
-/** Список слов с полем «Добавить слово» */
+/** Список слов строками. Поле добавления — сверху: список бывает длинным */
 export function WordList({ list, words, empty }: { list: ListId; words: string[]; empty: string }) {
   const [word, setWord] = useState("")
   const add = () => {
@@ -118,17 +141,17 @@ export function WordList({ list, words, empty }: { list: ListId; words: string[]
   const remove = (w: string) => set(`words.${list}`, words.filter(x => x !== w))
   return (
     <Card>
-      {words.length === 0 && <div className="px-4 py-3.5 text-[13px] text-muted-foreground">{empty}</div>}
-      {words.map(w => (
-        <Row key={w} title={<span className="font-normal">{w}</span>}>
-          <Button variant="destructive" size="icon" onClick={() => remove(w)} aria-label={`Убрать ${w}`}><Trash2 /></Button>
-        </Row>
-      ))}
       <div className="flex gap-2 px-4 py-3">
         <Input placeholder="Добавить слово" value={word} onChange={e => setWord(e.target.value)}
                onKeyDown={e => { if (e.key === "Enter") add() }} />
         <Button onClick={add} disabled={!word.trim()}>Добавить</Button>
       </div>
+      {words.length === 0 && <div className="px-4 py-3.5 text-[13px] text-muted-foreground">{empty}</div>}
+      {[...words].sort((a, b) => a.localeCompare(b, "ru")).map(w => (
+        <Row key={w} title={<span className="font-normal">{w}</span>}>
+          <Button variant="destructive" size="icon" onClick={() => remove(w)} aria-label={`Убрать ${w}`}><Trash2 /></Button>
+        </Row>
+      ))}
     </Card>
   )
 }

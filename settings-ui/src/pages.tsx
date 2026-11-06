@@ -2,8 +2,8 @@
 import { ArrowRight, CircleCheck, Download, ExternalLink, Trash2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { action, set, type PageId, type State } from "./bridge"
-import { AppList, Card, HotkeySelect, Kbd, Note, PageTitle, Row, SectionTitle, ToggleRow, WordList } from "./kit"
+import { action, set, type ListId, type PageId, type State } from "./bridge"
+import { AppList, BackButton, Card, HotkeySelect, Kbd, LinkRow, Note, PageTitle, Row, SectionTitle, ToggleRow, WordList } from "./kit"
 import { EmojiCustom, EmojiRow } from "./emoji"
 import appIcon from "./app-icon.png"
 
@@ -43,7 +43,55 @@ export function GeneralPage({ s, go }: { s: State; go: (p: PageId) => void }) {
   )
 }
 
-export function LayoutPage({ s }: { s: State }) {
+/** Исключения — на своих подстраницах, как в Системных настройках: их бывает много */
+export type Sub = { kind: "words" | "apps"; list: ListId }
+
+const subs: Record<"words" | "apps", Record<ListId, { title: string; desc: string; empty?: string }>> = {
+  words: {
+    layout: { title: "Не переключать слова", desc: "Свитчер не будет их трогать",
+              empty: "Пока пусто. Слово появится здесь само, если дважды отменить его переключение" },
+    correct: { title: "Не исправлять слова", desc: "Опечатки и запятые их не тронут",
+               empty: "Пока пусто. Слово появится здесь само, если сразу отменить его исправление клавишей Backspace" },
+  },
+  apps: {
+    layout: { title: "Не переключать в приложениях", desc: "Здесь раскладка меняется только вручную" },
+    correct: { title: "Не исправлять в приложениях", desc: "Здесь не работает исправление на лету" },
+  },
+}
+const backTitle: Record<ListId, string> = { layout: "Раскладка", correct: "Исправления" }
+
+export function SubPage({ s, sub, back }: { s: State; sub: Sub; back: () => void }) {
+  const t = subs[sub.kind][sub.list]
+  const data = sub.list === "layout" ? s.layout : s.correct
+  return (
+    <>
+      <BackButton title={backTitle[sub.list]} onClick={back} />
+      <PageTitle>{t.title}</PageTitle>
+      <p className="-mt-3 mb-4 text-[13px] text-muted-foreground">{t.desc}</p>
+      {sub.kind === "words"
+        ? <WordList list={sub.list} words={data.words} empty={t.empty!} />
+        : <AppList list={sub.list} apps={data.apps} />}
+    </>
+  )
+}
+
+/** Строки-переходы к исключениям раздела */
+function Exclusions({ s, list, open }: { s: State; list: ListId; open: (sub: Sub) => void }) {
+  const data = list === "layout" ? s.layout : s.correct
+  return (
+    <>
+      <SectionTitle title="Исключения" />
+      <Card>
+        <LinkRow title={subs.apps[list].title} desc={subs.apps[list].desc} count={data.apps.length}
+                 onClick={() => open({ kind: "apps", list })} />
+        <LinkRow title={subs.words[list].title} desc={subs.words[list].desc} count={data.words.length}
+                 onClick={() => open({ kind: "words", list })} />
+      </Card>
+    </>
+  )
+}
+
+export function LayoutPage({ s, open }: { s: State; open: (sub: Sub) => void }) {
   return (
     <>
       <PageTitle>Раскладка</PageTitle>
@@ -56,17 +104,12 @@ export function LayoutPage({ s }: { s: State }) {
         </Row>
       </Card>
 
-      <SectionTitle title="Не переключать в приложениях" sub="Здесь раскладка меняется только вручную" />
-      <AppList list="layout" apps={s.layout.apps} />
-
-      <SectionTitle title="Не переключать слова" sub="Свитчер не будет их трогать" />
-      <WordList list="layout" words={s.layout.words}
-                empty="Пока пусто. Слово появится здесь само, если дважды отменить его переключение" />
+      <Exclusions s={s} list="layout" open={open} />
     </>
   )
 }
 
-export function CorrectPage({ s }: { s: State }) {
+export function CorrectPage({ s, open }: { s: State; open: (sub: Sub) => void }) {
   const c = s.correct
   return (
     <>
@@ -96,12 +139,7 @@ export function CorrectPage({ s }: { s: State }) {
         </>
       )}
 
-      <SectionTitle title="Не исправлять в приложениях" sub="Здесь не работает исправление на лету" />
-      <AppList list="correct" apps={c.apps} />
-
-      <SectionTitle title="Не исправлять слова" sub="Опечатки и запятые их не тронут" />
-      <WordList list="correct" words={c.words}
-                empty="Пока пусто. Слово появится здесь само, если сразу отменить его исправление клавишей Backspace" />
+      <Exclusions s={s} list="correct" open={open} />
     </>
   )
 }

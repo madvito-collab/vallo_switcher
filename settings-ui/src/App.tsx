@@ -4,7 +4,7 @@ import { CircleHelp, Info, Languages, Settings, SpellCheck } from "lucide-react"
 import { hasHost, onState, send, type PageId, type State } from "./bridge"
 import { sample } from "./sample"
 import { onLocalSet } from "./bridge"
-import { AboutPage, CorrectPage, FigmaPage, GeneralPage, HelpPage, LayoutPage } from "./pages"
+import { AboutPage, CorrectPage, FigmaPage, GeneralPage, HelpPage, LayoutPage, SubPage, type Sub } from "./pages"
 import { cn } from "@/lib/utils"
 
 /** Логотип Figma в стиле Lucide (в самом наборе брендовых значков больше нет) */
@@ -41,6 +41,8 @@ function NavItem({ id, icon: Icon, title, page, go }: { id: PageId; icon: Icon; 
 export default function App() {
   const [state, setState] = useState<State | null>(hasHost ? null : sample)
   const [page, setPage] = useState<PageId>("general")
+  /** открытая подстраница (список слов) — поверх страницы раздела */
+  const [sub, setSub] = useState<Sub | null>(null)
 
   useEffect(() => {
     // без приложения (страница в браузере) — смайлики меняем прямо здесь, чтобы пример можно было потрогать
@@ -50,17 +52,21 @@ export default function App() {
     onState(s => {
       setState(s)
       // приложение просит открыть окно на нужной странице (меню у часов: «Справка», «О программе»)
-      if (s.page) setPage(s.page)
+      if (s.page) { setPage(s.page); setSub(null) }
     })
     send({ type: "ready" })
   }, [])
 
   if (!state) return null
   const correct = state.correct.available
+  const top = () => document.getElementById("page")?.scrollTo(0, 0)
   const go = (p: PageId) => {
     setPage(p)
-    document.getElementById("page")?.scrollTo(0, 0)
+    setSub(null)
+    top()
   }
+  const open = (s: Sub) => { setSub(s); top() }
+  const back = () => { setSub(null); top() }
 
   return (
     <div className="grid h-full grid-cols-[236px_1fr]">
@@ -85,12 +91,13 @@ export default function App() {
       </aside>
       <main id="page" className="overflow-y-auto px-12 pt-9 pb-12">
         <div className="max-w-[600px]">
-          {page === "general" && <GeneralPage s={state} go={go} />}
-          {page === "layout" && <LayoutPage s={state} />}
-          {page === "correct" && <CorrectPage s={state} />}
-          {page === "figma" && <FigmaPage published={state.integrations.figmaPublished} />}
-          {page === "help" && <HelpPage s={state} />}
-          {page === "about" && <AboutPage s={state} />}
+          {sub && <SubPage s={state} sub={sub} back={back} />}
+          {!sub && page === "general" && <GeneralPage s={state} go={go} />}
+          {!sub && page === "layout" && <LayoutPage s={state} open={open} />}
+          {!sub && page === "correct" && <CorrectPage s={state} open={open} />}
+          {!sub && page === "figma" && <FigmaPage published={state.integrations.figmaPublished} />}
+          {!sub && page === "help" && <HelpPage s={state} />}
+          {!sub && page === "about" && <AboutPage s={state} />}
         </div>
       </main>
     </div>
