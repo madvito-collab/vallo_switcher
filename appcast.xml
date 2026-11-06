@@ -6,6 +6,20 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.5</title>
+            <pubDate>Fri, 06 Nov 2026 14:49:03 +0300</pubDate>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>0.6.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>«850руб», набранное в английской раскладке («850he,»), теперь исправляется в «850&nbsp;₽». Так же с «мин», «млн», «тыс» и другими сокращениями сразу после числа.</li>
+<li>Подсказка про плагин для Фигмы называет меню так же, как сама Фигма: «Plugins → Vallo Typograph».</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.5/Vallo-Switcher-0.6.5.dmg" sparkle:edSignature="XmUX2C5jhvU5bgfSqjhadQCK4+9uYWMbAWKIM5ESmgZpWZ1MBeWOV6cNwqqy48eDXCepaWSwJptLOvZ64XgxAA==" length="16035813" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.4</title>
             <pubDate>Thu, 05 Nov 2026 16:30:24 +0300</pubDate>
             <sparkle:version>10</sparkle:version>
