@@ -20,6 +20,8 @@ static class Program
         // словари грузятся секунду-другую — значок в трее показываем, не дожидаясь
         SwitcherService? switcher = null;
         tray.Resumed = () => Volatile.Read(ref switcher)?.ReinstallHooks();
+        using var settings = new SettingsWindow(store, () => Volatile.Read(ref switcher)?.SettingsChanged());
+        tray.OpenSettings = page => settings.Show(page);
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;

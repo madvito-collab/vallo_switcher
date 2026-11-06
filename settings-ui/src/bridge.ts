@@ -19,10 +19,14 @@ export interface State {
     typography: boolean; typos: boolean; yo: boolean; apps: AppEntry[]; words: string[]
   }
   hotkeyOptions: HotkeyOption[]
+  /** можно записать своё сочетание (на Windows пока нет) */
+  canRecordHotkey: boolean
   recording: "convert" | "correct" | null
   hotkeyError: { action: "convert" | "correct"; text: string } | null
   integrations: { figma: boolean; figmaPublished: boolean }
   about: {
+    /** автообновление есть (на Windows пока нет) */
+    updates: boolean
     autoUpdate: boolean; lastCheck: string | null
     model: { state: ModelState; progress: number; message: string; size: string; disk: string }
   }

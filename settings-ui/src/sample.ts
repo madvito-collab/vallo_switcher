@@ -25,11 +25,12 @@ export const sample: State = {
     { id: "double:rightOption", title: "Двойной правый Option" },
     { id: "double:leftControl", title: "Двойной Control" },
   ],
+  canRecordHotkey: true,
   recording: null,
   hotkeyError: null,
   integrations: { figma: true, figmaPublished: false },
   about: {
-    autoUpdate: true, lastCheck: new Date().toISOString(),
+    updates: true, autoUpdate: true, lastCheck: new Date().toISOString(),
     model: { state: "notDownloaded", progress: 0, message: "", size: "228 МБ", disk: "470 МБ" },
   },
 }

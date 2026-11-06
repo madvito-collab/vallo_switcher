@@ -76,9 +76,9 @@ export function HotkeySelect({ state, which }: { state: State; which: "convert" 
       <SelectTrigger aria-label="Сочетание клавиш"><SelectValue /></SelectTrigger>
       <SelectContent>
         {state.hotkeyOptions.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
-        <SelectSeparator />
+        {(state.canRecordHotkey || which === "correct" || current.hotkey === "custom") && <SelectSeparator />}
         {current.hotkey === "custom" && <SelectItem value="custom">{current.hotkeyTitle}</SelectItem>}
-        <SelectItem value="record">Своё сочетание…</SelectItem>
+        {state.canRecordHotkey && <SelectItem value="record">Своё сочетание…</SelectItem>}
         {which === "correct" && <SelectItem value="off">Выключено</SelectItem>}
       </SelectContent>
     </Select>

@@ -8,7 +8,16 @@
     <RootNamespace>Vallo.App</RootNamespace>
     <ApplicationIcon>../../../Support/Icons/Windows/ValloSwitcher.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- окно настроек: форма WinForms со встроенным Edge (WebView2); остальное — чистый Win32 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Version>0.1.0</Version>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
+    <!-- без глобальных using WinForms: Timer, Message и т. п. совпадают с нашими именами -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Vallo.Core/Vallo.Core.csproj" />
     <ProjectReference Include="../Vallo.Platform/Vallo.Platform.csproj" />
@@ -19,6 +28,9 @@
           LinkBase="Data/wordlists" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../../Data/switcher-rules.json"
           LinkBase="Data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- страница окна настроек — общая с Маком (исходники settings-ui/) -->
+    <None Include="../../../Support/SettingsUI/index.html"
+          LinkBase="Settings" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../../Support/Icons/Windows/yo_*.png;../../../Support/Icons/Windows/ValloSwitcher.ico"
           LinkBase="Icons" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

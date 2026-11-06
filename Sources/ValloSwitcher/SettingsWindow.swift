@@ -250,10 +250,12 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
                 "words": model.typoWords,
             ],
             "hotkeyOptions": ModifierKey.allCases.map { ["id": "double:\($0.rawValue)", "title": $0.title] },
+            "canRecordHotkey": true,
             "recording": recording.map { $0 == .convert ? "convert" : "correct" } ?? NSNull(),
             "hotkeyError": hotkeyError,
             "integrations": ["figma": true, "figmaPublished": FigmaBridge.communityPublished],
             "about": [
+                "updates": true,
                 "autoUpdate": model.autoUpdate,
                 "lastCheck": model.lastUpdateCheck.map { iso.string(from: $0) } ?? NSNull(),
                 "model": modelState.merging(["size": ModelStore.downloadSize, "disk": ModelStore.diskSize]) { a, _ in a },

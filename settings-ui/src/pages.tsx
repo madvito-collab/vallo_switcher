@@ -156,7 +156,9 @@ export function HelpPage({ s }: { s: State }) {
 
       <SectionTitle title="Где свитчер молчит" />
       <Card>
-        <Row desc="Пароли, почта, телефоны и ссылки · приложения из списков «Не переключать» и «Не исправлять» · раскладки кроме русской и английской" />
+        <Row desc={s.correct.available
+          ? "Пароли, почта, телефоны и ссылки · приложения из списков «Не переключать» и «Не исправлять» · раскладки кроме русской и английской"
+          : "Пароли, полноэкранные игры · приложения из списка «Не переключать» · раскладки кроме русской и английской"} />
       </Card>
       <Note>
         <a className="cursor-pointer text-primary" onClick={() => action("openFullHelp")}>Полная справка</a>
@@ -193,15 +195,19 @@ export function AboutPage({ s }: { s: State }) {
         </div>
       </Card>
 
-      <SectionTitle title="Обновления" />
-      <Card>
-        <Row title="Обновлять автоматически" desc="Новые версии ставятся сами при перезапуске">
-          <Switch checked={s.about.autoUpdate} onCheckedChange={v => set("autoUpdate", v)} aria-label="Обновлять автоматически" />
-        </Row>
-        <Row title={checked(s.about.lastCheck)} desc="Свитчер проверяет раз в день">
-          <Button onClick={() => action("checkUpdates")}>Проверить</Button>
-        </Row>
-      </Card>
+      {s.about.updates && (
+        <>
+          <SectionTitle title="Обновления" />
+          <Card>
+            <Row title="Обновлять автоматически" desc="Новые версии ставятся сами при перезапуске">
+              <Switch checked={s.about.autoUpdate} onCheckedChange={v => set("autoUpdate", v)} aria-label="Обновлять автоматически" />
+            </Row>
+            <Row title={checked(s.about.lastCheck)} desc="Свитчер проверяет раз в день">
+              <Button onClick={() => action("checkUpdates")}>Проверить</Button>
+            </Row>
+          </Card>
+        </>
+      )}
 
       {s.correct.available && (
         <>

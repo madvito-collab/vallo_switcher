@@ -12,7 +12,7 @@ sealed unsafe class Tray : IDisposable
     const string ClassName = "ValloSwitcherTray";
     const uint CallbackMessage = WM_APP + 1;
     const uint IconId = 1;
-    const int CmdAutoSwitch = 1, CmdQuit = 2;
+    const int CmdAutoSwitch = 1, CmdQuit = 2, CmdSettings = 3, CmdHelp = 4, CmdAbout = 5;
 
     static Tray? current; // окно одно — оконной процедуре нужен доступ к объекту
 
@@ -29,6 +29,8 @@ sealed unsafe class Tray : IDisposable
 
     /// Проснулись после сна или разблокировали сеанс. Зовётся на потоке трея.
     public Action? Resumed { get; set; }
+    /// Открыть окно настроек (null — главная страница, "help", "about"). На потоке трея.
+    public Action<string?>? OpenSettings { get; set; }
 
     public Tray(SettingsStore store, string iconsDir)
     {
@@ -63,14 +65,11 @@ sealed unsafe class Tray : IDisposable
     /// Показать в меню, почему свитчер не работает. С любого потока.
     public void ShowProblem(string text) => problem = text;
 
-    /// Цикл сообщений до «Завершить».
+    /// Цикл сообщений до «Завершить». Цикл WinForms: в нём живёт и окно настроек (клавиатура, async WebView2);
+    /// WM_QUIT от PostQuitMessage его тоже завершает.
     public int Run()
     {
-        while (GetMessage(out var msg, 0, 0, 0) > 0)
-        {
-            TranslateMessage(in msg);
-            DispatchMessage(in msg);
-        }
+        System.Windows.Forms.Application.Run();
         return 0;
     }
 
@@ -156,6 +155,10 @@ sealed unsafe class Tray : IDisposable
             var autoFlags = MF_STRING | (store.Current.AutoSwitchEnabled ? MF_CHECKED : 0);
             AppendMenu(menu, autoFlags, CmdAutoSwitch, "Автопереключение");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
+            AppendMenu(menu, MF_STRING, CmdSettings, "Настройки…");
+            AppendMenu(menu, MF_SEPARATOR, 0, null);
+            AppendMenu(menu, MF_STRING, CmdHelp, "Справка");
+            AppendMenu(menu, MF_STRING, CmdAbout, "О программе");
             AppendMenu(menu, MF_STRING, CmdQuit, "Завершить Vallo Switcher");
 
             var align = GetSystemMetrics(SM_MENUDROPALIGNMENT) != 0 ? TPM_RIGHTALIGN : TPM_LEFTALIGN;
@@ -168,6 +171,15 @@ sealed unsafe class Tray : IDisposable
             {
                 case CmdAutoSwitch:
                     store.Update(s => s with { AutoSwitchEnabled = !s.AutoSwitchEnabled });
+                    break;
+                case CmdSettings:
+                    OpenSettings?.Invoke(null);
+                    break;
+                case CmdHelp:
+                    OpenSettings?.Invoke("help");
+                    break;
+                case CmdAbout:
+                    OpenSettings?.Invoke("about");
                     break;
                 case CmdQuit:
                     Quit();

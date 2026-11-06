@@ -49,7 +49,9 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     // --- только поток перехвата ---
     DoubleTapDetector tap; // изменяемая структура: только поле, никаких копий
-    readonly bool hasTap;
+    bool hasTap;
+    /// В окне настроек сменили сочетание — поток перехвата пересоберёт детектор при следующем модификаторе.
+    volatile bool hotkeyChanged;
     bool lShift, rShift, lCtrl, rCtrl, lAlt, rAlt, lWin, rWin;
     /// Клавиши, чьё нажатие проглотили, — отпускание глотаем тоже.
     readonly HashSet<uint> swallowed = new();
@@ -247,9 +249,22 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     public void OnFocusChanged() => guard.Invalidate();
 
+    /// Настройки поменяли в окне: слова «Не переключать» — сразу, сочетание — на потоке перехвата.
+    public void SettingsChanged()
+    {
+        lock (gate) engine.Judge.Learned = new HashSet<string>(store.Current.LearnedWords);
+        hotkeyChanged = true;
+    }
+
     /// true — сработало двойное нажатие.
     bool Modifier(in HookKey k)
     {
+        if (hotkeyChanged)
+        {
+            hotkeyChanged = false;
+            hasTap = store.Current.HotkeyConvert is Hotkey.DoubleTap d;
+            if (hasTap) tap = new DoubleTapDetector(((Hotkey.DoubleTap)store.Current.HotkeyConvert).Key);
+        }
         if (!hasTap) return false;
         if (k.Vk != tap.Key.Vk())
         {
