@@ -39,7 +39,8 @@ public static class Converter
         foreach (var ch in text)
         {
             var key = ch.ToString();
-            if (reverse.TryGetValue(key, out var stroke) && to.Character(stroke) is { } o) sb.Append(o);
+            // мёртвая клавиша в целевой раскладке («США — международная») — её знак: «э» → «'»
+            if (reverse.TryGetValue(key, out var stroke) && (to.Character(stroke) ?? to.DeadKey(stroke)) is { } o) sb.Append(o);
             else sb.Append(key);
         }
         return sb.ToString();

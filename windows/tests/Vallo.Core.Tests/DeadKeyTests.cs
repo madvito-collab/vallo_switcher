@@ -55,6 +55,23 @@ public class DeadKeyTests
     }
 
     [Fact]
+    public void RussianTypedConvertsToApostrophes()
+    {
+        // набрано по-русски «эээээх» → двойной Shift: «э» — клавиша мёртвого апострофа
+        var engine = new Engine(Pair, EngineSupport.RealJudge(), Language.Ru);
+        foreach (var s in TestSupport.StrokesTyping("эээээх", EngineSupport.WinRu))
+            engine.HandleKey(new KeyEvent(s, false));
+        Assert.Equal([new Delete(6), new Insert("'''''["), new SwitchLayout(Language.En)], engine.HandleDoubleShift(null));
+    }
+
+    [Fact]
+    public void SelectionFromRussianGetsApostrophes()
+    {
+        // выделили «эээээх» и перевели (найдено при проверке: оставалось «эээээ[»)
+        Assert.Equal("'''''[", Converter.Convert("эээээх", Pair.Ru, Pair.En));
+    }
+
+    [Fact]
     public void SelectionWithApostrophesConverts()
     {
         Assert.Equal("ээээх", Converter.Convert("''''[", Pair.En, Pair.Ru));
