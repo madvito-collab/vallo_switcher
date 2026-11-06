@@ -6,11 +6,21 @@ namespace Vallo.Core;
 public static class Converter
 {
     /// Что дадут эти нажатия в данной раскладке. Нажатия без символа пропускаются.
+    /// Мёртвая клавиша печатает вместе со следующей («'» + «[» → «'[»); последняя мёртвая — ещё ничего.
     public static string Render(IEnumerable<KeyStroke> strokes, IKeyLayout layout)
     {
         var sb = new StringBuilder();
+        KeyStroke? pending = null;
         foreach (var s in strokes)
-            if (layout.Character(s) is { } c) sb.Append(c);
+        {
+            if (pending is { } d)
+            {
+                sb.Append(layout.Compose(d, s));
+                pending = null;
+            }
+            else if (layout.DeadKey(s) is not null) pending = s;
+            else if (layout.Character(s) is { } c) sb.Append(c);
+        }
         return sb.ToString();
     }
 
@@ -45,7 +55,8 @@ public static class Converter
                 foreach (var shift in new[] { false, true })
                 {
                     var stroke = new KeyStroke((ushort)code, shift, caps);
-                    if (layout.Character(stroke) is not { } ch) continue;
+                    // мёртвая клавиша тоже даёт свой знак («'» в «США — международной»): выделенный текст с ним переводим
+                    if ((layout.Character(stroke) ?? layout.DeadKey(stroke)) is not { } ch) continue;
                     if (result.TryGetValue(ch, out var existing) && !IsBetter(stroke, existing)) continue;
                     result[ch] = stroke;
                 }

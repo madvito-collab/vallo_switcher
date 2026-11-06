@@ -391,8 +391,30 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
     }
 
     /// Как кусок буфера сейчас выглядит на экране.
-    string Display(int start, int end) =>
-        string.Concat(buffer.GetRange(start, end - start).Select(x => layouts.Layout(x.Language).Character(x.Stroke)));
+    /// Как кусок буфера выглядит на экране. Мёртвые клавиши печатают вместе со следующей, поэтому считаем с начала
+    /// буфера и отрезаем то, что до `start`.
+    string Display(int start, int end)
+    {
+        var all = Shown(end);
+        var before = Shown(start);
+        return all.StartsWith(before, StringComparison.Ordinal) ? all[before.Length..] : all[Math.Min(before.Length, all.Length)..];
+    }
+
+    /// Первые `count` нажатий буфера на экране: подряд идущие в одной раскладке — через Converter.Render.
+    string Shown(int count)
+    {
+        var sb = new System.Text.StringBuilder();
+        var i = 0;
+        while (i < count)
+        {
+            var language = buffer[i].Language;
+            var j = i;
+            while (j < count && buffer[j].Language == language) j++;
+            sb.Append(Converter.Render(Strokes(i, j), layouts.Layout(language)));
+            i = j;
+        }
+        return sb.ToString();
+    }
 
     /// «руб», «шт» сразу после числа («850руб», «5 шт», «2 млн руб») — единица, не ошибка раскладки.
     bool IsUnitAfterNumber(string current)

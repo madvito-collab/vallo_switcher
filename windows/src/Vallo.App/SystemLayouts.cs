@@ -80,6 +80,15 @@ sealed unsafe class SystemLayouts
         var table = new Dictionary<KeyStroke, string>();
         foreach (var e in LayoutReader.Read(hkl))
             table[new KeyStroke((ushort)e.KeyCode, e.Shift, e.CapsLock)] = e.Char;
-        return new TableKeyLayout(l, table);
+        // мёртвые клавиши («США — международная»): что печатают вместе со следующей — со слов самой Windows
+        var dead = new Dictionary<KeyStroke, DeadKeyInfo>();
+        try
+        {
+            foreach (var d in LayoutReader.ReadDead(hkl))
+                dead[new KeyStroke((ushort)d.KeyCode, d.Shift, d.CapsLock)] = new DeadKeyInfo(d.Spacing,
+                    d.Compose.ToDictionary(c => new KeyStroke((ushort)c.KeyCode, c.Shift, c.CapsLock), c => c.Char));
+        }
+        catch (Exception) { dead.Clear(); /* не вышло — как раньше, без мёртвых клавиш */ }
+        return new TableKeyLayout(l, table, dead);
     }
 }

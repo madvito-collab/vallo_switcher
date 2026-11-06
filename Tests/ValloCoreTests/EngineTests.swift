@@ -407,6 +407,18 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
     }
 }
 
+@Suite struct ApostropheLetterTests {
+    /// «э» в английской раскладке — апостроф: «ээээээх» = «[». Двойной Shift переводит всё, не только «х»
+    /// (жалоба тестера 2026-11-06: осталось «х»).
+    @Test func doubleShiftConvertsApostrophes() {
+        let engine = Engine(layouts: ansi, judge: Judge(en: realEN, ru: realRU, learned: []), currentLanguage: .en)
+        for stroke in strokesTyping("ээээээх", in: ansi.ru as! TableKeyLayout) {
+            #expect(engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: false)) == .passThrough)
+        }
+        #expect(engine.handleDoubleShift(selection: nil) == [.delete(7), .insert("ээээээх"), .switchLayout(.ru)])
+    }
+}
+
 @Suite struct CommaLetterTests {
     let t = AbbreviationTests()
 
