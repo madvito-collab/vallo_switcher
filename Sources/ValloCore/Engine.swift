@@ -168,6 +168,13 @@ public final class Engine {
     }
 
     private func handleBoundary(_ stroke: KeyStroke) -> EngineOutput {
+        // цвет в русской раскладке: «№аааааа» + пробел → «#ffffff »; цифра — ещё часть цвета, не конец
+        let boundaryShown = layouts.layout(currentLanguage).character(for: stroke) ?? ""
+        if autoSwitchEnabled, !(boundaryShown.first?.isNumber ?? true), let hex = hexColor() {
+            lastDecision = "«\(hex.shown)» — цвет в русской раскладке"
+            reset()
+            return .consume([.delete(hex.shown.count), .insert(hex.fixed + boundaryShown)])
+        }
         defer { startNewWord() }
         let word = buffer[wordStart...].map(\.stroke)
         // слово уже в своей раскладке, но это аббревиатура с заглавной («Pdf») — только поднять регистр
@@ -219,6 +226,10 @@ public final class Engine {
     /// Enter и Tab: как граница слова, но после них память набора сбрасывается.
     private func handleLineEnd(_ keyCode: UInt16) -> EngineOutput {
         defer { reset() }
+        if autoSwitchEnabled, let hex = hexColor() {
+            lastDecision = "«\(hex.shown)» — цвет в русской раскладке"
+            return .consume([.delete(hex.shown.count), .insert(hex.fixed), .pressKey(keyCode)])
+        }
         let word = buffer[wordStart...].map(\.stroke)
         guard autoSwitchEnabled, !wordLocked, autoSwitchedFrom == nil, !word.isEmpty else { return .passThrough }
         let current = Converter.render(word, in: layouts.layout(currentLanguage))
@@ -365,6 +376,19 @@ public final class Engine {
         guard wordStart > 0, Judge.core(alternative).count >= 3,
               Judge.isUnitAfterNumber(alternative, currentLanguage.other) else { return false }
         return display(wordStart - 1..<wordStart).last?.isNumber ?? false
+    }
+
+    /// Набранное с последних «#» или «№» (не дальше 9 нажатий) — цвет в русской раскладке? Тогда как исправить.
+    private func hexColor() -> (shown: String, fixed: String)? {
+        guard !buffer.isEmpty else { return nil }
+        for i in stride(from: buffer.count - 1, through: max(0, buffer.count - 9), by: -1) {
+            let ch = display(i..<i + 1)
+            guard ch == "#" || ch == "№" else { continue }
+            let shown = display(i..<buffer.count)
+            guard let fixed = HexColor.fix(shown, requireHash: true) else { return nil }
+            return (shown, fixed)
+        }
+        return nil
     }
 
     /// Граница слова — клавиша, которая ни в одной раскладке не даёт букву.

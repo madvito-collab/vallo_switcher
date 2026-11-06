@@ -164,6 +164,17 @@ final class KeyboardTap {
         // ⌥⌫, ⌘⌫ и прочие сочетания меняют текст непредсказуемо — память типографики больше не верна
         if modified || !liveAllowed { live.reset() }
 
+        // поле цвета Фигмы: «аааааа» в русской раскладке → «ffffff» на Enter или Tab (решётку там не пишут)
+        if !modified, engine.autoSwitchEnabled, Self.returnKeys.contains(keyCode) || keyCode == Self.tabKey,
+           NSWorkspace.shared.frontmostApplication?.bundleIdentifier == FigmaLauncher.figmaBundleID,
+           let value = ContextGuard.singleLineFieldValue(), let fixed = HexColor.fix(value, requireHash: false) {
+            engine.reset()
+            live.reset()
+            EventPoster.perform([.delete(value.count), .insert(fixed)], store: store, layouts: layouts, proxy: proxy)
+            EventPoster.postKey(CGKeyCode(keyCode), flags: flags.intersection(.maskShift), proxy: proxy)
+            return nil
+        }
+
         // Backspace сразу после типографской правки — вернуть набранное
         if keyCode == Engine.backspaceKey && !modified {
             if liveAllowed, let edit = live.backspace() {
@@ -246,6 +257,7 @@ final class KeyboardTap {
 
     /// Return и Enter на цифровой клавиатуре.
     static let returnKeys: Set<UInt16> = [36, 76]
+    static let tabKey: UInt16 = 48
 
     /// Своё сочетание из настроек, если нажато оно.
     private func combo(keyCode: UInt16, flags: CGEventFlags) -> Trigger? {

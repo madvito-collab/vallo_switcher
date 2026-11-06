@@ -17,10 +17,13 @@ public enum Typographer {
 
     /// `hint` — язык для кавычек, если рядом нет букв (на лету: текущая раскладка).
     public static func format(_ text: String, final: Bool = true, hint: Language = .ru) -> String {
-        var s = text
+        // телефоны — до правил: иначе «123-45» в номере стало бы диапазоном «123–45»
+        var s = NumbersPhones.phones(text, final: final)
         for rule in rules(final: final) {
             s = rule.regex.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: rule.template)
         }
+        // разряды — после: «5000р» к этому времени уже «5000 ₽»
+        s = NumbersPhones.groups(s, final: final)
         return quotes(s, hint: hint)
     }
 
@@ -85,6 +88,8 @@ public enum Typographer {
             ("(?<=\\d) (?=\\d{3}(?:[^\\d]\(end)))", nbsp),
             ("(?<![\\p{L}])(\\p{Lu})\\. (?=\\p{Lu})", "$1.\(nbsp)"),
             ("([№§]) ", "$1\(nbsp)"),
+            // знак валюты не отрывается от суммы: «5000 ₽», «1500 $»
+            ("(?<=\\d) (?=[₽$€])", nbsp),
         ]
         let compiled = raw.map { Rule(regex: try! NSRegularExpression(pattern: $0.0, options: [.anchorsMatchLines]),
                                       template: $0.1) }

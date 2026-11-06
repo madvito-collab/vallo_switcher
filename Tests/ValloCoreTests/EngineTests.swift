@@ -407,6 +407,27 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
     }
 }
 
+@Suite struct HexInEngineTests {
+    /// Набор в русской раскладке «№аааааа» и пробел (Shift+3 в русской — «№»).
+    @Test func colorTypedInRussian() {
+        let engine = Engine(layouts: ansi, judge: Judge(en: realEN, ru: realRU, learned: []), currentLanguage: .ru)
+        var screen = ""
+        let strokes = strokesTyping("№аааааа ", in: ansi.ru as! TableKeyLayout)
+        for stroke in strokes {
+            let shownIn = engine.currentLanguage
+            switch engine.handleKey(KeyEvent(stroke: stroke, hasCommandControlOrOption: false)) {
+            case .passThrough: screen += ansi.layout(shownIn).character(for: stroke) ?? ""
+            case .consume(let actions):
+                for a in actions {
+                    if case .delete(let n) = a { screen.removeLast(n) }
+                    if case .insert(let t) = a { screen += t }
+                }
+            }
+        }
+        #expect(screen == "#ffffff ")
+    }
+}
+
 @Suite struct ApostropheLetterTests {
     /// «э» в английской раскладке — апостроф: «ээээээх» = «[». Двойной Shift переводит всё, не только «х»
     /// (жалоба тестера 2026-11-06: осталось «х»).

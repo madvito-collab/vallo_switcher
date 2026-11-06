@@ -80,6 +80,12 @@ enum ContextGuard {
         return value as? String
     }
 
+    /// Текст однострочного поля в фокусе (AXTextField) — для поля цвета Фигмы. nil — не поле или приложение не говорит.
+    static func singleLineFieldValue() -> String? {
+        guard let element = focusedElement(), string(element, kAXRoleAttribute) == kAXTextFieldRole else { return nil }
+        return string(element, kAXValueAttribute)
+    }
+
     /// Символ сразу перед курсором в поле, где печатают. nil — курсор в начале, есть выделение или приложение не говорит.
     /// Нужен кавычке после клика: за словом она закрывается, за пробелом — открывается.
     static func charBeforeCaret() -> Character? {
