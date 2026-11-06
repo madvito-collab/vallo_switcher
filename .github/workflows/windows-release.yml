@@ -1,0 +1,47 @@
+name: windows-release
+
+# Выпуск для Windows: автор пушит метку win-v0.1 (win-v0.2, …) — здесь собирается установщик
+# и выкладывается в GitHub Releases. Свитчеры на винде находят его сами (Updater.cs).
+on:
+  push:
+    tags: ['win-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Version from tag
+        shell: bash
+        run: |
+          short="${GITHUB_REF_NAME#win-v}"
+          v="$short"
+          # Velopack хочет три числа: 0.1 → 0.1.0
+          [[ "$v" =~ ^[0-9]+\.[0-9]+$ ]] && v="$v.0"
+          echo "SHORT=$short" >> "$GITHUB_ENV"
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          test -f "windows/Releases/$short.md" || { echo "Нет «что нового»: windows/Releases/$short.md"; exit 1; }
+      - name: Test
+        run: dotnet test windows/Vallo.sln
+      - name: Publish app
+        run: dotnet publish windows/src/Vallo.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:Version=${{ env.VERSION }} -o publish
+      - name: Pack installer
+        run: |
+          dotnet tool install -g vpk --version 1.2.161
+          vpk pack -r win-x64 -u ValloSwitcher -v ${{ env.VERSION }} -p publish -e ValloSwitcher.exe --packTitle "Vallo Switcher" --packAuthors "Vallo" -i Support/Icons/Windows/ValloSwitcher.ico --shortcuts StartMenuRoot --noPortable --releaseNotes windows/Releases/${{ env.SHORT }}.md
+      - name: Upload to GitHub Releases
+        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "Vallo Switcher для Windows ${{ env.SHORT }}" --tag ${{ github.ref_name }}
+      - name: Keep the Mac release as Latest
+        # ссылка «скачать последнюю версию» в README ведёт на маковский DMG
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mac=$(gh release list --exclude-pre-releases --limit 100 --json tagName,publishedAt -q '[.[] | select(.tagName | startswith("v"))] | sort_by(.publishedAt) | last | .tagName')
+          if [ -n "$mac" ]; then gh release edit "$mac" --latest; fi

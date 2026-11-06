@@ -25,6 +25,9 @@ sealed class SettingsWindow : IDisposable
     bool ready;
     string? pendingPage;
 
+    /// Обновления (раздел в «О программе»). Нет — свитчер не из установщика.
+    public Updater? Updater { get; set; }
+
     public SettingsWindow(SettingsStore store, Action changed)
     {
         this.store = store;
@@ -185,6 +188,9 @@ sealed class SettingsWindow : IDisposable
                 store.Update(s => SettingsPage.AddWord(s, word.GetString() ?? ""));
                 changed();
                 break;
+            case "checkUpdates":
+                Updater?.CheckNow();
+                break;
             case "openGitHub":
                 Open("https://github.com/madvito-collab/vallo_switcher/issues");
                 break;
@@ -196,11 +202,15 @@ sealed class SettingsWindow : IDisposable
 
     // --- свитчер → страница ---
 
+    /// Что-то поменялось не со страницы (сходили за обновлениями) — показать. На потоке трея.
+    public void Refresh() => Push();
+
     void Push()
     {
         if (!ready || web?.CoreWebView2 is null) return;
-        var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "";
-        var state = SettingsPage.State(store.Current, Autostart.IsEnabled, version, pendingPage, AppName);
+        var version = Updater.Short(Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "");
+        var state = SettingsPage.State(store.Current, Autostart.IsEnabled, version, pendingPage, AppName,
+                                       updates: Updater?.Supported == true);
         pendingPage = null;
         _ = web.CoreWebView2.ExecuteScriptAsync($"window.vallo && window.vallo.receive({state.ToJsonString()})");
     }

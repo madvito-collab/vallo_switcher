@@ -19,6 +19,10 @@ public sealed record AppSettings
     public Hotkey HotkeyConvert { get; init; } = Hotkey.DefaultConvert;
     public bool DebugMode { get; init; }
     public bool FirstRunDone { get; init; }
+    /// Скачивать и ставить новые версии самим (как на Маке); выключено — только сказать, что вышла.
+    public bool AutoUpdate { get; init; } = true;
+    /// Когда последний раз ходили за обновлениями.
+    public DateTimeOffset? LastUpdateCheck { get; init; }
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vallo Switcher", "settings.json");

@@ -8,8 +8,10 @@ namespace Vallo.Core;
 /// Протокол — docs/superpowers/specs/2026-11-05-web-settings-design.md.
 public static class SettingsPage
 {
-    /// Состояние для страницы. На Windows пока только раскладка: исправлений, Figma, модели и автообновления нет.
-    public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName)
+    /// Состояние для страницы. На Windows пока только раскладка: исправлений, Figma и модели нет.
+    /// `updates` — свитчер поставлен установщиком и умеет обновляться (из архива — нет).
+    public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName,
+                                   bool updates = false)
     {
         var apps = new JsonArray();
         foreach (var exe in s.ExcludedApps)
@@ -46,7 +48,8 @@ public static class SettingsPage
             ["integrations"] = new JsonObject { ["figma"] = false, ["figmaPublished"] = false },
             ["about"] = new JsonObject
             {
-                ["updates"] = false, ["autoUpdate"] = false, ["lastCheck"] = null,
+                ["updates"] = updates, ["autoUpdate"] = s.AutoUpdate,
+                ["lastCheck"] = s.LastUpdateCheck?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
                 ["model"] = new JsonObject { ["state"] = "notDownloaded", ["progress"] = 0, ["message"] = "", ["size"] = "", ["disk"] = "" },
             },
         };
@@ -61,6 +64,8 @@ public static class SettingsPage
                 return s with { AutoSwitchEnabled = value.GetBoolean() };
             case "debugMode" when IsBool(value):
                 return s with { DebugMode = value.GetBoolean() };
+            case "autoUpdate" when IsBool(value):
+                return s with { AutoUpdate = value.GetBoolean() };
             case "hotkey.convert" when value.ValueKind == JsonValueKind.String:
                 return ParseHotkey(value.GetString()) is { } h ? s with { HotkeyConvert = h } : s;
             case "apps.layout" when Strings(value) is { } apps:

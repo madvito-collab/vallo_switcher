@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Vallo.Core;
@@ -11,8 +12,10 @@ sealed unsafe class Tray : IDisposable
 {
     const string ClassName = "ValloSwitcherTray";
     const uint CallbackMessage = WM_APP + 1;
+    /// Работа с других потоков (обновлятор) — выполнить на потоке трея.
+    const uint PostedWork = WM_APP + 2;
     const uint IconId = 1;
-    const int CmdAutoSwitch = 1, CmdQuit = 2, CmdSettings = 3, CmdHelp = 4, CmdAbout = 5;
+    const int CmdAutoSwitch = 1, CmdQuit = 2, CmdSettings = 3, CmdHelp = 4, CmdAbout = 5, CmdUpdate = 6, CmdCheckUpdates = 7;
 
     static Tray? current; // окно одно — оконной процедуре нужен доступ к объекту
 
@@ -26,11 +29,20 @@ sealed unsafe class Tray : IDisposable
     bool sessionNotify;
     /// Свитчер не запустился — первой строкой меню. Пишет поток запуска, читает поток трея.
     volatile string? problem;
+    readonly ConcurrentQueue<Action> posted = new();
+    /// Красная точка на значке: ждёт обновление.
+    bool badge;
+    /// Клик по последнему уведомлению ставит обновление.
+    bool notifyInstalls;
 
     /// Проснулись после сна или разблокировали сеанс. Зовётся на потоке трея.
     public Action? Resumed { get; set; }
     /// Открыть окно настроек (null — главная страница, "help", "about"). На потоке трея.
     public Action<string?>? OpenSettings { get; set; }
+    /// Автообновление: строка в меню, точка на значке. Нет — свитчер не из установщика.
+    public Updater? Updater { get; set; }
+    /// Перед выходом из свитчера (поставить скачанное обновление).
+    public Action? BeforeQuit { get; set; }
 
     public Tray(SettingsStore store, string iconsDir)
     {
@@ -64,6 +76,37 @@ sealed unsafe class Tray : IDisposable
 
     /// Показать в меню, почему свитчер не работает. С любого потока.
     public void ShowProblem(string text) => problem = text;
+
+    /// Убрать значок (перед перезапуском с новой версией). На потоке трея.
+    public void Hide() => RemoveIcon();
+
+    /// Выполнить на потоке трея. С любого потока.
+    public void Post(Action work)
+    {
+        posted.Enqueue(work);
+        if (hwnd != 0) PostMessage(hwnd, PostedWork, 0, 0);
+    }
+
+    /// Точка на значке, как на Маке: ждёт обновление. На потоке трея.
+    public void ShowBadge(bool on)
+    {
+        if (badge == on) return;
+        badge = on;
+        iconFile = null;
+        RefreshIcon();
+    }
+
+    /// Уведомление в углу экрана от значка. `installsOnClick` — клик по нему ставит обновление. На потоке трея.
+    public void Notify(string title, string body, bool installsOnClick)
+    {
+        if (!added) return;
+        notifyInstalls = installsOnClick;
+        var data = NewData(NIF_INFO);
+        data.dwInfoFlags = NIIF_INFO;
+        title.AsSpan(0, Math.Min(title.Length, 63)).CopyTo(new Span<char>(data.szInfoTitle, 63));
+        body.AsSpan(0, Math.Min(body.Length, 255)).CopyTo(new Span<char>(data.szInfo, 255));
+        Shell_NotifyIcon(NIM_MODIFY, in data);
+    }
 
     /// Цикл сообщений до «Завершить». Цикл WinForms: в нём живёт и окно настроек (клавиатура, async WebView2);
     /// WM_QUIT от PostQuitMessage его тоже завершает.
@@ -107,6 +150,13 @@ sealed unsafe class Tray : IDisposable
             var ev = (uint)(ushort)LoWord(lParam);
             if (ev is WM_CONTEXTMENU or NIN_SELECT or NIN_KEYSELECT)
                 ShowMenu(LoWord((nint)wParam), HiWord((nint)wParam));
+            else if (ev == NIN_BALLOONUSERCLICK && notifyInstalls)
+                Updater?.InstallNow();
+            return true;
+        }
+        if (msg == PostedWork)
+        {
+            while (posted.TryDequeue(out var work)) work();
             return true;
         }
         if (msg == taskbarCreated && taskbarCreated != 0)
@@ -152,10 +202,17 @@ sealed unsafe class Tray : IDisposable
                 AppendMenu(menu, MF_STRING | MF_GRAYED, 0, p);
                 AppendMenu(menu, MF_SEPARATOR, 0, null);
             }
+            // вышло обновление — первой строкой, как на Маке
+            if (Updater?.Pending is { } pending)
+            {
+                AppendMenu(menu, MF_STRING, CmdUpdate, Updates.MenuTitle(pending));
+                AppendMenu(menu, MF_SEPARATOR, 0, null);
+            }
             var autoFlags = MF_STRING | (store.Current.AutoSwitchEnabled ? MF_CHECKED : 0);
             AppendMenu(menu, autoFlags, CmdAutoSwitch, "Автопереключение");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdSettings, "Настройки…");
+            if (Updater?.Supported == true) AppendMenu(menu, MF_STRING, CmdCheckUpdates, "Проверить обновления…");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdHelp, "Справка");
             AppendMenu(menu, MF_STRING, CmdAbout, "О программе");
@@ -181,6 +238,12 @@ sealed unsafe class Tray : IDisposable
                 case CmdAbout:
                     OpenSettings?.Invoke("about");
                     break;
+                case CmdUpdate:
+                    Updater?.InstallNow();
+                    break;
+                case CmdCheckUpdates:
+                    Updater?.CheckNow();
+                    break;
                 case CmdQuit:
                     Quit();
                     break;
@@ -194,6 +257,7 @@ sealed unsafe class Tray : IDisposable
 
     void Quit()
     {
+        try { BeforeQuit?.Invoke(); } catch { }
         RemoveIcon();
         if (sessionNotify && hwnd != 0) WTSUnRegisterSessionNotification(hwnd);
         sessionNotify = false;
@@ -254,17 +318,38 @@ sealed unsafe class Tray : IDisposable
     void LoadIconForCurrentTheme()
     {
         var dpi = TaskbarDpi();
-        var file = TrayIconChoice.FileName(TaskbarIsLight(), dpi);
+        var name = TrayIconChoice.FileName(TaskbarIsLight(), dpi);
+        var file = badge ? name + "+badge" : name;
         if (file == iconFile && hIcon != 0) return;
 
         var size = (int)Math.Round(16.0 * dpi / 96);
-        var icon = IconFromPng(Path.Combine(iconsDir, file));
+        var path = Path.Combine(iconsDir, name);
+        var icon = badge ? IconWithBadge(path) : 0;
+        if (icon == 0) icon = IconFromPng(path);
         if (icon == 0) icon = LoadImage(GetModuleHandle(null), IDI_APP, IMAGE_ICON, size, size, LR_DEFAULTCOLOR);
         if (icon == 0) return;
 
         if (hIcon != 0) DestroyIcon(hIcon);
         hIcon = icon;
         iconFile = file;
+    }
+
+    /// «ё» с красной точкой в правом верхнем углу (как бейдж на Маке).
+    static nint IconWithBadge(string path)
+    {
+        try
+        {
+            using var bmp = new System.Drawing.Bitmap(path);
+            using (var g = System.Drawing.Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var d = bmp.Width * 0.45f;
+                using var red = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(255, 59, 48));
+                g.FillEllipse(red, bmp.Width - d, 0, d, d);
+            }
+            return bmp.GetHicon();
+        }
+        catch (Exception e) when (e is ArgumentException or IOException or System.Runtime.InteropServices.ExternalException) { return 0; }
     }
 
     /// PNG прямо в HICON: CreateIconFromResourceEx понимает PNG-кадры значков (Vista+).

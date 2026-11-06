@@ -25,6 +25,8 @@ static unsafe partial class Native
     public const uint NIF_MESSAGE = 0x01, NIF_ICON = 0x02, NIF_TIP = 0x04, NIF_SHOWTIP = 0x80;
     public const uint NOTIFYICON_VERSION_4 = 4;
     public const uint NIN_SELECT = 0x0400, NIN_KEYSELECT = 0x0401;
+    // всплывающее уведомление значка (в Windows 10/11 — обычное уведомление в углу) и клик по нему
+    public const uint NIF_INFO = 0x10, NIIF_INFO = 0x01, NIN_BALLOONUSERCLICK = 0x0405;
 
     public const uint MF_STRING = 0x0000, MF_GRAYED = 0x0001, MF_CHECKED = 0x0008, MF_SEPARATOR = 0x0800;
     public const uint TPM_LEFTALIGN = 0x0000, TPM_RIGHTALIGN = 0x0008, TPM_BOTTOMALIGN = 0x0020;

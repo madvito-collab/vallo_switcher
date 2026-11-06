@@ -7,6 +7,9 @@ static class Program
     [STAThread]
     static int Main()
     {
+        // установщик и обновления: на служебных запусках (установка, удаление) Velopack делает своё и выходит;
+        // скачанное, но не поставленное обновление ставит здесь же
+        Velopack.VelopackApp.Build().Run();
         using var single = SingleInstance.TryAcquire();
         if (single is null) return 0; // уже запущен
 
@@ -22,6 +25,17 @@ static class Program
         tray.Resumed = () => Volatile.Read(ref switcher)?.ReinstallHooks();
         using var settings = new SettingsWindow(store, () => Volatile.Read(ref switcher)?.SettingsChanged());
         tray.OpenSettings = page => settings.Show(page);
+        using var updater = new Updater(store, tray.Post);
+        tray.Updater = updater;
+        tray.BeforeQuit = updater.BeforeExit;
+        updater.Changed = () =>
+        {
+            tray.ShowBadge(updater.Pending is not null);
+            settings.Refresh();
+        };
+        updater.Notify = tray.Notify;
+        updater.Restarting = tray.Hide;
+        settings.Updater = updater;
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;
