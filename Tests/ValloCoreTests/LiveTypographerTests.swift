@@ -22,6 +22,23 @@ import Testing
         #expect(live.backspace() == TypoEdit(delete: 3, insert: "руб "))
     }
 
+    @Test func rubleAfterLayoutFix() {
+        // «850he,» + пробел: свитчер заменил «he, » на «руб » — типографика должна увидеть рубли
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        _ = typeAll("850he,", &live)
+        #expect(live.replaced(delete: 3, insert: "руб ") == TypoEdit(delete: 4, insert: "\u{00A0}₽ "))
+        #expect(live.backspace() == TypoEdit(delete: 3, insert: "руб "))
+    }
+
+    @Test func replacedWithoutWholeWordInMemoryDoesNothing() {
+        // слово в памяти не целиком (клик посреди) — не знаем, что на экране, молчим
+        var live = LiveTypographer()
+        live.reset()
+        _ = typeAll("he,", &live)
+        #expect(live.replaced(delete: 5, insert: "привет ") == nil)
+    }
+
     @Test func quoteOpensAndCloses() {
         var live = LiveTypographer()
         live.reset(knownLineStart: true)

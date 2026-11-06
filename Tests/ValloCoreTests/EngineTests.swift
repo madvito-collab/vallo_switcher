@@ -386,6 +386,20 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
         }
     }
 
+    @Test func unitGluedToNumberSwitches() {
+        // «850руб» в английской раскладке — «850he,»: «he» — английское слово, «б» — запятая. Слитно с числом — это рубли
+        for s in ["850руб ", "20руб, ", "5мин ", "2млн "] {
+            #expect(t.typed(s, .en) == s, "\(s) → \(t.typed(s, .en))")
+        }
+    }
+
+    @Test func unitWithSpaceOrShortStaysEnglish() {
+        // с пробелом это может быть английский текст, а «24h» — «24 часа»
+        for s in ["at 20 he, said ", "24h ", "5in "] {
+            #expect(t.typed(s, .en) == s, "\(s) → \(t.typed(s, .en))")
+        }
+    }
+
     @Test func withoutNumberStillSwitches() {
         // «in», набранное в русской раскладке, по-прежнему исправляется
         #expect(t.typed("шт ", .ru) == "in ")

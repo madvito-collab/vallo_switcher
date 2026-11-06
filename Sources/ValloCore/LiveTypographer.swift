@@ -74,6 +74,21 @@ public struct LiveTypographer: Sendable {
         return edit
     }
 
+    /// Свитчер исправил раскладку слова на его конце: стёр `delete` символов и напечатал `insert` (слово + граница).
+    /// Причёсываем так, будто человек набрал исправленное («850he,» + пробел → «850руб » → «850 ₽ »).
+    /// Правка — относительно экрана уже после вставки. nil — править нечего или слово в памяти не целиком.
+    public mutating func replaced(delete: Int, insert: String, hint: Language = .ru,
+                                  options: LiveOptions = LiveOptions(typography: true, typos: nil)) -> TypoEdit? {
+        guard let last = insert.last, delete <= context.count, delete <= context.count - frozen else {
+            reset(midWord: false)
+            return nil
+        }
+        context = Array(context.dropLast(delete)) + Array(insert.dropLast())
+        guard let edit = typed(last, hint: hint, options: options) else { return nil }
+        // граница уже на экране — её тоже стираем
+        return TypoEdit(delete: edit.delete + 1, insert: edit.insert)
+    }
+
     /// Backspace. Сразу после правки — правка-отмена (вернуть набранное), иначе nil (обычный Backspace).
     public mutating func backspace() -> TypoEdit? {
         guard let u = undo else {

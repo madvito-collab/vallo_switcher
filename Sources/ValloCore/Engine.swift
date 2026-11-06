@@ -191,8 +191,7 @@ public final class Engine {
             buffer.append(Entry(stroke: stroke, language: currentLanguage))
             return .passThrough
         }
-        guard case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
-                                                               currentLanguage: currentLanguage) else {
+        guard case .switchLanguage(let reason) = wordEndVerdict(current: current, alternative: alternative) else {
             // короткое слово оставили, но его можно прочитать как слово другого языка — решит следующее слово
             let start = wordStart
             buffer.append(Entry(stroke: stroke, language: currentLanguage))
@@ -225,8 +224,7 @@ public final class Engine {
         let current = Converter.render(word, in: layouts.layout(currentLanguage))
         let alternative = Converter.render(word, in: layouts.layout(currentLanguage.other))
         guard !isUnitAfterNumber(current),
-              case .switchLanguage(let reason) = judge.wordEnd(current: current, alternative: alternative,
-                                                               currentLanguage: currentLanguage) else {
+              case .switchLanguage(let reason) = wordEndVerdict(current: current, alternative: alternative) else {
             return .passThrough
         }
         lastDecision = reason
@@ -351,6 +349,22 @@ public final class Engine {
         if before.first?.isNumber ?? false { return true }
         let previous = String(before.prefix { $0.isLetter }.reversed())
         return SwitcherRules.shared.unitsBeforeUnit.contains(previous.lowercased())
+    }
+
+    /// Решение на конце слова: единица слитно с числом («850he,» — это «850руб») или как решит судья.
+    private func wordEndVerdict(current: String, alternative: String) -> Verdict {
+        if isUnitGluedToNumber(alternative) {
+            return .switchLanguage(reason: "«\(alternative)» слитно с числом — единица \(currentLanguage.other.rawValue.uppercased())")
+        }
+        return judge.wordEnd(current: current, alternative: alternative, currentLanguage: currentLanguage)
+    }
+
+    /// В другой раскладке слово — единица из 3+ букв («руб», «мин», «млн») и стоит сразу за цифрой, без пробела.
+    /// С пробелом это может быть английский текст («at 20 he, said»), а короткие («24h», «5in») — английские единицы.
+    private func isUnitGluedToNumber(_ alternative: String) -> Bool {
+        guard wordStart > 0, Judge.core(alternative).count >= 3,
+              Judge.isUnitAfterNumber(alternative, currentLanguage.other) else { return false }
+        return display(wordStart - 1..<wordStart).last?.isNumber ?? false
     }
 
     /// Граница слова — клавиша, которая ни в одной раскладке не даёт букву.

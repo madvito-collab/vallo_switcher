@@ -195,10 +195,20 @@ final class KeyboardTap {
             // буква хотя бы в одной раскладке: «,» в EN — это «б» в RU
             let isLetter = { (l: Language) in self.layouts.pair.layout(l).character(for: stroke)?.first?.isLetter ?? false }
             let typedLetter = isLetter(.en) || isLetter(.ru)
-            live.reset(midWord: typedLetter)
+            var all = actions
+            // слово исправлено на конце (пробел, запятая…) — типографика видит его уже исправленным: «850he,» → «850 ₽»
+            if !typedLetter, !modified, liveAllowed,
+               case .delete(let n)? = actions.first, actions.count > 1, case .insert(let text) = actions[1],
+               let boundary = text.last, !boundary.isLetter,   // Enter и Tab жмутся отдельно — там как раньше
+               let edit = live.replaced(delete: n, insert: text, hint: engine.currentLanguage, options: options) {
+                all.append(contentsOf: [.delete(edit.delete), .insert(edit.insert)])
+                if live.lastEditChangedLength { engine.reset() }
+            } else {
+                live.reset(midWord: typedLetter)
+            }
             report()
             // через proxy: наши события встают сразу за текущей клавишей, раньше следующих нажатий
-            EventPoster.perform(actions, store: store, layouts: layouts, proxy: proxy)
+            EventPoster.perform(all, store: store, layouts: layouts, proxy: proxy)
             return nil
         }
 
