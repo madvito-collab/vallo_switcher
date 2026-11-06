@@ -14,11 +14,14 @@ public struct LiveOptions: Sendable {
     public var typography: Bool
     public var typos: TypoCorrector?
     public var yo: Yoficator?
+    /// Смайлики из скобок (nil — выключено).
+    public var emoji: EmojiBrackets?
 
-    public init(typography: Bool, typos: TypoCorrector?, yo: Yoficator? = nil) {
+    public init(typography: Bool, typos: TypoCorrector?, yo: Yoficator? = nil, emoji: EmojiBrackets? = nil) {
         self.typography = typography
         self.typos = typos
         self.yo = yo
+        self.emoji = emoji
     }
 }
 
@@ -52,7 +55,9 @@ public struct LiveTypographer: Sendable {
         lastEditChangedLength = false
         let raw = context + [char]
         // сначала опечатка в только что законченном слове, потом типографика
-        let (corrected, typoWord) = fixTypo(in: raw, options: options)
+        var (corrected, typoWord) = fixTypo(in: raw, options: options)
+        // смайлики — до типографики: она чистит пробелы у скобок
+        if let withEmoji = options.emoji?.apply(corrected, frozen: frozen) { corrected = withEmoji }
         let style = { (chars: [Character], unknown: Bool) in
             options.typography ? LiveTypographer.format(chars, unknownLeft: unknown, hint: hint) : chars
         }

@@ -28,6 +28,8 @@ final class SettingsModel: ObservableObject {
     @Published var typographyLive: Bool { didSet { store.typographyLiveEnabled = typographyLive } }
     @Published var typoLive: Bool { didSet { store.typoLiveEnabled = typoLive } }
     @Published var yo: Bool { didSet { store.yoEnabled = yo } }
+    @Published var emojiPreset: String { didSet { store.emojiPreset = emojiPreset } }
+    @Published var emojiCustom: [[String: String]] { didSet { store.emojiCustom = emojiCustom } }
     @Published var typoCapitalize: Bool { didSet { store.typoCapitalizeEnabled = typoCapitalize } }
     @Published var typoWords: [String] {
         didSet {
@@ -70,6 +72,8 @@ final class SettingsModel: ObservableObject {
         typographyLive = store.typographyLiveEnabled
         typoLive = store.typoLiveEnabled
         yo = store.yoEnabled
+        emojiPreset = store.emojiPreset
+        emojiCustom = store.emojiCustom
         typoCapitalize = store.typoCapitalizeEnabled
         typoWords = store.typoIgnoredWords
         typographyHotkey = store.typographyHotkeyEnabled

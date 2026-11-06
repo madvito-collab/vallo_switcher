@@ -158,8 +158,9 @@ final class KeyboardTap {
         engine.autoSwitchEnabled = store.autoSwitchEnabled && allowed.autoSwitch
         // типографика и опечатки на лету — один конвейер; работает, если включено хоть что-то
         let options = LiveOptions(typography: store.typographyLiveEnabled, typos: store.typoLiveEnabled ? typos : nil,
-                                  yo: store.yoEnabled ? yo : nil)
-        let liveAllowed = (options.typography || options.typos != nil || options.yo != nil) && allowed.typography
+                                  yo: store.yoEnabled ? yo : nil, emoji: store.emojiBrackets)
+        let liveAllowed = (options.typography || options.typos != nil || options.yo != nil || options.emoji != nil)
+            && allowed.typography
         // ⌥⌫, ⌘⌫ и прочие сочетания меняют текст непредсказуемо — память типографики больше не верна
         if modified || !liveAllowed { live.reset() }
 
@@ -216,7 +217,9 @@ final class KeyboardTap {
         guard keyCode != Engine.backspaceKey else { return Unmanaged.passUnretained(event) }
         // стрелки, Home/End, Delete раскладка переводит в служебные символы — это не набор, а переход по тексту
         guard !modified, liveAllowed,
-              let text = layouts.pair.layout(actual).character(for: stroke), text.count == 1, let char = text.first,
+              // Enter раскладка не отдаёт (служебная клавиша) — для правки на лету это конец строки
+              let text = Self.returnKeys.contains(keyCode) ? "\r" : layouts.pair.layout(actual).character(for: stroke),
+              text.count == 1, let char = text.first,
               !LiveTypographer.isNavigation(char) else {
             live.reset()
             return Unmanaged.passUnretained(event)
@@ -229,9 +232,20 @@ final class KeyboardTap {
         log.debug("typography → delete(\(edit.delete)) insert(\(edit.insert.count) chars)")
         // длина текста изменилась (… вместо ...) — память свитчера больше не совпадает с экраном
         if live.lastEditChangedLength { engine.reset() }
+        // Enter: правку печатаем без него, а сам Enter жмём настоящей клавишей — иначе мессенджер не отправит
+        if char == "\r" || char == "\n", edit.insert.last == char {
+            EventPoster.perform([.delete(edit.delete), .insert(String(edit.insert.dropLast()))],
+                                store: store, layouts: layouts, proxy: proxy)
+            // Shift+Enter в мессенджерах — новая строка, а не отправка: Shift сохраняем
+            EventPoster.postKey(CGKeyCode(keyCode), flags: flags.intersection(.maskShift), proxy: proxy)
+            return nil
+        }
         EventPoster.perform([.delete(edit.delete), .insert(edit.insert)], store: store, layouts: layouts, proxy: proxy)
         return nil
     }
+
+    /// Return и Enter на цифровой клавиатуре.
+    static let returnKeys: Set<UInt16> = [36, 76]
 
     /// Своё сочетание из настроек, если нажато оно.
     private func combo(keyCode: UInt16, flags: CGEventFlags) -> Trigger? {

@@ -17,6 +17,7 @@ export const sample: State = {
     available: true, hotkey: "double:rightShift", hotkeyTitle: "Двойной правый Shift", capitalize: false, typography: true, typos: true, yo: true,
     apps: [{ id: "com.apple.Terminal", name: "Терминал" }],
     words: ["вайб", "хабр"],
+    emoji: { preset: "millennial", custom: [] },
   },
   hotkeyOptions: [
     { id: "double:leftShift", title: "Двойной левый Shift" },

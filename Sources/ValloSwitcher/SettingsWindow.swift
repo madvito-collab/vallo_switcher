@@ -126,6 +126,14 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         case "typos": model.typoLive = flag
         case "yo": model.yo = flag
         case "capitalize": model.typoCapitalize = flag
+        case "emoji.preset":
+            if let preset = value as? String, ["millennial", "zoomer", "custom", "off"].contains(preset) { model.emojiPreset = preset }
+        case "emoji.custom":
+            // со страницы приходит весь список; пары держим как есть — пустые поля человек ещё заполняет
+            let pairs = (value as? [[String: Any]] ?? []).map {
+                ["trigger": $0["trigger"] as? String ?? "", "emoji": $0["emoji"] as? String ?? ""]
+            }
+            model.emojiCustom = pairs
         case "autoUpdate": model.autoUpdate = flag
         case "hotkey.convert": chooseHotkey(value as? String, for: .convert)
         case "hotkey.correct": chooseHotkey(value as? String, for: .typography)
@@ -157,6 +165,8 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         case "openFullHelp":
             if let url = Bundle.main.url(forResource: "Help", withExtension: "html") { NSWorkspace.shared.open(url) }
         case "cancelRecording": stopRecording()
+        // системная панель смайликов — вставит выбранный в поле «Другой смайлик», где сейчас курсор
+        case "emojiPanel": NSApp.orderFrontCharacterPalette(nil)
         default: log.debug("settings: unknown action \(name)")
         }
         schedulePush()
@@ -248,6 +258,7 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
                 "yo": model.yo,
                 "apps": apps(model.typographyExcluded),
                 "words": model.typoWords,
+                "emoji": ["preset": model.emojiPreset, "custom": model.emojiCustom],
             ],
             "hotkeyOptions": ModifierKey.allCases.map { ["id": "double:\($0.rawValue)", "title": $0.title] },
             "canRecordHotkey": true,

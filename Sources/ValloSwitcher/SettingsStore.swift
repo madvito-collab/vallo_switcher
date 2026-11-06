@@ -14,6 +14,8 @@ final class SettingsStore {
             "typographyLiveEnabled": true,
             "typoLiveEnabled": true,
             "yoEnabled": true,
+            "emojiPreset": "millennial",
+            "emojiCustom": [[String: String]](),
             "typoIgnoredWords": [String](),
             "typoCapitalizeEnabled": false,
             "typographyHotkeyEnabled": true,
@@ -92,6 +94,31 @@ final class SettingsStore {
     var yoEnabled: Bool {
         get { defaults.bool(forKey: "yoEnabled") }
         set { defaults.set(newValue, forKey: "yoEnabled") }
+    }
+
+    /// Смайлики из скобок: "millennial", "zoomer", "custom" или "off".
+    var emojiPreset: String {
+        get { defaults.string(forKey: "emojiPreset") ?? "millennial" }
+        set { defaults.set(newValue, forKey: "emojiPreset") }
+    }
+
+    /// Свой набор: пары {trigger: «))», emoji: «😄»} в порядке, как на странице настроек.
+    var emojiCustom: [[String: String]] {
+        get { defaults.array(forKey: "emojiCustom") as? [[String: String]] ?? [] }
+        set { defaults.set(newValue, forKey: "emojiCustom") }
+    }
+
+    /// Какой набор смайликов включён на лету; nil — выключено.
+    var emojiBrackets: EmojiBrackets? {
+        switch emojiPreset {
+        case "off": return nil
+        case "zoomer": return .zoomer
+        case "custom":
+            var pairs: [String: String] = [:]
+            for p in emojiCustom { if let t = p["trigger"], let e = p["emoji"] { pairs[t] = e } }
+            return EmojiBrackets(pairs: pairs)
+        default: return .millennial
+        }
     }
 
     /// «Не исправлять» — слова, исправление которых человек отменил или добавил сам.

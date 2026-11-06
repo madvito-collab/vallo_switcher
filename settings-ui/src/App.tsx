@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { CircleHelp, Info, Languages, Settings, SpellCheck } from "lucide-react"
 import { hasHost, onState, send, type PageId, type State } from "./bridge"
 import { sample } from "./sample"
+import { onLocalSet } from "./bridge"
 import { AboutPage, CorrectPage, FigmaPage, GeneralPage, HelpPage, LayoutPage } from "./pages"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,10 @@ export default function App() {
   const [page, setPage] = useState<PageId>("general")
 
   useEffect(() => {
+    // без приложения (страница в браузере) — смайлики меняем прямо здесь, чтобы пример можно было потрогать
+    if (!hasHost) onLocalSet((key, value) => setState(prev => prev && key.startsWith("emoji.")
+      ? { ...prev, correct: { ...prev.correct, emoji: { ...prev.correct.emoji, [key.slice(6)]: value } } }
+      : prev))
     onState(s => {
       setState(s)
       // приложение просит открыть окно на нужной странице (меню у часов: «Справка», «О программе»)

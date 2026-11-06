@@ -22,6 +22,40 @@ import Testing
         #expect(live.backspace() == TypoEdit(delete: 3, insert: "руб "))
     }
 
+    @Test func emojiFromBracketsAndUndo() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let opts = LiveOptions(typography: true, typos: nil, emoji: .millennial)
+        let edits = "ок)) ".map { live.typed($0, options: opts) }
+        #expect(edits.last == TypoEdit(delete: 2, insert: "😄 "))
+        #expect(live.backspace() == TypoEdit(delete: 2, insert: ")) "))
+    }
+
+    @Test func emojiOnEnter() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let opts = LiveOptions(typography: true, typos: nil, emoji: .millennial)
+        let edits = "ok)\r".map { live.typed($0, options: opts) }
+        #expect(edits.last == TypoEdit(delete: 1, insert: "🙂\r"))
+    }
+
+    @Test func emojiOffKeepsBrackets() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        #expect("ок)) ".map { live.typed($0) }.allSatisfy { $0 == nil })
+    }
+
+    @Test func emojiLeavesTextBrackets() {
+        var live = LiveTypographer()
+        live.reset(knownLineStart: true)
+        let opts = LiveOptions(typography: true, typos: nil, emoji: .millennial)
+        var screen = ""
+        for c in "ну (вот так) и всё " {
+            if let e = live.typed(c, options: opts) { screen.removeLast(e.delete); screen += e.insert } else { screen.append(c) }
+        }
+        #expect(!screen.contains("🙂"))
+    }
+
     @Test func rubleAfterLayoutFix() {
         // «850he,» + пробел: свитчер заменил «he, » на «руб » — типографика должна увидеть рубли
         var live = LiveTypographer()

@@ -40,6 +40,7 @@ public static class SettingsPage
             {
                 ["available"] = false, ["hotkey"] = "off", ["hotkeyTitle"] = "", ["capitalize"] = false,
                 ["typography"] = false, ["typos"] = false, ["yo"] = false, ["apps"] = new JsonArray(), ["words"] = new JsonArray(),
+                ["emoji"] = new JsonObject { ["preset"] = "off", ["custom"] = new JsonArray() },
             },
             ["hotkeyOptions"] = options,
             ["canRecordHotkey"] = false,

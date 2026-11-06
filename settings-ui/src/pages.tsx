@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { action, set, type PageId, type State } from "./bridge"
 import { AppList, Card, HotkeySelect, Kbd, Note, PageTitle, Row, SectionTitle, ToggleRow, WordList } from "./kit"
+import { EmojiCustom, EmojiRow } from "./emoji"
 import appIcon from "./app-icon.png"
 
 const osName = (s: State) => (s.platform === "mac" ? "macOS" : "Windows")
@@ -84,8 +85,16 @@ export function CorrectPage({ s }: { s: State }) {
         <ToggleRow title="Типографика" desc="Тире, «ёлочки», неразрывные пробелы" value={c.typography} setting="typography" />
         <ToggleRow title="Опечатки" desc="првет → привет" value={c.typos} setting="typos" />
         <ToggleRow title="Буква «ё»" desc="еще → ещё, где без вариантов" value={c.yo} setting="yo" />
+        <EmojiRow s={s} />
       </Card>
       <Note>Не то исправилось? Сразу нажмите <Kbd>Backspace</Kbd></Note>
+
+      {c.emoji.preset === "custom" && (
+        <>
+          <SectionTitle title="Свои смайлики" sub="Слева скобки, справа смайлик" />
+          <EmojiCustom pairs={c.emoji.custom} />
+        </>
+      )}
 
       <SectionTitle title="Не исправлять в приложениях" sub="Здесь не работает исправление на лету" />
       <AppList list="correct" apps={c.apps} />
