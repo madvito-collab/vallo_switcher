@@ -364,7 +364,7 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
 
     List<KeyStroke> Strokes(int start, int end) => buffer.GetRange(start, end - start).Select(x => x.Stroke).ToList();
 
-    /// Известная аббревиатура хоть с одной заглавной («Pdf», «Жкх») — целиком заглавными (решение автора).
+    /// Известная аббревиатура хоть с одной заглавной («Pdf», «Жкх») — целиком заглавными.
     /// Меняет нажатия в буфере на заглавные и возвращает новый вид слова; иначе null.
     string? CapitalizedAbbreviation(int start, int end)
     {

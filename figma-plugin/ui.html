@@ -1,7 +1,7 @@
 <!-- Окно плагина: пока работает — невидимое — держит связь со свитчером и пересылает сообщения code.js ↔ свитчер.
      После работы показывает итог: что исправлено. -->
 <style>
-  /* Окно итога по макету автора (Figma: HNBrPNn1NkGYaq7VPWArwj, узел 1:29). Шапку с «ё», названием и крестиком рисует сама Фигма. */
+  /* Окно итога. Шапку с «ё», названием и крестиком рисует сама Фигма. */
   body { margin: 0; background: #fff; font-family: Inter, system-ui, sans-serif; line-height: normal; color: #000; }
   #stats { display: flex; flex-direction: column; gap: 24px; padding: 12px; }
   .summary { display: flex; gap: 32px; align-items: flex-start; padding: 24px; border: 1px solid #e7ebf1; border-radius: 12px; }
@@ -61,7 +61,7 @@ function send(message) {
   if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
 
-// порядок — как в макете автора; опечатки, тире и кавычки — рядом с родственными
+// порядок — как в макете; опечатки, тире и кавычки — рядом с родственными
 const LABELS = [
   ["commas", "Запятые"], ["typos", "Опечатки"], ["nbsp", "Неразрывные пробелы"], ["dashes", "Тире"],
   ["quotes", "Кавычки"], ["other", "Другие знаки"], ["yo", "Заменено е на ё"],

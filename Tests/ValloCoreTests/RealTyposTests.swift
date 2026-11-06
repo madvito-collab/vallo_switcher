@@ -13,7 +13,7 @@ let ruForms: SortedWordFile = {
     return try! SortedWordFile(url: out)
 }()
 
-/// Исправлятор на настоящих ошибках автора (Tests/Data/typos-real.tsv): сколько ловит и сколько портит.
+/// Исправлятор на настоящих опечатках из реальной переписки (Tests/Data/typos-real.tsv): сколько ловит и сколько портит.
 @Suite struct RealTyposTests {
     struct Case { let typed: String; let expected: String? }   // nil — трогать нельзя
 

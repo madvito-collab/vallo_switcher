@@ -4,7 +4,7 @@ using static Vallo.Core.EngineAction;
 
 namespace Vallo.Core.Tests;
 
-/// «США — международная» (ENG INTL): апостроф — мёртвая клавиша. Жалоба тестера 2026-11-06:
+/// «США — международная» (ENG INTL): апостроф — мёртвая клавиша. Найдено при проверке:
 /// «ээээх» в английской раскладке («''''[») двойной Shift перевёл в «''''х».
 public class DeadKeyTests
 {

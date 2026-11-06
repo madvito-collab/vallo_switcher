@@ -5,7 +5,7 @@ namespace Vallo.Core;
 
 /// Окно настроек на Windows показывает ту же страницу, что и на Маке (settings-ui/ → Support/SettingsUI/index.html).
 /// Здесь — что страница видит (состояние) и как её изменения ложатся в настройки.
-/// Протокол — docs/superpowers/specs/2026-11-05-web-settings-design.md.
+/// Протокол и состояние — settings-ui/src/bridge.ts.
 public static class SettingsPage
 {
     /// Состояние для страницы. На Windows пока только раскладка: исправлений, Figma и модели нет.

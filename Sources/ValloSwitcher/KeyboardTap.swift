@@ -328,7 +328,7 @@ final class KeyboardTap {
             let corrected = typos.correctPhrase(text)
             let typoFixed = store.yoEnabled ? yo.fixPhrase(corrected) : corrected
             // модель думает на фоне; без модели, при ошибке или дольше 3 с — без запятых
-            // в Фигме регистр и точку в конце не трогаем никогда (решение автора: это вопрос редполитики макета)
+            // в Фигме регистр и точку в конце не трогаем никогда (это вопрос редполитики макета)
             let inFigma = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == FigmaLauncher.figmaBundleID
             commas.fix(typoFixed, typos: typos, capitalize: store.typoCapitalizeEnabled && !inFigma) { [self] withCommas in
                 guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app, inputGeneration == generation else {

@@ -38,7 +38,7 @@ public struct TypoCorrector: Sendable {
     /// Современные слова (`ru-modern.txt`: чатах, дедлайны) — нормализованы. Без них «чатах» → «чартах».
     public var modernWords: Set<String> = []
     /// Все формы русских слов (OpenCorpora, `ru-forms.txt`): правильное слово не трогаем, даже если оно редкое.
-    /// Без него «иконка» → «икона», «исправляется» → «справляется» (проверка на сообщениях автора, 2026-11-06).
+    /// Без него «иконка» → «икона», «исправляется» → «справляется» (проверка на реальной переписке, `RealTyposTests`).
     /// Слова, которые бывают только именами, записаны со «*»: их не трогаем, но опечатку в них не превращаем.
     public var forms: SortedWordFile?
 
@@ -110,7 +110,7 @@ public struct TypoCorrector: Sendable {
         if let fixed = TypoCorrector.misspellings[w] {
             return ignored.contains(w) ? nil : Self.withCase(of: word, fixed)
         }
-        // забытый «ь» в конце: «можеш» → «можешь» (решение автора) — узкое исключение из «окончания не трогаем»
+        // забытый «ь» в конце: «можеш» → «можешь» — узкое исключение из «окончания не трогаем»
         if w.count >= 4, w.hasSuffix("ш"), w.allSatisfy({ Lexicon.isInAlphabet($0, .ru) }),
            frequency[w] == nil, !ignored.contains(w), !isForm(w), isKnown(w + "ь") {
             return Self.withCase(of: word, (display[w + "ь"] ?? w + "ь"))
@@ -197,7 +197,7 @@ public struct TypoCorrector: Sendable {
         "е": ["и", "я", "э"], "и": ["е", "ы"], "а": ["о", "я"], "о": ["а"], "я": ["е", "а"], "ы": ["и"], "э": ["е"],
     ]
 
-    /// С какой длины слова пробуем соседнюю клавишу (проверка на сообщениях автора, 2026-11-06).
+    /// С какой длины слова пробуем соседнюю клавишу (подобрано по `RealTyposTests`).
     static let neighborMinLength = 7
 
     /// Ряды клавиатуры ЙЦУКЕН — соседние клавиши для «толстого пальца».

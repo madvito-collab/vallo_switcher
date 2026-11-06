@@ -19,8 +19,8 @@ final class FigmaBridge {
 
     var connectedFiles: [String] { Array(byFile.keys) }
 
-    /// Страница плагина в Figma Community (опубликован автором 2026-11-05).
-    /// Плагин уже одобрен в Community? Пока нет — в настройках кнопка «Скоро» (решение автора, 2026-11-05).
+    /// Страница плагина в Figma Community.
+    /// Плагин уже одобрен в Community? Пока нет — в настройках кнопка «Скоро».
     static let communityPublished = false
     static let communityURL = URL(string: "https://www.figma.com/community/plugin/1700095930867895220")!
 

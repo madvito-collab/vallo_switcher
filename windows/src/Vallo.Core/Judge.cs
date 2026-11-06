@@ -105,7 +105,7 @@ public sealed class Judge(Lexicon en, Lexicon ru, ISet<string> learned)
     }
 
     /// Слово целиком заглавными (от двух букв) — аббревиатура (ВГСЧ, ЖКХ, PDF): её не переводим,
-    /// иначе тем, кто их часто пишет, придётся вносить каждую в исключения (решение автора).
+    /// иначе тем, кто их часто пишет, придётся вносить каждую в исключения.
     public static bool IsAbbreviation(string word)
     {
         var letters = word.Where(char.IsLetter).ToList();

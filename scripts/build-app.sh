@@ -18,7 +18,7 @@ cp "$BIN" "$APP/Contents/MacOS/ValloSwitcher"
 ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
 # Библиотеки Swift, которых нет в старых macOS (Xcode кладёт их в приложение сам, SwiftPM — нет).
-# Без libswiftCompatibilitySpan свитчер падал при запуске на macOS 14 (2026-11-05, отчёт тестера).
+# Без libswiftCompatibilitySpan свитчер падал при запуске на macOS 14 (найдено при проверке).
 SWIFT_LIBS="$(dirname "$(xcrun --find swift)")/../lib/swift-6.2/macosx"
 for lib in $(otool -L "$APP/Contents/MacOS/ValloSwitcher" | awk '/@rpath\/libswift.*\.dylib/ {sub("@rpath/", "", $1); print $1}'); do
     [ -f "$SWIFT_LIBS/$lib" ] || { echo "Нет $lib в $SWIFT_LIBS — приложение не запустится на старых macOS" >&2; exit 1; }

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Vallo.Core.Tests;
 
-/// Окно настроек — та же страница, что на Маке (settings-ui/). Протокол — docs/superpowers/specs/2026-11-05-web-settings-design.md
+/// Окно настроек — та же страница, что на Маке (settings-ui/). Протокол — settings-ui/src/bridge.ts
 public class SettingsPageTests
 {
     static JsonElement J(string json) => JsonDocument.Parse(json).RootElement;

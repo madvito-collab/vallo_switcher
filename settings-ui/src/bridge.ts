@@ -1,4 +1,5 @@
-// Мост страница ↔ приложение. Протокол — docs/superpowers/specs/2026-11-05-web-settings-design.md
+// Мост страница ↔ приложение. Страница шлёт {type: "ready" | "set" | "action"},
+// приложение отвечает window.vallo.receive(state) при каждом изменении. Состояние — тип State ниже.
 
 export type PageId = "general" | "layout" | "correct" | "figma" | "help" | "about"
 export type ListId = "layout" | "correct"

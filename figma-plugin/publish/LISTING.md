@@ -46,7 +46,7 @@ https://github.com/madvito-collab/vallo_switcher/issues
 ## Картинки
 
 - Значок: `figma-plugin/publish/icon-128.png` (из значка приложения).
-- Обложка 1920×1080 — рисует автор.
+- Обложка 1920×1080.
 
 ## Network access (заполнено в manifest.json)
 

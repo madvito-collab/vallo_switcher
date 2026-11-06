@@ -110,7 +110,7 @@ public struct Judge: Sendable {
     }
 
     /// Слово целиком заглавными (от двух букв) — аббревиатура (ВГСЧ, ЖКХ, PDF): её не переводим,
-    /// иначе тем, кто их часто пишет, придётся вносить каждую в исключения (решение автора).
+    /// иначе тем, кто их часто пишет, придётся вносить каждую в исключения.
     public static func isAbbreviation(_ word: String) -> Bool {
         let letters = word.filter(\.isLetter)
         return letters.count >= 2 && letters.allSatisfy(\.isUppercase)

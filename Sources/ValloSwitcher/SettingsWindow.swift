@@ -10,7 +10,7 @@ enum SettingsPage: String {
 
 /// Окно настроек: веб-страница (`Support/SettingsUI/index.html`, исходники — `settings-ui/`) в обычном окне.
 /// Страница ничего не хранит: показывает состояние свитчера и шлёт изменения.
-/// Протокол — `docs/superpowers/specs/2026-11-05-web-settings-design.md`.
+/// Протокол и состояние страницы — `settings-ui/src/bridge.ts`.
 final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate {
     let model: SettingsModel
     let modelStore: ModelStore

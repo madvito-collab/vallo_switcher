@@ -362,7 +362,7 @@ public class AbbreviationTests
     [Fact]
     public void CapsAbbreviationsStayInTheirLayout()
     {
-        // просьба автора: аббревиатуры заглавными не переводим
+        // аббревиатуры заглавными не переводим
         foreach (var w in new[] { "ВГСЧ ", "ЖКХ ", "СПГ ", "ЧС ", "МЧС ", "СНИЛС " }) Assert.False(Consumed(w, Language.Ru), w);
         foreach (var w in new[] { "PDF ", "API ", "KPI ", "SDK " }) Assert.False(Consumed(w, Language.En), w);
     }

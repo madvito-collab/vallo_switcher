@@ -280,7 +280,7 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
     }
 
     @Test func capsAbbreviationsStayInTheirLayout() {
-        // просьба автора: «ВГСЧ» → «DUC», «ЖКХ» → «:R{», «PDF» → «ЗВА» — так было; аббревиатуры не переводим
+        // «ВГСЧ» → «DUC», «ЖКХ» → «:R{», «PDF» → «ЗВА» — так было; аббревиатуры не переводим
         for w in ["ВГСЧ ", "ЖКХ ", "СПГ ", "ЧС ", "МЧС ", "СНИЛС "] { #expect(!consumed(w, .ru), "\(w)") }
         for w in ["PDF ", "API ", "KPI ", "SDK "] { #expect(!consumed(w, .en), "\(w)") }
     }
@@ -429,8 +429,8 @@ let backspace = KeyEvent(stroke: KeyStroke(keyCode: 51), hasCommandControlOrOpti
 }
 
 @Suite struct ApostropheLetterTests {
-    /// «э» в английской раскладке — апостроф: «ээээээх» = «[». Двойной Shift переводит всё, не только «х»
-    /// (жалоба тестера 2026-11-06: осталось «х»).
+    /// «э» в английской раскладке — апостроф: «ээээээх» = «''''''[». Двойной Shift переводит всё, не только «х»
+    /// (найдено при проверке: оставалось «''''''х»).
     @Test func doubleShiftConvertsApostrophes() {
         let engine = Engine(layouts: ansi, judge: Judge(en: realEN, ru: realRU, learned: []), currentLanguage: .en)
         for stroke in strokesTyping("ээээээх", in: ansi.ru as! TableKeyLayout) {

@@ -29,12 +29,11 @@ scripts/render-guide.sh # пересобрать «Как установить.p
 
 - `Sources/ValloCore`: вся логика, без системных API, покрыта тестами. Переводчик раскладок, словари, судья (решает, ошибка ли это), движок (память набора и сценарии), детектор двойного Shift, типографика, опечатки.
 - `Sources/ValloSwitcher`: приложение. Перехват клавиатуры, реальные раскладки системы, отправка нажатий, выделение и буфер обмена, исключения, меню, окно настроек, онбординг, автообновление (Sparkle).
-- `settings-ui`: окно настроек — одна веб-страница (React + shadcn) для Мака (WKWebView) и Windows (WebView2). Протокол — `docs/superpowers/specs/2026-11-05-web-settings-design.md`.
+- `settings-ui`: окно настроек — одна веб-страница (React + shadcn) для Мака (WKWebView) и Windows (WebView2). Протокол — `settings-ui/src/bridge.ts`.
 - `figma-plugin`: плагин Фигмы (простой JS без сборки) — собирает тексты выделенных слоёв, применяет правки свитчера, показывает итог. Протокол — `figma-plugin/PROTOCOL.md`.
 - `Sources/dump-layouts`: снимает раскладки системы в `Data/layouts/` для тестов.
 - `Data/wordlists`: частотные словари ([hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords), CC-BY-SA-4.0).
 - Запятые — модель SAGE (Сбер, MIT) через ONNX Runtime, скачивается из [vallo-models](https://github.com/madvito-collab/vallo-models). Ответ модели проходит через фильтр: берутся только запятые и безопасные исправления.
-- `docs/superpowers`: спецификации и планы.
 
 ## Отладка
 
