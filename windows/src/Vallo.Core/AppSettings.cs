@@ -2,6 +2,9 @@ using System.Text.Json;
 
 namespace Vallo.Core;
 
+/// Своя пара смайлика: скобки → смайлик.
+public sealed record EmojiPair(string Trigger, string Emoji);
+
 /// Настройки приложения; файл — %APPDATA%\Vallo Switcher\settings.json.
 public sealed record AppSettings
 {
@@ -19,6 +22,16 @@ public sealed record AppSettings
     public Hotkey HotkeyConvert { get; init; } = Hotkey.DefaultConvert;
     public bool DebugMode { get; init; }
     public bool FirstRunDone { get; init; }
+    /// Типографика на лету (тире, кавычки, неразрывные пробелы, телефоны, разряды).
+    public bool TypographyLive { get; init; } = true;
+    /// Сочетание «исправить выделенный текст» (типографика); null — выключено.
+    public Hotkey? HotkeyCorrect { get; init; } = Hotkey.DefaultTypography;
+    /// Где не работает исправление на лету (имена exe в нижнем регистре).
+    public IReadOnlyList<string> TypographyExcludedApps { get; init; } = DefaultExcludedApps;
+    /// Смайлики из скобок: "millennial", "zoomer", "custom" или "off".
+    public string EmojiPreset { get; init; } = "millennial";
+    /// Свой набор смайликов — в порядке, как на странице настроек.
+    public IReadOnlyList<EmojiPair> EmojiCustom { get; init; } = [];
     /// Скачивать и ставить новые версии самим (как на Маке); выключено — только сказать, что вышла.
     public bool AutoUpdate { get; init; } = true;
     /// Когда последний раз ходили за обновлениями.
@@ -49,6 +62,9 @@ public sealed record AppSettings
                 SilentApps = s.SilentApps ?? d.SilentApps,
                 LearnedWords = s.LearnedWords ?? d.LearnedWords,
                 HotkeyConvert = s.HotkeyConvert ?? d.HotkeyConvert,
+                TypographyExcludedApps = s.TypographyExcludedApps ?? d.TypographyExcludedApps,
+                EmojiPreset = s.EmojiPreset ?? d.EmojiPreset,
+                EmojiCustom = s.EmojiCustom ?? d.EmojiCustom,
             };
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException or NotSupportedException)
@@ -56,6 +72,16 @@ public sealed record AppSettings
             return new AppSettings();
         }
     }
+
+    /// Какой набор смайликов включён на лету; null — выключено.
+    public EmojiBrackets? EmojiBrackets() => EmojiPreset switch
+    {
+        "off" => null,
+        "zoomer" => Core.EmojiBrackets.Zoomer,
+        "custom" => new Core.EmojiBrackets(EmojiCustom.Where(p => p.Trigger.Length > 0)
+            .GroupBy(p => p.Trigger).ToDictionary(g => g.Key, g => g.Last().Emoji)),
+        _ => Core.EmojiBrackets.Millennial,
+    };
 
     /// Пишем во временный файл и подменяем — чтобы сбой посреди записи не оставил битый файл.
     public void Save(string path)

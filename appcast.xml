@@ -6,6 +6,23 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.7</title>
+            <pubDate>Sun, 08 Nov 2026 13:02:44 +0300</pubDate>
+            <sparkle:version>13</sparkle:version>
+            <sparkle:shortVersionString>0.6.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Опечатки исправляются умнее и бережнее: свитчер знает все формы русских слов и больше не «чинит» правильные редкие слова («иконка», «исправляется»). Ловит больше настоящих опечаток — в окончаниях («полностю»), с соседней клавишей («ошидкой»), со слитным написанием («изза», «хотябы»).</li>
+<li>Телефоны оформляются сами: «89161234567» → «+7 916 123-45-67», городские — с кодом в скобках, «8 800» остаётся как есть.</li>
+<li>Разряды в числах: «340000» → «340 000», «5000р» → «5 000 ₽». Годы и номера не трогаются.</li>
+<li>Цвет, набранный в русской раскладке, исправляется: «№аааааа» → «#ffffff», в поле цвета Фигмы — и без решётки.</li>
+<li>Междометия вроде «фух» и «хаха» переключаются из английской раскладки.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.7/Vallo-Switcher-0.6.7.dmg" sparkle:edSignature="Rsb4eYVf6RfEUDu7ipeQMR/LZuFCo9/A60uXS/e0xxfUwgUp3WnhR9y6JUbimQiNkkjLNr3Kdr5EQ9F2arX2AA==" length="28315595" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.6</title>
             <pubDate>Fri, 06 Nov 2026 16:36:29 +0300</pubDate>
             <sparkle:version>12</sparkle:version>

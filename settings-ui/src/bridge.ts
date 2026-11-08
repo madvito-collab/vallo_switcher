@@ -22,6 +22,8 @@ export interface State {
     typography: boolean; typos: boolean; yo: boolean; apps: AppEntry[]; words: string[]
     /** смайлики из скобок: набор и свои пары «скобки → смайлик» */
     emoji: { preset: EmojiPreset; custom: EmojiPair[] }
+    /** опечатки, «ё» и запятые есть (на Windows пока нет — false); нет поля — есть */
+    typosAvailable?: boolean
   }
   hotkeyOptions: HotkeyOption[]
   /** можно записать своё сочетание (на Windows пока нет) */

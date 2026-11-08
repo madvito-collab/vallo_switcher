@@ -21,7 +21,7 @@ sealed unsafe class ContextGuard : IDisposable
     /// Сменились окно или фокус — спросить про пароль заново.
     int focusDirty = 1;
 
-    volatile bool excluded, silent, fullscreen, password;
+    volatile bool excluded, typographyExcluded, silent, fullscreen, password;
     volatile string windowClass = "", exeName = "";
 
     // --- только поток охранника ---
@@ -46,6 +46,9 @@ sealed unsafe class ContextGuard : IDisposable
 
     /// Двойной Shift: в исключениях можно, в игре и в поле пароля — нет.
     public bool ManualAllowed() => GuardRule.ManualAllowed(silent, fullscreen, password);
+
+    /// Исправления на лету (типографика, смайлики): не в исключениях исправлений, не в игре и не в поле пароля.
+    public bool TypographyAllowed() => !typographyExcluded && GuardRule.ManualAllowed(silent, fullscreen, password);
 
     /// Приложение в исключениях: набор помним, но сами не переключаем и выделение через Ctrl+C не читаем.
     public bool InExcludedApp => excluded;
@@ -82,7 +85,7 @@ sealed unsafe class ContextGuard : IDisposable
             catch
             {
                 // не поняли, где мы, — не мешаем
-                excluded = silent = fullscreen = password = false;
+                excluded = typographyExcluded = silent = fullscreen = password = false;
                 windowClass = exeName = "";
             }
         }
@@ -93,13 +96,14 @@ sealed unsafe class ContextGuard : IDisposable
         var hwnd = GetForegroundWindow();
         if (hwnd == 0)
         {
-            excluded = silent = fullscreen = password = false;
+            excluded = typographyExcluded = silent = fullscreen = password = false;
             windowClass = exeName = "";
             return;
         }
         var exe = ExeOf(hwnd);
         exeName = exe;
         excluded = ExclusionMatcher.IsExcluded(exe, store.Current.ExcludedApps);
+        typographyExcluded = ExclusionMatcher.IsExcluded(exe, store.Current.TypographyExcludedApps);
         silent = ExclusionMatcher.IsExcluded(exe, store.Current.SilentApps);
         var cls = ClassOf(hwnd);
         windowClass = cls;

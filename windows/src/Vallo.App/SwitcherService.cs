@@ -34,6 +34,8 @@ sealed class SwitcherService : IHookSink, IDisposable
     sealed record Replay(HookKey Key) : Work;
     /// Двойной Shift без набранного: перевести выделение (Ctrl+C → перевод → Ctrl+V).
     sealed record ConvertSelection : Work;
+    /// Сочетание «исправить выделенный текст»: типографика выделения (Ctrl+C → правка → Ctrl+V).
+    sealed record FormatSelection : Work;
 
     readonly BlockingCollection<Work> queue = new();
     /// Сколько работы в очереди и в исполнении.
@@ -50,6 +52,12 @@ sealed class SwitcherService : IHookSink, IDisposable
     // --- только поток перехвата ---
     DoubleTapDetector tap; // изменяемая структура: только поле, никаких копий
     bool hasTap;
+    /// Второе сочетание — «исправить выделенный текст» (по умолчанию двойной правый Shift).
+    DoubleTapDetector correctTap;
+    bool hasCorrectTap;
+    /// Типографика и смайлики на лету — память последних символов на экране. Только под `gate`.
+    readonly LiveTypographer live = new();
+    const uint VK_BACK = 0x08, VK_RETURN = 0x0D;
     /// В окне настроек сменили сочетание — поток перехвата пересоберёт детектор при следующем модификаторе.
     volatile bool hotkeyChanged;
     bool lShift, rShift, lCtrl, rCtrl, lAlt, rAlt, lWin, rWin;
@@ -64,11 +72,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         sender = new InputSender(layouts, store, MarkSwitch);
         selection = new SelectionReader(sender);
         guard = new ContextGuard(store);
-        if (store.Current.HotkeyConvert is Hotkey.DoubleTap d)
-        {
-            tap = new DoubleTapDetector(d.Key);
-            hasTap = true;
-        }
+        LoadHotkeys();
         hook = new KeyboardHook(this);
         worker = new Thread(WorkLoop) { IsBackground = true, Name = "Vallo input", Priority = ThreadPriority.AboveNormal };
         watcher = new Thread(Watch) { IsBackground = true, Name = "Vallo layouts" };
@@ -158,12 +162,20 @@ sealed class SwitcherService : IHookSink, IDisposable
         dummy.HandleDoubleShift(null);
         dummy.HandleKey(new KeyEvent(new KeyStroke(0x47), HasCtrlOrAlt: true));
         dummy.ExternalLayoutChange(Language.Ru);
+        // типографика: регулярные выражения собираются при первом вызове — не на первом нажатии человека
+        var live = new LiveTypographer();
+        live.Reset(knownLineStart: true);
+        var options = new LiveOptions(Typography: true, Emoji: EmojiBrackets.Millennial);
+        foreach (var c in TextElements.Split("раз - \"да\" 340000 89161234567 ок)) ")) live.Typed(c, Language.Ru, options);
+        live.Backspace();
+        Typographer.Format("раз - \"да\" 5000р 89161234567");
     }
 
     /// Свой код перехвата — скомпилировать заранее.
     void WarmUpHookPath()
     {
         foreach (var name in new[] { nameof(OnKey), nameof(PassOrQueue), nameof(Enqueue), nameof(Modifier), nameof(DoubleTap),
+                     nameof(LiveEdit), nameof(CorrectHotkey), nameof(OtherInputForTaps), nameof(Step), nameof(LoadHotkeys),
                      nameof(TrackModifier), nameof(ResyncModifiers), nameof(HasSwitch), nameof(OnMouseDown), nameof(OnForegroundChanged),
                      nameof(OnFocusChanged) })
         {
@@ -195,35 +207,66 @@ sealed class SwitcherService : IHookSink, IDisposable
             case HookDecision.Ignore:
                 return false;
             case HookDecision.ResetBuffer:
-                if (hasTap) tap.OtherInput();
-                if (k.Down) lock (gate) engine.Reset();
+                OtherInputForTaps();
+                if (k.Down) lock (gate) { engine.Reset(); live.Reset(); }
                 // клавишу, чьё нажатие проглотили, отпустили уже с Ctrl/Alt — отпускание тоже глотаем
                 if (!k.Down && swallowed.Remove(k.Vk)) return true;
                 return PassOrQueue(k);
             case HookDecision.Modifier:
                 var fired = Modifier(k);
                 var result = PassOrQueue(k);
-                if (fired) DoubleTap();
+                if (fired == Fired.Convert) DoubleTap();
+                else if (fired == Fired.Correct) CorrectHotkey();
                 return result;
         }
 
         // обычная клавиша
         if (!k.Down) return swallowed.Remove(k.Vk) || PassOrQueue(k);
-        if (hasTap) tap.OtherInput();
+        OtherInputForTaps();
         // игра (на весь экран или «тихая»), поле пароля — не вмешиваемся и ничего не запоминаем
         if (!guard.ManualAllowed())
         {
-            lock (gate) engine.Reset();
+            lock (gate) { engine.Reset(); live.Reset(); }
             return PassOrQueue(k);
         }
         var stroke = new KeyStroke((ushort)k.Vk, lShift || rShift, (GetKeyState(VK_CAPITAL) & 1) != 0);
+        var settings = store.Current;
+        var options = new LiveOptions(settings.TypographyLive, settings.EmojiBrackets());
+        var liveOn = (options.Typography || options.Emoji is not null) && guard.TypographyAllowed();
         EngineOutput output;
+        IReadOnlyList<EngineAction>? typography = null;
         lock (gate)
         {
-            // исключённое приложение: набор помним (двойной Shift его переведёт), сами не переключаем — как на Маке
-            engine.AutoSwitchEnabled = store.Current.AutoSwitchEnabled && !guard.InExcludedApp;
-            output = engine.HandleKey(new KeyEvent(stroke, HasCtrlOrAlt: false));
-            if (output is EngineOutput.Consume c && HasSwitch(c.Actions)) lastSwitchTick = Environment.TickCount64;
+            // Backspace сразу после правки на лету — вернуть набранное (как на Маке)
+            if (k.Vk == VK_BACK && liveOn && live.Backspace() is { } undo)
+            {
+                engine.Reset();
+                typography = [new EngineAction.Delete(undo.Delete), new EngineAction.Insert(undo.Insert)];
+            }
+            if (typography is null)
+            {
+                // исключённое приложение: набор помним (двойной Shift его переведёт), сами не переключаем — как на Маке
+                engine.AutoSwitchEnabled = settings.AutoSwitchEnabled && !guard.InExcludedApp;
+                output = engine.HandleKey(new KeyEvent(stroke, HasCtrlOrAlt: false));
+                if (output is EngineOutput.Consume c)
+                {
+                    if (HasSwitch(c.Actions)) lastSwitchTick = Environment.TickCount64;
+                    // свитчер правил текст сам — на этом нажатии типографика молчит, память начинаем заново
+                    live.Reset();
+                }
+                else if (k.Vk != VK_BACK)
+                {
+                    typography = liveOn ? LiveEdit(stroke, options) : null;
+                    if (!liveOn) live.Reset();
+                }
+            }
+            else output = EngineOutput.PassThrough;
+        }
+        if (typography is not null)
+        {
+            swallowed.Add(k.Vk);
+            Enqueue(new Run(typography));
+            return true;
         }
         if (output is not EngineOutput.Consume consume) return PassOrQueue(k);
         swallowed.Add(k.Vk);
@@ -231,10 +274,30 @@ sealed class SwitcherService : IHookSink, IDisposable
         return true;
     }
 
+    /// Символ нажатия → правка типографики на лету (или null — пропустить нажатие как есть). Только под `gate`.
+    IReadOnlyList<EngineAction>? LiveEdit(KeyStroke stroke, LiveOptions options)
+    {
+        // Enter раскладка не отдаёт (служебная клавиша) — для правки на лету это конец строки
+        var ch = stroke.KeyCode == VK_RETURN ? "\r" : layouts.Pair.Layout(engine.CurrentLanguage).Character(stroke);
+        // стрелки, Home/End, мёртвые клавиши, F-клавиши — курсор ушёл или символ неизвестен: память не верна
+        if (ch is null || TextElements.Count(ch) != 1 || (ch[0] < 0x20 && ch != "\r" && ch != "\t"))
+        {
+            live.Reset();
+            return null;
+        }
+        if (live.Typed(ch, engine.CurrentLanguage, options) is not { } edit) return null;
+        // длина текста изменилась (… вместо ...) — память свитчера больше не совпадает с экраном
+        if (live.LastEditChangedLength) engine.Reset();
+        // Enter: правку печатаем без него, а сам Enter жмём настоящей клавишей — иначе мессенджер не отправит
+        if (ch == "\r" && edit.Insert.EndsWith('\r'))
+            return [new EngineAction.Delete(edit.Delete), new EngineAction.Insert(edit.Insert[..^1]), new EngineAction.PressKey((ushort)VK_RETURN)];
+        return [new EngineAction.Delete(edit.Delete), new EngineAction.Insert(edit.Insert)];
+    }
+
     public void OnMouseDown()
     {
-        if (hasTap) tap.OtherInput();
-        lock (gate) engine.Reset();
+        OtherInputForTaps();
+        lock (gate) { engine.Reset(); live.Reset(); }
     }
 
     public void OnForegroundChanged()
@@ -242,7 +305,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         ResyncModifiers();
         // отпускание проглоченной клавиши могло потеряться — иначе однажды проглотим настоящее отпускание
         swallowed.Clear();
-        lock (gate) engine.Reset();
+        lock (gate) { engine.Reset(); live.Reset(); }
         guard.Invalidate();
         poke.Set(); // раскладка в новом окне может быть другой
     }
@@ -256,28 +319,61 @@ sealed class SwitcherService : IHookSink, IDisposable
         hotkeyChanged = true;
     }
 
-    /// true — сработало двойное нажатие.
-    bool Modifier(in HookKey k)
+    enum Fired { None, Convert, Correct }
+
+    /// Детекторы двойного нажатия — из настроек. Только поток перехвата (и конструктор).
+    void LoadHotkeys()
+    {
+        hasTap = store.Current.HotkeyConvert is Hotkey.DoubleTap;
+        if (store.Current.HotkeyConvert is Hotkey.DoubleTap d) tap = new DoubleTapDetector(d.Key);
+        hasCorrectTap = store.Current.HotkeyCorrect is Hotkey.DoubleTap;
+        if (store.Current.HotkeyCorrect is Hotkey.DoubleTap dc) correctTap = new DoubleTapDetector(dc.Key);
+    }
+
+    void OtherInputForTaps()
+    {
+        if (hasTap) tap.OtherInput();
+        if (hasCorrectTap) correctTap.OtherInput();
+    }
+
+    /// Какое сочетание сработало на этом модификаторе.
+    Fired Modifier(in HookKey k)
     {
         if (hotkeyChanged)
         {
             hotkeyChanged = false;
-            hasTap = store.Current.HotkeyConvert is Hotkey.DoubleTap d;
-            if (hasTap) tap = new DoubleTapDetector(((Hotkey.DoubleTap)store.Current.HotkeyConvert).Key);
-        }
-        if (!hasTap) return false;
-        if (k.Vk != tap.Key.Vk())
-        {
-            tap.OtherInput();
-            return false;
+            LoadHotkeys();
         }
         var now = Environment.TickCount64 / 1000.0;
-        if (k.Down)
+        var fired = Fired.None;
+        if (hasTap && Step(ref tap, k, now)) fired = Fired.Convert;
+        if (hasCorrectTap && Step(ref correctTap, k, now)) fired = Fired.Correct;
+        return fired;
+    }
+
+    /// Один детектор: своя клавиша — нажатие/отпускание, чужой модификатор — «другой ввод».
+    static bool Step(ref DoubleTapDetector d, in HookKey k, double now)
+    {
+        if (k.Vk != d.Key.Vk())
         {
-            tap.KeyDown(now);
+            d.OtherInput();
             return false;
         }
-        return tap.KeyUp(now);
+        if (k.Down)
+        {
+            d.KeyDown(now);
+            return false;
+        }
+        return d.KeyUp(now);
+    }
+
+    /// «Исправить выделенный текст»: типографика выделения. В игре и в поле пароля молчим.
+    void CorrectHotkey()
+    {
+        if (!guard.ManualAllowed()) return;
+        if (!SelectionPolicy.MayCopy(false, guard.ExeName, guard.WindowClass, false)) return;
+        lock (gate) { engine.Reset(); live.Reset(); }
+        Enqueue(new FormatSelection());
     }
 
     /// Отпускание модификатора уже ушло в систему (или в очередь) — теперь исправление.
@@ -384,6 +480,9 @@ sealed class SwitcherService : IHookSink, IDisposable
                     case ConvertSelection:
                         delivered = ConvertSelectionNow();
                         break;
+                    case FormatSelection:
+                        delivered = FormatSelectionNow();
+                        break;
                 }
                 // система приняла не всё (UIPI, блокировка ввода) — экран и память движка разошлись
                 if (!delivered) lock (gate) engine.Reset();
@@ -421,6 +520,20 @@ sealed class SwitcherService : IHookSink, IDisposable
         if (!pasted) selection.Restore();
         // смена раскладки — после вставки, как велел движок
         return sender.Perform(actions) && ok;
+    }
+
+    /// Только исполнитель. Типографика выделенного текста; править нечего — буфер возвращаем как был.
+    bool FormatSelectionNow()
+    {
+        var text = selection.Copy();
+        if (text is null) return true;
+        var formatted = Typographer.Format(text, final: true, hint: engine.CurrentLanguage);
+        if (formatted == text)
+        {
+            selection.Restore();
+            return true;
+        }
+        return selection.Paste(formatted);
     }
 
     // ---- Слежение за раскладкой

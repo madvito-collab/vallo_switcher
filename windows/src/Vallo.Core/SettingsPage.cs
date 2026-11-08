@@ -8,14 +8,20 @@ namespace Vallo.Core;
 /// Протокол и состояние — settings-ui/src/bridge.ts.
 public static class SettingsPage
 {
-    /// Состояние для страницы. На Windows пока только раскладка: исправлений, Figma и модели нет.
+    /// Состояние для страницы. На Windows: раскладка и типографика со смайликами; опечаток, «ё», запятых, Figma — пока нет.
     /// `updates` — свитчер поставлен установщиком и умеет обновляться (из архива — нет).
     public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName,
                                    bool updates = false)
     {
-        var apps = new JsonArray();
-        foreach (var exe in s.ExcludedApps)
-            apps.Add(new JsonObject { ["id"] = exe, ["name"] = appName(exe) });
+        JsonArray Apps(IEnumerable<string> list)
+        {
+            var a = new JsonArray();
+            foreach (var exe in list) a.Add(new JsonObject { ["id"] = exe, ["name"] = appName(exe) });
+            return a;
+        }
+        var apps = Apps(s.ExcludedApps);
+        var custom = new JsonArray();
+        foreach (var p in s.EmojiCustom) custom.Add(new JsonObject { ["trigger"] = p.Trigger, ["emoji"] = p.Emoji });
 
         var options = new JsonArray();
         foreach (var key in Enum.GetValues<ModifierKey>())
@@ -38,9 +44,12 @@ public static class SettingsPage
             },
             ["correct"] = new JsonObject
             {
-                ["available"] = false, ["hotkey"] = "off", ["hotkeyTitle"] = "", ["capitalize"] = false,
-                ["typography"] = false, ["typos"] = false, ["yo"] = false, ["apps"] = new JsonArray(), ["words"] = new JsonArray(),
-                ["emoji"] = new JsonObject { ["preset"] = "off", ["custom"] = new JsonArray() },
+                // опечатки, «ё» и запятые на Windows — следующая очередь: страница прячет их строки
+                ["available"] = true, ["typosAvailable"] = false,
+                ["hotkey"] = s.HotkeyCorrect is { } hc ? HotkeyId(hc) : "off", ["hotkeyTitle"] = s.HotkeyCorrect?.Title ?? "",
+                ["capitalize"] = false, ["typography"] = s.TypographyLive, ["typos"] = false, ["yo"] = false,
+                ["apps"] = Apps(s.TypographyExcludedApps), ["words"] = new JsonArray(),
+                ["emoji"] = new JsonObject { ["preset"] = s.EmojiPreset, ["custom"] = custom },
             },
             ["hotkeyOptions"] = options,
             ["canRecordHotkey"] = false,
@@ -67,8 +76,22 @@ public static class SettingsPage
                 return s with { DebugMode = value.GetBoolean() };
             case "autoUpdate" when IsBool(value):
                 return s with { AutoUpdate = value.GetBoolean() };
+            // одно сочетание на два действия не даём: второе просто не сохранится
             case "hotkey.convert" when value.ValueKind == JsonValueKind.String:
-                return ParseHotkey(value.GetString()) is { } h ? s with { HotkeyConvert = h } : s;
+                return ParseHotkey(value.GetString()) is { } h && h != s.HotkeyCorrect ? s with { HotkeyConvert = h } : s;
+            case "hotkey.correct" when value.ValueKind == JsonValueKind.String:
+                if (value.GetString() == "off") return s with { HotkeyCorrect = null };
+                return ParseHotkey(value.GetString()) is { } hc && hc != s.HotkeyConvert ? s with { HotkeyCorrect = hc } : s;
+            case "typography" when IsBool(value):
+                return s with { TypographyLive = value.GetBoolean() };
+            case "apps.correct" when Strings(value) is { } tapps:
+                return s with { TypographyExcludedApps = tapps.Select(a => a.ToLowerInvariant()).Distinct().ToArray() };
+            case "emoji.preset" when value.ValueKind == JsonValueKind.String
+                                     && value.GetString() is "millennial" or "zoomer" or "custom" or "off":
+                return s with { EmojiPreset = value.GetString()! };
+            case "emoji.custom" when value.ValueKind == JsonValueKind.Array:
+                return s with { EmojiCustom = value.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object)
+                    .Select(e => new EmojiPair(Str(e, "trigger"), Str(e, "emoji"))).ToArray() };
             case "apps.layout" when Strings(value) is { } apps:
                 return s with { ExcludedApps = apps.Select(a => a.ToLowerInvariant()).Distinct().ToArray() };
             case "words.layout" when Strings(value) is { } words:
@@ -86,13 +109,21 @@ public static class SettingsPage
         return s with { LearnedWords = [.. s.LearnedWords, w] };
     }
 
-    /// Имя exe из выбранного файла — так их хранит список исключений.
-    public static AppSettings AddApps(AppSettings s, IEnumerable<string> paths)
+    /// Имя exe из выбранного файла — так их хранит список исключений. `list` — "layout" или "correct".
+    public static AppSettings AddApps(AppSettings s, IEnumerable<string> paths, string list = "layout")
     {
-        var added = paths.Select(p => Path.GetFileName(p).ToLowerInvariant())
-            .Where(e => e.Length > 0 && !s.ExcludedApps.Contains(e)).Distinct().ToArray();
-        return added.Length == 0 ? s : s with { ExcludedApps = [.. s.ExcludedApps, .. added] };
+        var current = list == "correct" ? s.TypographyExcludedApps : s.ExcludedApps;
+        // имя файла после последнего «\\» или «/» — одинаково на Windows и в тестах на Маке
+        var added = paths.Select(p => p.Split('\\', '/')[^1].ToLowerInvariant())
+            .Where(e => e.Length > 0 && !current.Contains(e)).Distinct().ToArray();
+        if (added.Length == 0) return s;
+        return list == "correct"
+            ? s with { TypographyExcludedApps = [.. current, .. added] }
+            : s with { ExcludedApps = [.. current, .. added] };
     }
+
+    static string Str(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
 
     static string DoubleId(ModifierKey key) => "double:" + char.ToLowerInvariant(key.ToString()[0]) + key.ToString()[1..];
 

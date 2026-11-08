@@ -84,8 +84,9 @@ function Exclusions({ s, list, open }: { s: State; list: ListId; open: (sub: Sub
       <Card>
         <LinkRow title={subs.apps[list].title} desc={subs.apps[list].desc} count={data.apps.length}
                  onClick={() => open({ kind: "apps", list })} />
-        <LinkRow title={subs.words[list].title} desc={subs.words[list].desc} count={data.words.length}
-                 onClick={() => open({ kind: "words", list })} />
+        {(list === "layout" || s.correct.typosAvailable !== false) &&
+          <LinkRow title={subs.words[list].title} desc={subs.words[list].desc} count={data.words.length}
+                   onClick={() => open({ kind: "words", list })} />}
       </Card>
     </>
   )
@@ -111,23 +112,26 @@ export function LayoutPage({ s, open }: { s: State; open: (sub: Sub) => void }) 
 
 export function CorrectPage({ s, open }: { s: State; open: (sub: Sub) => void }) {
   const c = s.correct
+  // на Windows пока только типографика и смайлики — строк про опечатки, «ё» и запятые не показываем
+  const typos = c.typosAvailable !== false
   return (
     <>
       <PageTitle>Исправления</PageTitle>
       <SectionTitle title="По сочетанию клавиш" first />
       <Card>
-        <Row title="Исправить выделенный текст" desc={hotkeyDesc(s, "correct", "Опечатки, «ё», запятые и типографика разом")}>
+        <Row title="Исправить выделенный текст"
+             desc={hotkeyDesc(s, "correct", typos ? "Опечатки, «ё», запятые и типографика разом" : "Тире, кавычки, неразрывные пробелы, телефоны")}>
           <HotkeySelect state={s} which="correct" />
         </Row>
-        <ToggleRow title="Заглавная буква и точка" desc="Для писем и документов, в чатах лучше выключить"
-                   value={c.capitalize} setting="capitalize" />
+        {typos && <ToggleRow title="Заглавная буква и точка" desc="Для писем и документов, в чатах лучше выключить"
+                             value={c.capitalize} setting="capitalize" />}
       </Card>
 
       <SectionTitle title="Пока вы печатаете" />
       <Card>
         <ToggleRow title="Типографика" desc="Тире, «ёлочки», неразрывные пробелы" value={c.typography} setting="typography" />
-        <ToggleRow title="Опечатки" desc="првет → привет" value={c.typos} setting="typos" />
-        <ToggleRow title="Буква «ё»" desc="еще → ещё, где без вариантов" value={c.yo} setting="yo" />
+        {typos && <ToggleRow title="Опечатки" desc="првет → привет" value={c.typos} setting="typos" />}
+        {typos && <ToggleRow title="Буква «ё»" desc="еще → ещё, где без вариантов" value={c.yo} setting="yo" />}
         <EmojiRow s={s} />
       </Card>
       <Note>Не то исправилось? Сразу нажмите <Kbd>Backspace</Kbd></Note>
@@ -197,17 +201,21 @@ export function HelpPage({ s }: { s: State }) {
         <>
           <SectionTitle title="Исправления" />
           <Card>
-            <Examples pairs={[["првет", "привет"], ["еще", "ещё"], ["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["короче я хз", "короче, я хз"]]} />
+            <Examples pairs={s.correct.typosAvailable === false
+              ? [["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["ок))", "ок😄"]]
+              : [["првет", "привет"], ["еще", "ещё"], ["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["короче я хз", "короче, я хз"]]} />
           </Card>
-          <Note>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — исправится всё разом, вместе с запятыми</Note>
+          <Note>{s.correct.typosAvailable === false
+            ? <>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — расставится типографика</>
+            : <>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — исправится всё разом, вместе с запятыми</>}</Note>
         </>
       )}
 
       <SectionTitle title="Где свитчер молчит" />
       <Card>
-        <Row desc={s.correct.available
+        <Row desc={s.platform === "mac"
           ? "Пароли, почта, телефоны и ссылки · приложения из списков «Не переключать» и «Не исправлять» · раскладки кроме русской и английской"
-          : "Пароли, полноэкранные игры · приложения из списка «Не переключать» · раскладки кроме русской и английской"} />
+          : "Пароли, полноэкранные игры · приложения из списков «Не переключать» и «Не исправлять» · раскладки кроме русской и английской"} />
       </Card>
       <Note>
         <a className="cursor-pointer text-primary" onClick={() => action("openFullHelp")}>Полная справка</a>

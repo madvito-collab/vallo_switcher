@@ -172,21 +172,29 @@ sealed class SettingsWindow : IDisposable
         switch (name)
         {
             case "pickApps":
+                var list = arg.ValueKind == JsonValueKind.String ? arg.GetString() ?? "layout" : "layout";
                 using (var dialog = new OpenFileDialog
                 {
-                    Title = "Приложения, где не переключать раскладку",
+                    Title = list == "correct" ? "Приложения, где не исправлять текст" : "Приложения, где не переключать раскладку",
                     Filter = "Программы (*.exe)|*.exe",
                     Multiselect = true,
                     InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 })
                 {
                     if (dialog.ShowDialog(form) == DialogResult.OK)
-                        store.Update(s => SettingsPage.AddApps(s, dialog.FileNames));
+                        store.Update(s => SettingsPage.AddApps(s, dialog.FileNames, list));
                 }
                 break;
             case "addWord" when arg.ValueKind == JsonValueKind.Object && arg.TryGetProperty("word", out var word):
                 store.Update(s => SettingsPage.AddWord(s, word.GetString() ?? ""));
                 changed();
+                break;
+            case "emojiPanel":
+                // системная панель смайликов Windows (Win + .) — выбранный встанет в поле «Другой смайлик»
+                keybd_event(0x5B, 0, 0, 0);
+                keybd_event(0xBE, 0, 0, 0);
+                keybd_event(0xBE, 0, 2, 0);
+                keybd_event(0x5B, 0, 2, 0);
                 break;
             case "checkUpdates":
                 Updater?.CheckNow();
@@ -221,6 +229,9 @@ sealed class SettingsWindow : IDisposable
         var name = Path.GetFileNameWithoutExtension(exe);
         return name.Length == 0 ? exe : char.ToUpperInvariant(name[0]) + name[1..];
     }
+
+    [DllImport("user32.dll")]
+    static extern void keybd_event(byte vk, byte scan, uint flags, nuint extraInfo);
 
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);

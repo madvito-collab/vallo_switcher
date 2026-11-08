@@ -18,7 +18,12 @@ public class SettingsPageTests
     {
         var st = State(new AppSettings());
         Assert.Equal("windows", (string?)st["platform"]);
-        Assert.False((bool)st["correct"]!["available"]!);
+        // исправления есть (типографика и смайлики), опечаток пока нет
+        Assert.True((bool)st["correct"]!["available"]!);
+        Assert.False((bool)st["correct"]!["typosAvailable"]!);
+        Assert.Equal("double:rightShift", (string?)st["correct"]!["hotkey"]);
+        Assert.True((bool)st["correct"]!["typography"]!);
+        Assert.Equal("millennial", (string?)st["correct"]!["emoji"]!["preset"]);
         Assert.False((bool)st["integrations"]!["figma"]!);
         Assert.False((bool)st["about"]!["updates"]!);
         Assert.False((bool)st["canRecordHotkey"]!);
@@ -86,5 +91,49 @@ public class SettingsPageTests
         Assert.Equal(["елка"], s.LearnedWords);
         Assert.Equal(s, SettingsPage.AddWord(s, "елка"));
         Assert.Equal(s, SettingsPage.AddWord(s, "   "));
+    }
+
+    [Fact]
+    public void TypographySettingsApply()
+    {
+        var s = new AppSettings();
+        s = SettingsPage.Apply(s, "typography", J("false"));
+        s = SettingsPage.Apply(s, "emoji.preset", J("\"zoomer\""));
+        s = SettingsPage.Apply(s, "emoji.custom", J("""[{"trigger":"))","emoji":"🫶"}]"""));
+        s = SettingsPage.Apply(s, "apps.correct", J("""["Code.EXE"]"""));
+        Assert.False(s.TypographyLive);
+        Assert.Equal("zoomer", s.EmojiPreset);
+        Assert.Equal([new EmojiPair("))", "🫶")], s.EmojiCustom);
+        Assert.Equal(["code.exe"], s.TypographyExcludedApps);
+        Assert.Equal(s, SettingsPage.Apply(s, "emoji.preset", J("\"boomer\"")));
+    }
+
+    [Fact]
+    public void CorrectHotkeyOffAndNoConflicts()
+    {
+        var s = SettingsPage.Apply(new AppSettings(), "hotkey.correct", J("\"off\""));
+        Assert.Null(s.HotkeyCorrect);
+        s = SettingsPage.Apply(s, "hotkey.correct", J("\"double:rightControl\""));
+        Assert.Equal(new Hotkey.DoubleTap(ModifierKey.RightControl), s.HotkeyCorrect);
+        // одно сочетание на два действия не даём
+        Assert.Equal(s, SettingsPage.Apply(s, "hotkey.convert", J("\"double:rightControl\"")));
+        Assert.Equal(s, SettingsPage.Apply(s, "hotkey.correct", J("\"double:leftShift\"")));
+    }
+
+    [Fact]
+    public void EmojiSetFromSettings()
+    {
+        Assert.Same(EmojiBrackets.Millennial, new AppSettings().EmojiBrackets());
+        Assert.Null((new AppSettings { EmojiPreset = "off" }).EmojiBrackets());
+        var mine = new AppSettings { EmojiPreset = "custom", EmojiCustom = [new("))", "🫶"), new("", "x")] }.EmojiBrackets()!;
+        Assert.Equal("🫶", mine.Pairs["))"]);
+        Assert.Single(mine.Pairs);
+    }
+
+    [Fact]
+    public void AddAppsToCorrectList()
+    {
+        var s = SettingsPage.AddApps(new AppSettings { TypographyExcludedApps = [] }, [@"C:\Apps\Figma.exe"], "correct");
+        Assert.Equal(["figma.exe"], s.TypographyExcludedApps);
     }
 }
