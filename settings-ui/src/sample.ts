@@ -5,7 +5,7 @@ export const sample: State = {
   platform: "mac",
   version: "0.6.1",
   page: null,
-  general: { launchAtLogin: true, debugMode: false },
+  general: { launchAtLogin: true, debugMode: false, menuBarHint: true },
   attention: { modelMissing: true, macAutocorrect: true },
   layout: {
     autoSwitch: true,

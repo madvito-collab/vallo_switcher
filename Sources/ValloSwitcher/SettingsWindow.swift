@@ -42,6 +42,11 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
             .store(in: &watch)
     }
 
+    /// Снова показать «Где значок «ё»»: свитчер запустили из «Программ» — скорее всего, значок не нашли.
+    func showMenuBarHint() {
+        model.menuBarHintDismissed = false
+    }
+
     func show(page: SettingsPage? = nil) {
         model.reload()
         // пока открыты настройки — значок в Dock, как у обычной программы; закрыли — снова только у часов
@@ -158,6 +163,10 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         case "model.download": modelStore.download()
         case "model.cancel": modelStore.cancel()
         case "model.delete": modelStore.delete()
+        case "dismissMenuBarHint": model.menuBarHintDismissed = true
+        // «Строка меню» в Системных настройках (в macOS 14–15 под этой ссылкой — «Пункт управления»)
+        case "openMenuBarSettings":
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension")!)
         case "openKeyboardSettings":
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
         case "openFigmaPlugin": NSWorkspace.shared.open(FigmaBridge.communityURL)
@@ -239,7 +248,8 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
             "platform": "mac",
             "version": model.version,
             "page": pendingPage?.rawValue ?? NSNull(),
-            "general": ["launchAtLogin": model.launchAtLogin, "debugMode": model.debugMode],
+            "general": ["launchAtLogin": model.launchAtLogin, "debugMode": model.debugMode,
+                        "menuBarHint": !model.menuBarHintDismissed],
             "attention": ["modelMissing": modelMissing, "macAutocorrect": macAutocorrect],
             "layout": [
                 "autoSwitch": model.autoSwitch,

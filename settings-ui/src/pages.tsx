@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { action, set, type ListId, type PageId, type State } from "./bridge"
 import { AppList, BackButton, Card, HotkeySelect, Kbd, LinkRow, Note, PageTitle, Row, SectionTitle, ToggleRow, WordList } from "./kit"
 import { EmojiCustom, EmojiRow } from "./emoji"
+import { MenuBarHint } from "./menubar"
 import appIcon from "./app-icon.png"
 
 const osName = (s: State) => (s.platform === "mac" ? "macOS" : "Windows")
@@ -15,6 +16,7 @@ export function GeneralPage({ s, go }: { s: State; go: (p: PageId) => void }) {
   return (
     <>
       <PageTitle>Основное</PageTitle>
+      {s.general.menuBarHint && <MenuBarHint />}
       {(modelMissing || macAutocorrect) && (
         <>
           <SectionTitle title="Требует внимания" first />

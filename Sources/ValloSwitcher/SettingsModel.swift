@@ -29,6 +29,7 @@ final class SettingsModel: ObservableObject {
     @Published var typoLive: Bool { didSet { store.typoLiveEnabled = typoLive } }
     @Published var yo: Bool { didSet { store.yoEnabled = yo } }
     @Published var emojiPreset: String { didSet { store.emojiPreset = emojiPreset } }
+    @Published var menuBarHintDismissed: Bool { didSet { store.menuBarHintDismissed = menuBarHintDismissed } }
     @Published var emojiCustom: [[String: String]] { didSet { store.emojiCustom = emojiCustom } }
     @Published var typoCapitalize: Bool { didSet { store.typoCapitalizeEnabled = typoCapitalize } }
     @Published var typoWords: [String] {
@@ -73,6 +74,7 @@ final class SettingsModel: ObservableObject {
         typoLive = store.typoLiveEnabled
         yo = store.yoEnabled
         emojiPreset = store.emojiPreset
+        menuBarHintDismissed = store.menuBarHintDismissed
         emojiCustom = store.emojiCustom
         typoCapitalize = store.typoCapitalizeEnabled
         typoWords = store.typoIgnoredWords

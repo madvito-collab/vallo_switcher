@@ -304,7 +304,7 @@ private struct DoneStep: View {
                 Feature(symbol: "exclamationmark.triangle", text: "Выключите автозамену macOS (Клавиатура → Ввод текста), чтобы она не спорила со свитчером")
             }
             Spacer(minLength: 0)
-            Button(action: close) { Text("Закрыть").frame(minWidth: 120) }
+            Button(action: close) { Text("Готово").frame(minWidth: 120) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .buttonBorderShape(.capsule)
@@ -318,6 +318,8 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
     /// Хватает самому высокому шагу (разрешение с длинным названием списка в macOS 27).
     static let size = NSSize(width: 540, height: 600)
     let model = OnboardingModel()
+    /// «Готово» на последнем шаге (не крестик окна).
+    var onFinished: (() -> Void)?
     private var window: NSWindow?
 
     func show(preview: Bool = false, convertTitle: String? = nil, typographyTitle: String? = nil) {
@@ -328,7 +330,10 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
         model.preview = preview
         model.step = model.allGranted && !preview ? .done : .welcome
         if window == nil {
-            let view = OnboardingView(model: model) { [weak self] in self?.close() }
+            let view = OnboardingView(model: model) { [weak self] in
+                self?.close()
+                if self?.model.preview == false { self?.onFinished?() }
+            }
             let host = NSHostingController(rootView: view)
             host.sizingOptions = []
             let w = NSWindow(contentViewController: host)

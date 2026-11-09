@@ -51,6 +51,12 @@ final class SettingsStore {
     }
 
     /// Плагин Vallo в Фигме хоть раз был на связи — только тогда свитчер сам его запускает.
+    /// Карточку «Где значок «ё»» закрыли кнопкой «Понятно».
+    var menuBarHintDismissed: Bool {
+        get { defaults.bool(forKey: "menuBarHintDismissed") }
+        set { defaults.set(newValue, forKey: "menuBarHintDismissed") }
+    }
+
     var figmaPluginSeen: Bool {
         get { defaults.bool(forKey: "figmaPluginSeen") }
         set { defaults.set(newValue, forKey: "figmaPluginSeen") }

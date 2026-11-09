@@ -14,7 +14,8 @@ export interface State {
   platform: "mac" | "windows"
   version: string
   page: PageId | null
-  general: { launchAtLogin: boolean; debugMode: boolean }
+  /** menuBarHint — показать «Где значок «ё»» (только Мак) */
+  general: { launchAtLogin: boolean; debugMode: boolean; menuBarHint?: boolean }
   attention: { modelMissing: boolean; macAutocorrect: boolean }
   layout: { autoSwitch: boolean; hotkey: string; hotkeyTitle: string; apps: AppEntry[]; words: string[] }
   correct: {

@@ -92,6 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.onGivePermissions = { [weak self] in self?.showOnboarding() }
         onboarding.model.onGranted = { [weak self] in self?.startTap() }
+        // онбординг закончили — сразу настройки: там видно, где живёт свитчер (и значок «ё» в строке меню)
+        onboarding.onFinished = { [weak self] in self?.settings?.show(page: .general) }
         if Permissions.allGranted {
             startTap()
             // предпросмотр онбординга: open -a "Vallo Switcher" --args --onboarding
@@ -114,7 +116,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showSettingsOnReopen() {
         guard settings != nil else { return }
-        if Permissions.allGranted { settings.show() } else { showOnboarding() }
+        // запустили ещё раз из «Программ» — значок «ё», скорее всего, не нашли (чёлка): напомним, где он
+        settings.showMenuBarHint()
+        if Permissions.allGranted { settings.show(page: .general) } else { showOnboarding() }
     }
 
     private func showOnboarding(preview: Bool = false) {
