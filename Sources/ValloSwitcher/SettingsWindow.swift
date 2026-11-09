@@ -45,7 +45,7 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
     func show(page: SettingsPage? = nil) {
         model.reload()
         // пока открыты настройки — значок в Dock, как у обычной программы; закрыли — снова только у часов
-        NSApp.setActivationPolicy(.regular)
+        DockIcon.show()
         if window == nil { window = makeWindow() }
         pendingPage = page
         schedulePush()
@@ -93,7 +93,7 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
 
     func windowWillClose(_ notification: Notification) {
         stopRecording()
-        NSApp.setActivationPolicy(.accessory)
+        DockIcon.hideIfNoWindows()
     }
 
     // MARK: - Страница → свитчер

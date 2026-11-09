@@ -25,6 +25,12 @@ enum Permissions {
         case inputMonitoring = "Privacy_ListenEvent"
     }
 
+    /// Системный запрос «Универсального доступа» (окно macOS с кнопкой «Открыть Системные настройки»).
+    static func prompt() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+    }
+
     /// Открывает нужный список в Системных настройках и добавляет туда свитчер (галочку ставит человек).
     static func open(_ pane: Pane) {
         switch pane {

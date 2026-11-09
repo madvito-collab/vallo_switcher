@@ -72,7 +72,12 @@ struct OnboardingView: View {
                 .padding(.top, 20)
             Group {
                 switch model.step {
-                case .welcome: WelcomeStep(start: { withAnimation { model.next() } })
+                case .welcome: WelcomeStep(start: {
+                    // сразу системный запрос первого разрешения: даже если с нашим окном что-то случится,
+                    // человек увидит окно macOS с кнопкой «Открыть Системные настройки»
+                    if !model.preview, !Permissions.accessibility { Permissions.prompt() }
+                    withAnimation { model.next() }
+                })
                 case .accessibility:
                     PermissionStep(number: 1, listName: Permissions.accessibilityName,
                                    why: "Чтобы исправлять текст: стирать неправильное и печатать правильное.",
@@ -87,9 +92,11 @@ struct OnboardingView: View {
                 }
             }
             .padding(28)
+            .frame(maxHeight: .infinity)
             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
         }
-        .frame(width: 540)
+        // размер окна постоянный: подстройка высоты под шаг на старых macOS схлопывала окно — оно «пропадало»
+        .frame(width: OnboardingWindow.size.width, height: OnboardingWindow.size.height, alignment: .top)
     }
 }
 
@@ -121,9 +128,11 @@ private struct WelcomeStep: View {
             }
             Text(T("Осталось дать два разрешения — это минута."))
                 .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
             Button(action: start) { Text("Начать").frame(minWidth: 120) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .buttonBorderShape(.capsule)
                 .keyboardShortcut(.defaultAction)
         }
     }
@@ -167,12 +176,19 @@ private struct PermissionStep: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            Spacer(minLength: 0)
             HStack {
                 ProgressView().controlSize(.small)
                 Text(T("Ждём, пока вы включите…")).font(.callout).foregroundStyle(.secondary)
                 Spacer()
-                if let skip { Button("Дальше", action: skip) }
+                if let skip {
+                    Button(action: skip) { Text("Дальше") }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .buttonBorderShape(.capsule)
+                }
                 Button(action: open) { Text("Открыть настройки").frame(minWidth: 140) }
+                    .buttonBorderShape(.capsule)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
@@ -284,19 +300,23 @@ private struct DoneStep: View {
             VStack(alignment: .leading, spacing: 10) {
                 Feature(symbol: "shift", text: "\(convertTitle) — отменить исправление или перевести выделенный текст в другую раскладку")
                 Feature(symbol: "shift.fill", text: "\(typographyTitle) — исправить опечатки, запятые и типографику в выделенном тексте")
-                Feature(symbol: "menubar.rectangle", text: "Иконка ↩ в строке меню — настройки, исключения, сочетания")
+                Feature(symbol: "menubar.rectangle", text: "Значок «ё» в строке меню — настройки. Не видно за чёлкой — запустите Vallo Switcher из «Программ» ещё раз")
                 Feature(symbol: "exclamationmark.triangle", text: "Выключите автозамену macOS (Клавиатура → Ввод текста), чтобы она не спорила со свитчером")
             }
+            Spacer(minLength: 0)
             Button(action: close) { Text("Закрыть").frame(minWidth: 120) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .buttonBorderShape(.capsule)
                 .keyboardShortcut(.defaultAction)
         }
     }
 }
 
 /// Окно онбординга: при первом запуске и из меню.
-final class OnboardingWindow {
+final class OnboardingWindow: NSObject, NSWindowDelegate {
+    /// Хватает самому высокому шагу (разрешение с длинным названием списка в macOS 27).
+    static let size = NSSize(width: 540, height: 600)
     let model = OnboardingModel()
     private var window: NSWindow?
 
@@ -310,8 +330,10 @@ final class OnboardingWindow {
         if window == nil {
             let view = OnboardingView(model: model) { [weak self] in self?.close() }
             let host = NSHostingController(rootView: view)
-            host.sizingOptions = .preferredContentSize
+            host.sizingOptions = []
             let w = NSWindow(contentViewController: host)
+            w.setContentSize(OnboardingWindow.size)
+            w.delegate = self
             w.title = "Vallo Switcher"
             w.styleMask = [.titled, .closable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
@@ -319,6 +341,7 @@ final class OnboardingWindow {
             w.center()
             window = w
         }
+        DockIcon.show()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -326,5 +349,10 @@ final class OnboardingWindow {
     func close() {
         model.stopWatching()
         window?.close()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        model.stopWatching()
+        DockIcon.hideIfNoWindows()
     }
 }
