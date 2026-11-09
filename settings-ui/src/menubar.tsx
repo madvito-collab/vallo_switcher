@@ -2,16 +2,58 @@
 import { useEffect, useRef, useState } from "react"
 import appleLogo from "./assets/menubar-apple.svg"
 import notch from "./assets/menubar-notch.svg"
+import yo from "./assets/menubar-yo.svg"
 import { Button } from "@/components/ui/button"
 import { action } from "./bridge"
 import { Card, Kbd } from "./kit"
 
-/** Размер схемы в макете (Figma, «Frame 13»): верх экрана MacBook с чёлкой */
+/** Размер схемы в макете: верх экрана MacBook с чёлкой */
 const W = 603, H = 83
 
-/** Схема по макету автора, анимация в три такта (цикл 6 с): крайний значок у чёлки с ⌘ уводят вниз →
- *  «ё» выходит из-под чёлки на его место → «ё» с ⌘ тянут к часам, остальные значки сдвигаются.
- *  Рисуем в размерах макета и масштабируем под ширину карточки. */
+/** Раскадровка автора (Figma, кадры 18 → 13 → 15 → 16 → 17 → 14 → 19): положения в каждом кадре — точные, из макета.
+ *  Координаты — как в Фигме (от края рамки, с её 2 px); в коде вычитаем рамку. */
+type Pose = [x: number, y: number, opacity: number]
+const STEP = 1000, HOLD = 600, FRAMES = 7, CYCLE = STEP * FRAMES  // кадр стоит 0,6 с, переход 0,4 с, цикл 7 с
+const pct = (t: number) => `${((t / CYCLE) * 100).toFixed(3)}%`
+const pose = ([x, y, o]: Pose) => `transform: translate(${x - 2}px, ${y - 2}px); opacity: ${o};`
+
+/** Ключевые кадры одного элемента: в каждом кадре раскадровки стоит ровно в своей позе.
+ *  fadeOut — из последнего кадра в первый не ехать, а погаснуть и появиться на старте */
+function track(name: string, poses: Pose[], fadeOut = false) {
+  const steps = poses.flatMap((p, k) => [`${pct(k * STEP)} { ${pose(p)} }`, `${pct(k * STEP + HOLD)} { ${pose(p)} }`])
+  const [first, last] = [poses[0], poses[FRAMES - 1]]
+  if (fadeOut) {
+    const t = (FRAMES - 1) * STEP + HOLD + 200
+    steps.push(`${pct(t)} { ${pose([last[0], last[1], 0])} }`, `${pct(t + 1)} { ${pose([first[0], first[1], 0])} }`)
+  }
+  steps.push(`100% { ${pose(first)} }`)
+  return `@keyframes ${name} { ${steps.join(" ")} }`
+}
+
+const at = (x: number, n = FRAMES, y = 10, o = 1): Pose[] => Array.from({ length: n }, () => [x, y, o])
+/** крайний значок у чёлки: ⌘ → вниз на 12 px → исчез (невидимым возвращается на место) */
+const EXTRA: Pose[] = [[379, 10, 1], [379, 10, 1], [379, 22, 1], [379, 22, 0], [379, 22, 0], [379, 22, 0], [379, 10, 0]]
+/** остальные восемь — всегда через 20 px (отступ 8): кадры 18–15 — от 399, 16–17 — от 396, 14 и 19 — от 379 */
+const ROW: Pose[][] = Array.from({ length: 8 }, (_, i) => [
+  [399 + 20 * i, 10, 1], [399 + 20 * i, 10, 1], [399 + 20 * i, 10, 1],
+  [396 + 20 * i, 10, 1], [396 + 20 * i, 10, 1], [379 + 20 * i, 10, 1], [379 + 20 * i, 10, 1],
+])
+/** «ё»: под чёлкой → на место убранного (379) → к часам (539) */
+const YO: Pose[] = [...at(350, 3), ...at(379, 2), ...at(539, 2)]
+/** ⌘ под крайним значком (кадры 13, 15) и под «ё» (кадры 17, 14) */
+const CMD_EXTRA: Pose[] = [[379, 26, 0], [379, 26, 1], [379, 38, 1], [379, 38, 0], ...at(379, 3, 26, 0)]
+const CMD_YO: Pose[] = [...at(378, 4, 26, 0), [378, 26, 1], [537, 26, 1], [537, 26, 0]]
+
+const KEYFRAMES = [
+  track("vallo-extra", EXTRA),
+  ...ROW.map((p, i) => track(`vallo-row-${i}`, p)),
+  track("vallo-yo", YO, true),
+  track("vallo-cmd-extra", CMD_EXTRA),
+  track("vallo-cmd-yo", CMD_YO),
+].join("\n")
+const anim = (name: string) => ({ animation: `${name} ${CYCLE}ms ease-in-out infinite` })
+
+/** Схема строки меню по макету автора; рисуем в размерах макета и масштабируем под ширину карточки */
 function MenuBarSketch() {
   const box = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -24,60 +66,35 @@ function MenuBarSketch() {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  // координаты — внутри рамки (2 px), как в макете
-  const icon = "absolute top-[8px] size-[12px] rounded-[4px] bg-white"
-  const cmd = "absolute top-[24px] -translate-x-[2px] rounded-[4px] border border-black/15 bg-white px-[3px] text-[10px] font-medium leading-[14px] text-black shadow-sm"
+  const icon = "absolute left-0 top-0 size-[12px] rounded-[4px] bg-white"
   return (
     <div ref={box} className="relative w-full" style={{ height: H * scale }}>
-      <style>{`
-        @keyframes vallo-extra {
-          0%, 8% { transform: translateY(0); opacity: 1; }
-          24% { transform: translateY(30px); opacity: 1; }
-          28%, 94% { transform: translateY(30px); opacity: 0; }
-          95% { transform: translateY(0); opacity: 0; }
-          100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes vallo-extra-cmd { 0%, 7% { opacity: 0; } 10%, 24% { opacity: 1; } 27%, 100% { opacity: 0; } }
-        @keyframes vallo-yo {
-          0%, 30% { left: 350px; opacity: 1; }
-          42%, 54% { left: 377px; opacity: 1; }
-          80%, 90% { left: 549px; opacity: 1; }
-          94% { left: 549px; opacity: 0; }
-          95%, 100% { left: 350px; opacity: 1; }
-        }
-        @keyframes vallo-yo-cmd { 0%, 53% { opacity: 0; } 56%, 80% { opacity: 1; } 83%, 100% { opacity: 0; } }
-        @keyframes vallo-row {
-          0%, 54% { transform: translateX(0); }
-          80%, 94% { transform: translateX(-20px); }
-          95%, 100% { transform: translateX(0); }
-        }
-      `}</style>
+      <style>{KEYFRAMES}</style>
       <div className="absolute left-0 top-0 origin-top-left overflow-hidden rounded-t-[16px] border-x-2 border-t-2 border-black"
-           style={{ width: W, height: H, transform: `scale(${scale})`, background: "linear-gradient(to right, #9dc1fa, #dac2fa)" }}>
+           style={{ width: W, height: H, transform: `scale(${scale})`, borderColor: "#000", background: "linear-gradient(to right, #9dc1fa, #dac2fa)" }}>
         <img src={appleLogo} alt="" className="absolute left-[9.67px] top-[5.75px] h-[17.022px] w-[14.016px]" />
         <div className="absolute left-[35px] top-[11px] flex items-center gap-[11px]">
           <span className="h-[8px] w-[51px] rounded-[6px] bg-white" />
           <span className="h-[8px] w-[42px] rounded-[6px] bg-white" />
           <span className="h-[8px] w-[42px] rounded-[6px] bg-white" />
         </div>
-        {/* крайний значок у чёлки — его уберут */}
-        <span className={icon} style={{ left: 377, animation: "vallo-extra 6s ease-in-out infinite" }} />
-        <span className={cmd} style={{ left: 377, animation: "vallo-extra-cmd 6s ease-in-out infinite" }}>⌘</span>
-        {/* остальные восемь значков: сдвигаются, освобождая место у часов */}
-        <div className="absolute left-[397px] top-[8px] flex gap-[8px]" style={{ animation: "vallo-row 6s ease-in-out infinite" }}>
-          {Array.from({ length: 8 }, (_, i) => <span key={i} className="size-[12px] rounded-[4px] bg-white" />)}
-        </div>
-        {/* «ё»: под чёлкой → на свободное место → к часам */}
-        <div className="absolute top-[3px] flex flex-col items-center" style={{ animation: "vallo-yo 6s ease-in-out infinite" }}>
-          <span className="w-[12px] text-center text-[16px] font-bold leading-[20px] text-white">ё</span>
-          <span className="mt-[1px] rounded-[4px] border border-black/15 bg-white px-[3px] text-[10px] font-medium leading-[14px] text-black shadow-sm"
-                style={{ animation: "vallo-yo-cmd 6s ease-in-out infinite" }}>⌘</span>
-        </div>
+        <img src={yo} alt="" className="absolute left-0 top-0 h-[12px] w-[9px]" style={anim("vallo-yo")} />
+        <span className={icon} style={anim("vallo-extra")} />
+        {ROW.map((_, i) => <span key={i} className={icon} style={anim(`vallo-row-${i}`)} />)}
+        <CmdBadge style={anim("vallo-cmd-extra")} />
+        <CmdBadge style={anim("vallo-cmd-yo")} />
         <span className="absolute left-[561px] top-[7px] whitespace-nowrap text-[11px] font-semibold text-black">12:32</span>
-        {/* чёлка — поверх: под ней значок не виден */}
+        {/* чёлка — поверх: под ней «ё» не видна */}
         <img src={notch} alt="" className="absolute left-[calc(50%+0.5px)] top-[-2px] z-10 h-[32px] w-[146px] -translate-x-1/2" />
       </div>
     </div>
+  )
+}
+
+/** Плашка ⌘ из макета: 12×12, белая, скругление 4, знак 10 px */
+function CmdBadge({ style }: { style: React.CSSProperties }) {
+  return (
+    <span className="absolute left-0 top-0 size-[12px] rounded-[4px] bg-white text-center text-[10px] font-semibold leading-[12px] text-black" style={style}>⌘</span>
   )
 }
 
