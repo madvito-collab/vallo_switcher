@@ -6,6 +6,22 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.9</title>
+            <pubDate>Mon, 09 Nov 2026 15:57:17 +0300</pubDate>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>0.6.9</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Если значок «ё» не видно в строке меню, на Маке с чёлкой он мог спрятаться за ней. Теперь в настройках, на странице «Основное», есть подсказка с анимацией: как убрать лишние значки и перетащить «ё» к часам.</li>
+<li>Первый запуск больше не заводит в тупик: окно не пропадает после «Начать», кнопки всегда внизу, а запрос «Универсального доступа» появляется сразу.</li>
+<li>Пока открыты настройки, у свитчера есть значок в Dock — окно легко найти.</li>
+<li>Значок программы в Finder больше не рассыпается на маленьких размерах.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.9/Vallo-Switcher-0.6.9.dmg" sparkle:edSignature="rcPW+SkNnxDGTBSkxKaB0S+AkVj7FyVMk8Gp52Im5eulOKPIA/tcW3CIpiMmWr/CsC8rozBafORfr2b/8728CA==" length="28530820" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.8</title>
             <pubDate>Mon, 09 Nov 2026 12:47:29 +0300</pubDate>
             <sparkle:version>14</sparkle:version>
