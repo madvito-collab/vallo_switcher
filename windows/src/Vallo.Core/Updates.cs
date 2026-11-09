@@ -29,5 +29,5 @@ public static class Updates
     public const string UpToDateTitle = "Обновлений нет";
     public static string UpToDateBody(string version) => $"У вас последняя версия — {version}";
     public const string FailedTitle = "Не получилось проверить обновления";
-    public const string FailedBody = "Проверьте интернет и попробуйте ещё раз";
+    public const string FailedBody = "Не получилось связаться с GitHub. Попробуйте позже";
 }

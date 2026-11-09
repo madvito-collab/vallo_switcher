@@ -54,6 +54,19 @@ let sageOutputs: [String: String] = {
         #expect(merged("спасибо большое ты лучший", capitalize: true) == "Спасибо большое, ты лучший.")
     }
 
+    @Test func noCommaBeforeOwnDash() {
+        // тире уже поставил человек — запятая модели перед ним лишняя: «по резюме, — не покажет»
+        func m(_ o: String, _ model: String) -> String { CommaFilter.merge(original: o, model: model, typos: typos, capitalize: false) }
+        #expect(m("проверит требования по резюме — не покажет их", "проверит требования по резюме, — не покажет их")
+                == "проверит требования по резюме — не покажет их")
+        #expect(m("Москва - столица", "Москва, - столица") == "Москва - столица")
+        #expect(m("раз -- два", "раз, -- два") == "раз -- два")
+        // своя запятая перед тире остаётся
+        #expect(m("если придёт, — скажи", "если придёт, — скажи") == "если придёт, — скажи")
+        // а в других местах запятые модели по-прежнему берём
+        #expect(m("я знаю что он придёт — и всё", "я знаю, что он придёт — и всё") == "я знаю, что он придёт — и всё")
+    }
+
     @Test func ownPunctuationKept() {
         func m(_ o: String, _ model: String) -> String {
             CommaFilter.merge(original: o, model: model, typos: typos, capitalize: false)

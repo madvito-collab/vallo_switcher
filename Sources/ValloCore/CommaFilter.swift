@@ -26,6 +26,11 @@ public enum CommaFilter {
             }
         }
 
+        // тире после слова поставил человек — запятая модели перед ним лишняя: «по резюме, — не покажет»
+        for i in out.indices.dropLast() where isDash(ot[i + 1]) && !trail(ot[i]).contains(",") && out[i].hasSuffix(",") {
+            out[i].removeLast()
+        }
+
         // собрать: пустое слово (склеенная частица) забирает с собой пробел перед ним
         var body = seps[0]
         for i in out.indices where !out[i].isEmpty { body += (i == 0 ? "" : seps[i]) + out[i] }
@@ -41,6 +46,11 @@ public enum CommaFilter {
             if let last = body.last, !".!?…".contains(last) { body += "." }
         }
         return body + seps[ot.count]
+    }
+
+    /// Отдельно стоящее тире или дефис («—», «–», «-», «--»).
+    static func isDash(_ t: String) -> Bool {
+        !t.isEmpty && t.allSatisfy { "—–-".contains($0) }
     }
 
     /// Слова и пробелы между ними: `seps[i]` — пробелы перед словом `i`, `seps[n]` — хвост.
@@ -111,6 +121,8 @@ public enum CommaFilter {
     /// То же слово: знаки — свои плюс запятая модели; написание — модели, если отличается дефисом.
     /// «ё» модели не берём: её ставит наш словарь (свой переключатель, двойные «все/всё» не трогаем, ё → е никогда).
     static func sameWord(original: String, model: String) -> String {
+        // отдельный знак без букв (тире, «...», «→») — как у человека: иначе «—» склеивался сам с собой в «——»
+        guard !core(original).isEmpty else { return original }
         let o = core(original), m = core(model)
         let word = Lexicon.normalize(o) == Lexicon.normalize(m) ? o : withLeadingCase(of: original, m)
         return lead(original) + word + ownTrail(original, plus: marks(model))

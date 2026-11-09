@@ -6,6 +6,20 @@
         <title>Vallo Switcher</title>
         <!-- новые версии — сверху -->
         <item>
+            <title>Версия 0.6.8</title>
+            <pubDate>Mon, 09 Nov 2026 12:47:29 +0300</pubDate>
+            <sparkle:version>14</sparkle:version>
+            <sparkle:shortVersionString>0.6.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+<ul>
+<li>Запятые больше не ставятся перед тире, которое вы поставили сами: «по резюме — не покажет» остаётся без лишней запятой.</li>
+<li>Тире при исправлении выделенного текста и фреймов в Фигме больше не удваивается.</li>
+</ul>
+            ]]></description>
+            <enclosure url="https://github.com/madvito-collab/vallo_switcher/releases/download/v0.6.8/Vallo-Switcher-0.6.8.dmg" sparkle:edSignature="FrxGnBRWCQSvgoqdXR2UjwFnAILTbWe3e78k9IE3qf+pwzvbU+tYmunndadfvnL/5m3KcWPAXPvxSQtdKqyDDg==" length="28316804" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>Версия 0.6.7</title>
             <pubDate>Sun, 08 Nov 2026 13:02:44 +0300</pubDate>
             <sparkle:version>13</sparkle:version>
