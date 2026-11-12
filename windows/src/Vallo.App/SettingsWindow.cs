@@ -182,6 +182,7 @@ sealed class SettingsWindow : IDisposable
             return;
         }
         store.Update(s => SettingsPage.Apply(s, key, value));
+        DebugLog.Shared.Enabled = store.Current.DebugMode;
         changed();
     }
 
@@ -213,6 +214,9 @@ sealed class SettingsWindow : IDisposable
                 keybd_event(0xBE, 0, 0, 0);
                 keybd_event(0xBE, 0, 2, 0);
                 keybd_event(0x5B, 0, 2, 0);
+                break;
+            case "openLog":
+                OpenLog();
                 break;
             case "cancelRecording":
                 StopRecording();
@@ -257,6 +261,24 @@ sealed class SettingsWindow : IDisposable
                 Push();
             });
         });
+    }
+
+    /// Журнал — в Блокноте. Пустой (только включили) — создаём, чтобы Блокнот не спрашивал про новый файл.
+    static void OpenLog()
+    {
+        var log = DebugLog.Shared;
+        log.Write("открыт журнал");
+        log.Flush();
+        try
+        {
+            if (!File.Exists(log.FilePath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(log.FilePath)!);
+                File.WriteAllText(log.FilePath, "");
+            }
+            Process.Start(new ProcessStartInfo("notepad.exe", $"\"{log.FilePath}\"") { UseShellExecute = true });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception) { }
     }
 
     void StopRecording()

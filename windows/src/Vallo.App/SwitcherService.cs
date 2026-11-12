@@ -140,7 +140,11 @@ sealed class SwitcherService : IHookSink, IDisposable
     }
 
     /// Проснулись или разблокировали сеанс — перехват мог тихо пропасть.
-    public void ReinstallHooks() => hook.Reinstall();
+    public void ReinstallHooks()
+    {
+        Log.Write("перехват переустановлен (сон или блокировка)");
+        hook.Reinstall();
+    }
 
     public void Dispose()
     {
@@ -238,6 +242,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         if (!guard.ManualAllowed())
         {
             lock (gate) { engine.Reset(); live.Reset(); }
+            Log.Write(() => $"key: молчим (игра или пароль) в {guard.ExeName}");
             return PassOrQueue(k);
         }
         var stroke = new KeyStroke((ushort)k.Vk, lShift || rShift, (GetKeyState(VK_CAPITAL) & 1) != 0);
@@ -278,11 +283,13 @@ sealed class SwitcherService : IHookSink, IDisposable
         }
         if (typography is not null)
         {
+            Log.Write(() => "typography → " + LogText.Summary(typography));
             swallowed.Add(k.Vk);
             Enqueue(new Run(typography));
             return true;
         }
         if (output is not EngineOutput.Consume consume) return PassOrQueue(k);
+        Log.Write(() => "key → consume: " + LogText.Summary(consume.Actions));
         swallowed.Add(k.Vk);
         Enqueue(new Run(consume.Actions));
         return true;
@@ -349,6 +356,9 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     enum Fired { None, Convert, Correct }
 
+    /// Журнал «Режима отладки»: только виды действий и длины, текст — никогда.
+    static DebugLog Log => DebugLog.Shared;
+
     /// Своё сочетание: запись в настройках, нажатие (проглатываем) и отпускание последнего модификатора (действие).
     /// null — нажатие не про сочетания, дальше как обычно.
     bool? Combo(in HookKey k)
@@ -360,6 +370,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         {
             var fired = armed;
             armed = Fired.None;
+            Log.Write(() => $"своё сочетание: {fired}, модификаторы отпущены");
             var result = PassOrQueue(k);
             if (fired == Fired.Convert) DoubleTap();
             else CorrectHotkey();
@@ -372,6 +383,7 @@ sealed class SwitcherService : IHookSink, IDisposable
             if (step == RecordStep.Ignore) return null;
             recorder = null;
             Swallow(vk, alt);
+            Log.Write(() => combo is null ? "запись сочетания: отмена" : $"запись сочетания: {combo.Title}");
             record(combo);
             return true;
         }
@@ -384,7 +396,12 @@ sealed class SwitcherService : IHookSink, IDisposable
             : correctCombo is { } rc && rc.Matches(vk, ctrl, alt, shift, win) ? Fired.Correct
             : Fired.None;
         // в игре и в поле пароля сочетание не наше — пусть идёт в приложение
-        if (which == Fired.None || !guard.ManualAllowed()) return null;
+        if (which == Fired.None) return null;
+        if (!guard.ManualAllowed())
+        {
+            Log.Write(() => $"своё сочетание: пропущено (игра или пароль) в {guard.ExeName}");
+            return null;
+        }
         OtherInputForTaps();
         Swallow(vk, alt);
         armed = which;
@@ -456,8 +473,13 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// «Исправить выделенный текст»: типографика выделения. В игре и в поле пароля молчим.
     void CorrectHotkey()
     {
-        if (!guard.ManualAllowed()) return;
-        if (!SelectionPolicy.MayCopy(false, guard.ExeName, guard.WindowClass, false)) return;
+        if (!guard.ManualAllowed()) { Log.Write("исправить выделенное: молчим (игра или пароль)"); return; }
+        if (!SelectionPolicy.MayCopy(false, guard.ExeName, guard.WindowClass, false))
+        {
+            Log.Write(() => $"исправить выделенное: Ctrl+C здесь не шлём ({guard.ExeName})");
+            return;
+        }
+        Log.Write(() => $"исправить выделенное в {guard.ExeName}");
         lock (gate) { engine.Reset(); live.Reset(); }
         Enqueue(new FormatSelection());
     }
@@ -466,7 +488,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     void DoubleTap()
     {
         // в игре (на весь экран или «тихой») и в поле пароля молчим; в исключённом приложении — можно, человек попросил сам
-        if (!guard.ManualAllowed()) return;
+        if (!guard.ManualAllowed()) { Log.Write("перевод: молчим (игра или пароль)"); return; }
         IReadOnlyList<EngineAction> actions = [];
         bool readSelection;
         lock (gate)
@@ -483,6 +505,8 @@ sealed class SwitcherService : IHookSink, IDisposable
                 if (HasSwitch(actions)) lastSwitchTick = Environment.TickCount64;
             }
         }
+        Log.Write(() => readSelection ? $"перевод: выделенное в {guard.ExeName}"
+            : actions.Count > 0 ? "перевод набранного: " + LogText.Summary(actions) : $"перевод: нечего (выделение не берём в {guard.ExeName})");
         // буфер обмена и ожидание Ctrl+C — на исполнителе: поток перехвата ждать не должен
         if (readSelection) Enqueue(new ConvertSelection());
         else if (actions.Count > 0) Enqueue(new Run(actions));
@@ -571,11 +595,16 @@ sealed class SwitcherService : IHookSink, IDisposable
                         break;
                 }
                 // система приняла не всё (UIPI, блокировка ввода) — экран и память движка разошлись
-                if (!delivered) lock (gate) engine.Reset();
+                if (!delivered)
+                {
+                    lock (gate) engine.Reset();
+                    Log.Write(() => $"ввод не дошёл ({w.GetType().Name}) — окно не приняло, память сброшена");
+                }
             }
-            catch
+            catch (Exception e)
             {
                 // не вышло — следующее действие всё равно выполняем
+                Log.Write(() => $"исполнитель: {w.GetType().Name} — {e.GetType().Name}");
             }
             finally
             {
@@ -588,6 +617,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     bool ConvertSelectionNow()
     {
         var text = selection.Copy();
+        Log.Write(() => text is null ? "Ctrl+C: выделения нет" : $"Ctrl+C: {TextElements.Count(text)} chars");
         if (text is null) return true; // выделения нет — делать нечего
         IReadOnlyList<EngineAction> actions;
         lock (gate)
@@ -612,8 +642,9 @@ sealed class SwitcherService : IHookSink, IDisposable
     bool FormatSelectionNow()
     {
         var text = selection.Copy();
-        if (text is null) return true;
+        if (text is null) { Log.Write("Ctrl+C: выделения нет"); return true; }
         var formatted = Typographer.Format(text, final: true, hint: engine.CurrentLanguage);
+        Log.Write(() => $"типографика выделенного: {TextElements.Count(text)} → {TextElements.Count(formatted)} chars");
         if (formatted == text)
         {
             selection.Restore();
@@ -648,6 +679,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         lastHkl = hkl;
         if (changed)
         {
+            Log.Write(() => $"раскладка: {language?.Code() ?? "другая"}");
             // наша же смена — эхо, движок её уже знает и ничего не сбросит
             lock (gate) engine.ExternalLayoutChange(language);
             return;
@@ -658,7 +690,10 @@ sealed class SwitcherService : IHookSink, IDisposable
             lock (gate)
             {
                 if (Environment.TickCount64 - lastSwitchTick > SwitchGraceMs && engine.CurrentLanguage != actual)
+                {
+                    Log.Write(() => $"раскладка разошлась: движок {engine.CurrentLanguage.Code()}, окно {actual.Code()}");
                     engine.ExternalLayoutChange(actual);
+                }
             }
         }
     }

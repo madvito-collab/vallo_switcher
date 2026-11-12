@@ -63,12 +63,14 @@ sealed class Updater : IDisposable
         {
             UpdateInfo? info;
             try { info = await manager.CheckForUpdatesAsync().ConfigureAwait(false); }
-            catch (Exception)
+            catch (Exception e)
             {
+                DebugLog.Shared.Write(() => $"обновления: проверить не вышло — {e.GetType().Name}");
                 if (userAsked) post(() => Notify?.Invoke(Updates.FailedTitle, Updates.FailedBody, false));
                 return;
             }
             store.Update(s => s with { LastUpdateCheck = DateTimeOffset.Now });
+            DebugLog.Shared.Write(() => info is null ? "обновления: новых нет" : $"обновления: есть {info.TargetFullRelease.Version}");
             if (info is null)
             {
                 post(() =>
@@ -95,8 +97,9 @@ sealed class Updater : IDisposable
     async Task<bool> Download(UpdateInfo info, string version, bool announce)
     {
         try { await manager!.DownloadUpdatesAsync(info).ConfigureAwait(false); }
-        catch (Exception)
+        catch (Exception e)
         {
+            DebugLog.Shared.Write(() => $"обновления: скачать {version} не вышло — {e.GetType().Name}");
             post(() => Notify?.Invoke(Updates.FailedTitle, Updates.FailedBody, false));
             return false;
         }
@@ -164,10 +167,15 @@ sealed class Updater : IDisposable
                     var json = await downloader.DownloadString(url, new Dictionary<string, string>(), 30).ConfigureAwait(false);
                     var b = UpdateFeed.BaseUrl(json) ?? throw new InvalidDataException("в списке версий нет baseUrl");
                     var feed = VelopackAssetFeed.FromJson(json);
+                    DebugLog.Shared.Write(() => $"обновления: список версий файлом ({url})");
                     baseUrl = b;
                     return feed;
                 }
-                catch (Exception e) { last = e; }
+                catch (Exception e)
+                {
+                    last = e;
+                    DebugLog.Shared.Write(() => $"обновления: файл списка версий не открылся — {e.GetType().Name}");
+                }
             }
             throw last ?? new InvalidOperationException("нет адресов списка версий");
         }

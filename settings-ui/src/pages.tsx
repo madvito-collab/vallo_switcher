@@ -40,6 +40,12 @@ export function GeneralPage({ s, go }: { s: State; go: (p: PageId) => void }) {
                    value={s.general.launchAtLogin} setting="launchAtLogin" />
         <ToggleRow title="Режим отладки" desc="Пишет журнал для разбора ошибок, обычно не нужен"
                    value={s.general.debugMode} setting="debugMode" />
+        {/* на Маке журнал читают в Терминале, на Windows это файл */}
+        {s.platform === "windows" && s.general.debugMode && (
+          <Row title="Журнал" desc="Только что и когда сделал свитчер — без вашего текста. Приложите файл к вопросу на GitHub">
+            <Button onClick={() => action("openLog")}>Открыть журнал</Button>
+          </Row>
+        )}
       </Card>
     </>
   )
@@ -194,9 +200,7 @@ export function HelpPage({ s }: { s: State }) {
     <>
       <PageTitle>Справка</PageTitle>
       <SectionTitle title="Раскладка" first />
-      <Card><Examples pairs={[["ghbdtn", "привет"], [",eltn", "будет"],
-        // цвет в русской раскладке — пока только на Маке
-        ...(s.platform === "mac" ? [["№аааааа", "#ffffff"] as [string, string]] : [])]} /></Card>
+      <Card><Examples pairs={[["ghbdtn", "привет"], [",eltn", "будет"], ["№аааааа", "#ffffff"]]} /></Card>
       <Note>Свитчер сам исправит слово и переключит раскладку. Не нужно — дважды нажмите левый <Kbd>Shift</Kbd>, и всё вернётся</Note>
 
       {s.correct.available && (

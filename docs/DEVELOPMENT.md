@@ -43,4 +43,6 @@ scripts/render-guide.sh # пересобрать «Как установить.p
 /usr/bin/log stream --level debug --predicate 'subsystem == "com.vallo.switcher"'
 ```
 
+На Windows журнал — файл `%APPDATA%\Vallo Switcher\debug.log` (старое — в `debug.old.log`, примерно по 0,5 МБ), открывается кнопкой «Открыть журнал» под переключателем.
+
 В журнал пишутся только виды действий и длины, сам текст туда не попадает.

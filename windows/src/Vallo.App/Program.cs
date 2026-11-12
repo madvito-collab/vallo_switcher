@@ -14,6 +14,8 @@ static class Program
         if (single is null) return 0; // уже запущен
 
         var store = new SettingsStore(AppSettings.DefaultPath);
+        DebugLog.Shared.Enabled = store.Current.DebugMode;
+        DebugLog.Shared.Write(() => $"запуск {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)}, Windows {Environment.OSVersion.Version}");
         // включён автозапуск — путь к exe переписываем каждый раз: папку могли перенести
         if (AutostartRule.ShouldWrite(store.Current.FirstRunDone, Autostart.IsEnabled)
             && Autostart.Enable() && !store.Current.FirstRunDone)
@@ -44,10 +46,13 @@ static class Program
             catch { problem = StartProblem.Unknown; }
             // без свитчера трей всё равно работает — но человек должен знать, что свитчер не запущен
             if (Volatile.Read(ref switcher) is null) tray.ShowProblem(StartProblems.MenuText(problem));
+            DebugLog.Shared.Write(() => Volatile.Read(ref switcher) is null ? $"свитчер не запущен: {problem}" : "свитчер запущен");
         });
         var code = tray.Run();
         starting.Wait();
         switcher?.Dispose();
+        DebugLog.Shared.Write("выход");
+        DebugLog.Shared.Flush();
         return code;
     }
 }
