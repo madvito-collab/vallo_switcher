@@ -156,3 +156,34 @@ public struct DoubleTapDetector
         firstTapUp = null;
     }
 }
+
+/// Что делать с нажатием, пока в настройках записывают «Своё сочетание…».
+public enum RecordStep { Ignore, Cancel, Accept }
+
+/// Запись и узнавание своего сочетания. Как на Маке: нужен Ctrl или Alt (иначе сочетание перехватывало бы
+/// обычные буквы), стандартные Ctrl+C, Ctrl+V и т. п. не берём — ждём другое; Esc — отмена. Win не берём:
+/// его сочетания — системные.
+public static class HotkeyCombo
+{
+    /// Ctrl+клавиша без Alt — стандартные сочетания программ: C V X Z Y A S F P N O W T, Tab, Пробел.
+    static readonly HashSet<ushort> CtrlReserved =
+        [0x43, 0x56, 0x58, 0x5A, 0x59, 0x41, 0x53, 0x46, 0x50, 0x4E, 0x4F, 0x57, 0x54, 0x09, 0x20];
+    /// Alt+клавиша без Ctrl — системные: Tab (переключение окон), F4 (закрыть), Пробел (меню окна), Esc.
+    static readonly HashSet<ushort> AltReserved = [0x09, 0x73, 0x20, 0x1B];
+    const ushort Esc = 0x1B;
+
+    public static bool IsModifierVk(ushort vk) => vk is >= 0x10 and <= 0x12 or >= 0xA0 and <= 0xA5 or 0x5B or 0x5C or 0x14;
+
+    public static (RecordStep Step, Hotkey.Combo? Combo) Record(ushort vk, bool ctrl, bool alt, bool shift, bool win)
+    {
+        if (vk == Esc && !ctrl && !alt && !shift && !win) return (RecordStep.Cancel, null);
+        if (IsModifierVk(vk) || win || (!ctrl && !alt)) return (RecordStep.Ignore, null);
+        if (ctrl && !alt && CtrlReserved.Contains(vk)) return (RecordStep.Ignore, null);
+        if (alt && !ctrl && AltReserved.Contains(vk)) return (RecordStep.Ignore, null);
+        return (RecordStep.Accept, new Hotkey.Combo(vk, ctrl, alt, shift));
+    }
+
+    /// Это нажатие — сочетание `c`: та же клавиша и ровно те же модификаторы (Ctrl и Alt — любой из двух).
+    public static bool Matches(this Hotkey.Combo c, ushort vk, bool ctrl, bool alt, bool shift, bool win) =>
+        !win && c.Vk == vk && c.Ctrl == ctrl && c.Alt == alt && c.Shift == shift;
+}

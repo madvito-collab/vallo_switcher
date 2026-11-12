@@ -36,6 +36,7 @@ static class Program
         updater.Notify = tray.Notify;
         updater.Restarting = tray.Hide;
         settings.Updater = updater;
+        settings.Switcher = () => Volatile.Read(ref switcher);
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;

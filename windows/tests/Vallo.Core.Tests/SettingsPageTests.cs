@@ -26,7 +26,7 @@ public class SettingsPageTests
         Assert.Equal("millennial", (string?)st["correct"]!["emoji"]!["preset"]);
         Assert.False((bool)st["integrations"]!["figma"]!);
         Assert.False((bool)st["about"]!["updates"]!);
-        Assert.False((bool)st["canRecordHotkey"]!);
+        Assert.True((bool)st["canRecordHotkey"]!);   // «Своё сочетание…» есть и на Windows
         Assert.False((bool)st["attention"]!["modelMissing"]!);
         Assert.True((bool)st["general"]!["launchAtLogin"]!);
     }

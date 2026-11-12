@@ -10,8 +10,9 @@ public static class SettingsPage
 {
     /// Состояние для страницы. На Windows: раскладка и типографика со смайликами; опечаток, «ё», запятых, Figma — пока нет.
     /// `updates` — свитчер поставлен установщиком и умеет обновляться (из архива — нет).
+    /// `recording` — идёт запись своего сочетания ("convert"/"correct"), `hotkeyError` — почему записанное не подошло.
     public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName,
-                                   bool updates = false)
+                                   bool updates = false, string? recording = null, HotkeyError? hotkeyError = null)
     {
         JsonArray Apps(IEnumerable<string> list)
         {
@@ -52,9 +53,9 @@ public static class SettingsPage
                 ["emoji"] = new JsonObject { ["preset"] = s.EmojiPreset, ["custom"] = custom },
             },
             ["hotkeyOptions"] = options,
-            ["canRecordHotkey"] = false,
-            ["recording"] = null,
-            ["hotkeyError"] = null,
+            ["canRecordHotkey"] = true,
+            ["recording"] = recording,
+            ["hotkeyError"] = hotkeyError is { } he ? new JsonObject { ["action"] = he.Action, ["text"] = he.Text } : null,
             ["integrations"] = new JsonObject { ["figma"] = false, ["figmaPublished"] = false },
             ["about"] = new JsonObject
             {
@@ -99,6 +100,15 @@ public static class SettingsPage
             default:
                 return s;
         }
+    }
+
+    /// Записанное своё сочетание для действия ("convert" — раскладка, "correct" — исправить текст).
+    /// Уже занято другим действием — настройки те же и объяснение, как на Маке.
+    public static (AppSettings Settings, HotkeyError? Error) SetRecorded(AppSettings s, string action, Hotkey.Combo combo)
+    {
+        if (action == "convert")
+            return combo == s.HotkeyCorrect ? (s, new HotkeyError(action, "Это сочетание уже исправляет текст")) : (s with { HotkeyConvert = combo }, null);
+        return combo == s.HotkeyConvert ? (s, new HotkeyError(action, "Это сочетание уже меняет раскладку")) : (s with { HotkeyCorrect = combo }, null);
     }
 
     /// Слово в «Не переключать», набранное руками.
@@ -150,3 +160,6 @@ public static class SettingsPage
         return list.ToArray();
     }
 }
+
+/// Записанное сочетание не подошло: для какого действия ("convert"/"correct") и почему.
+public sealed record HotkeyError(string Action, string Text);

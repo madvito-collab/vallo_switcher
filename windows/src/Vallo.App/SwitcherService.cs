@@ -55,6 +55,12 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Второе сочетание — «исправить выделенный текст» (по умолчанию двойной правый Shift).
     DoubleTapDetector correctTap;
     bool hasCorrectTap;
+    /// Свои сочетания (Ctrl/Alt + клавиша) для двух действий; null — у действия двойное нажатие или выключено.
+    Hotkey.Combo? convertCombo, correctCombo;
+    /// Своё сочетание нажато — действие ждёт, пока отпустят все модификаторы (иначе правка смешается с Ctrl/Alt).
+    Fired armed;
+    /// Идёт запись «Своего сочетания…» в настройках: первое подходящее нажатие (или Esc) — сюда, и запись кончилась.
+    volatile Action<Hotkey.Combo?>? recorder;
     /// Типографика и смайлики на лету — память последних символов на экране. Только под `gate`.
     readonly LiveTypographer live = new();
     const uint VK_BACK = 0x08, VK_RETURN = 0x0D;
@@ -202,18 +208,23 @@ sealed class SwitcherService : IHookSink, IDisposable
         // отпускание модификатора могло не дойти (Win+L, Ctrl+Alt+Del, UAC) — сверяемся с системой
         if (k.Down && AnyModifierHeld() && !IsModifierVk(k.Vk)) ResyncModifiers();
         var decision = HookFilter.Classify(k.Vk, k.Flags, k.ExtraInfo, lCtrl || rCtrl, lAlt || rAlt, lWin || rWin);
+        if (decision != HookDecision.Ignore && Combo(k) is { } comboResult) return comboResult;
         switch (decision)
         {
             case HookDecision.Ignore:
                 return false;
             case HookDecision.ResetBuffer:
                 OtherInputForTaps();
-                if (k.Down) lock (gate) { engine.Reset(); live.Reset(); }
+                // Ctrl+A, Alt+Tab… — текст или окно могли смениться. Сам Shift/Ctrl/Alt при зажатом другом
+                // (Ctrl, потом Alt — своё сочетание Ctrl+Alt+K) текст не меняет: память не трогаем
+                if (k.Down && !(HotkeyCombo.IsModifierVk((ushort)k.Vk) && k.Vk is not (0x5B or 0x5C)))
+                    lock (gate) { engine.Reset(); live.Reset(); }
                 // клавишу, чьё нажатие проглотили, отпустили уже с Ctrl/Alt — отпускание тоже глотаем
                 if (!k.Down && swallowed.Remove(k.Vk)) return true;
                 return PassOrQueue(k);
             case HookDecision.Modifier:
                 var fired = Modifier(k);
+                if (recorder is not null) fired = Fired.None;   // идёт запись сочетания — ничего не исправляем
                 var result = PassOrQueue(k);
                 if (fired == Fired.Convert) DoubleTap();
                 else if (fired == Fired.Correct) CorrectHotkey();
@@ -338,6 +349,62 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     enum Fired { None, Convert, Correct }
 
+    /// Своё сочетание: запись в настройках, нажатие (проглатываем) и отпускание последнего модификатора (действие).
+    /// null — нажатие не про сочетания, дальше как обычно.
+    bool? Combo(in HookKey k)
+    {
+        bool ctrl = lCtrl || rCtrl, alt = lAlt || rAlt, shift = lShift || rShift, win = lWin || rWin;
+        var vk = (ushort)k.Vk;
+        // отпустили последний модификатор после своего сочетания — теперь действие (как у двойного Shift)
+        if (!k.Down && armed != Fired.None && HotkeyCombo.IsModifierVk(vk) && !AnyModifierHeld())
+        {
+            var fired = armed;
+            armed = Fired.None;
+            var result = PassOrQueue(k);
+            if (fired == Fired.Convert) DoubleTap();
+            else CorrectHotkey();
+            return result;
+        }
+        if (!k.Down || HotkeyCombo.IsModifierVk(vk)) return null;
+        if (recorder is { } record)
+        {
+            var (step, combo) = HotkeyCombo.Record(vk, ctrl, alt, shift, win);
+            if (step == RecordStep.Ignore) return null;
+            recorder = null;
+            Swallow(vk, alt);
+            record(combo);
+            return true;
+        }
+        if (hotkeyChanged)
+        {
+            hotkeyChanged = false;
+            LoadHotkeys();
+        }
+        var which = convertCombo is { } cc && cc.Matches(vk, ctrl, alt, shift, win) ? Fired.Convert
+            : correctCombo is { } rc && rc.Matches(vk, ctrl, alt, shift, win) ? Fired.Correct
+            : Fired.None;
+        // в игре и в поле пароля сочетание не наше — пусть идёт в приложение
+        if (which == Fired.None || !guard.ManualAllowed()) return null;
+        OtherInputForTaps();
+        Swallow(vk, alt);
+        armed = which;
+        return true;
+    }
+
+    /// Проглотить нажатие (и его отпускание). С Alt — подсунуть пустую клавишу: одиночное отпускание Alt
+    /// Windows считает нажатием Alt и открывает меню окна.
+    void Swallow(ushort vk, bool alt)
+    {
+        swallowed.Add(vk);
+        const ushort VK_NONAME_MASK = 0xE8; // клавиша без назначения
+        if (alt) Enqueue(new Run([new EngineAction.PressKey(VK_NONAME_MASK)]));
+    }
+
+    /// Начать запись своего сочетания. `done` — с потока перехвата: сочетание или null (Esc). Повторный старт заменяет прежний.
+    public void StartRecording(Action<Hotkey.Combo?> done) => recorder = done;
+
+    public void StopRecording() => recorder = null;
+
     /// Детекторы двойного нажатия — из настроек. Только поток перехвата (и конструктор).
     void LoadHotkeys()
     {
@@ -345,6 +412,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         if (store.Current.HotkeyConvert is Hotkey.DoubleTap d) tap = new DoubleTapDetector(d.Key);
         hasCorrectTap = store.Current.HotkeyCorrect is Hotkey.DoubleTap;
         if (store.Current.HotkeyCorrect is Hotkey.DoubleTap dc) correctTap = new DoubleTapDetector(dc.Key);
+        convertCombo = store.Current.HotkeyConvert as Hotkey.Combo;
+        correctCombo = store.Current.HotkeyCorrect as Hotkey.Combo;
     }
 
     void OtherInputForTaps()

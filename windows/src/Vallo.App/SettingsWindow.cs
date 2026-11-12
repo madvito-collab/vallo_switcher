@@ -27,6 +27,12 @@ sealed class SettingsWindow : IDisposable
 
     /// Обновления (раздел в «О программе»). Нет — свитчер не из установщика.
     public Updater? Updater { get; set; }
+    /// Свитчер: запись своего сочетания идёт через его перехват клавиатуры. null — свитчер ещё не запущен.
+    public Func<SwitcherService?>? Switcher { get; set; }
+    /// Идёт запись своего сочетания: "convert" или "correct".
+    string? recording;
+    /// Записанное сочетание не подошло (занято другим действием).
+    HotkeyError? hotkeyError;
 
     public SettingsWindow(SettingsStore store, Action changed)
     {
@@ -65,6 +71,8 @@ sealed class SettingsWindow : IDisposable
         f.FormClosed += (_, _) =>
         {
             // закрыли — освобождаем Edge целиком: свитчер весь день в фоне, память ему не нужна
+            StopRecording();
+            hotkeyError = null;
             ready = false;
             web?.Dispose();
             web = null;
@@ -158,6 +166,16 @@ sealed class SettingsWindow : IDisposable
 
     void Set(string key, JsonElement value)
     {
+        if (key is "hotkey.convert" or "hotkey.correct")
+        {
+            hotkeyError = null;
+            StopRecording();
+            if (value.ValueKind == JsonValueKind.String && value.GetString() == "record")
+            {
+                StartRecording(key == "hotkey.convert" ? "convert" : "correct");
+                return;
+            }
+        }
         if (key == "launchAtLogin" && value.ValueKind is JsonValueKind.True or JsonValueKind.False)
         {
             if (value.GetBoolean()) Autostart.Enable(); else Autostart.Disable();
@@ -196,6 +214,9 @@ sealed class SettingsWindow : IDisposable
                 keybd_event(0xBE, 0, 2, 0);
                 keybd_event(0x5B, 0, 2, 0);
                 break;
+            case "cancelRecording":
+                StopRecording();
+                break;
             case "checkUpdates":
                 Updater?.CheckNow();
                 break;
@@ -208,6 +229,43 @@ sealed class SettingsWindow : IDisposable
         }
     }
 
+    /// «Своё сочетание…»: ждём нажатие через перехват свитчера. Нажатие приходит с потока перехвата — в окно через BeginInvoke.
+    void StartRecording(string action)
+    {
+        if (Switcher?.Invoke() is not { } switcher || form is null) return;
+        recording = action;
+        var f = form;
+        switcher.StartRecording(combo =>
+        {
+            if (f.IsDisposed) return;
+            f.BeginInvoke(() =>
+            {
+                if (recording != action) return;
+                recording = null;
+                if (combo is not null)
+                {
+                    HotkeyError? error = null;
+                    store.Update(s =>
+                    {
+                        var (next, e) = SettingsPage.SetRecorded(s, action, combo);
+                        error = e;
+                        return next;
+                    });
+                    hotkeyError = error;
+                    changed();
+                }
+                Push();
+            });
+        });
+    }
+
+    void StopRecording()
+    {
+        if (recording is null) return;
+        recording = null;
+        Switcher?.Invoke()?.StopRecording();
+    }
+
     // --- свитчер → страница ---
 
     /// Что-то поменялось не со страницы (сходили за обновлениями) — показать. На потоке трея.
@@ -218,7 +276,7 @@ sealed class SettingsWindow : IDisposable
         if (!ready || web?.CoreWebView2 is null) return;
         var version = Updater.Short(Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "");
         var state = SettingsPage.State(store.Current, Autostart.IsEnabled, version, pendingPage, AppName,
-                                       updates: Updater?.Supported == true);
+                                       updates: Updater?.Supported == true, recording: recording, hotkeyError: hotkeyError);
         pendingPage = null;
         _ = web.CoreWebView2.ExecuteScriptAsync($"window.vallo && window.vallo.receive({state.ToJsonString()})");
     }

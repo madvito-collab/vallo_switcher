@@ -126,3 +126,76 @@ public class HotkeyTests
         Assert.Equal("F5", new Hotkey.Combo(0x74, false, false, false).Title);
     }
 }
+
+/// «Своё сочетание…»: запись в настройках и узнавание в перехвате.
+public class HotkeyComboTests
+{
+    const ushort K = 0x4B, T = 0x54, C = 0x43, Tab = 0x09, F4 = 0x73, Esc = 0x1B;
+
+    [Fact]
+    public void RecordsCtrlOrAltCombos()
+    {
+        Assert.Equal((RecordStep.Accept, new Hotkey.Combo(K, true, true, false)), HotkeyCombo.Record(K, ctrl: true, alt: true, shift: false, win: false));
+        Assert.Equal((RecordStep.Accept, new Hotkey.Combo(K, false, true, true)), HotkeyCombo.Record(K, false, true, true, false));
+        Assert.Equal((RecordStep.Accept, new Hotkey.Combo(K, true, false, false)), HotkeyCombo.Record(K, true, false, false, false));
+        // Ctrl+Alt+T — не стандартное, его можно
+        Assert.Equal(RecordStep.Accept, HotkeyCombo.Record(T, true, true, false, false).Step);
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(C, true, false, true, false).Step);   // Ctrl+Shift+C — инструменты в браузерах
+    }
+
+    [Fact]
+    public void IgnoresWhatWouldBreakTyping()
+    {
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(K, false, false, false, false).Step);   // просто буква
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(K, false, false, true, false).Step);    // заглавная
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(C, true, false, false, false).Step);    // Ctrl+C
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(Tab, false, true, false, false).Step);  // Alt+Tab
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(F4, false, true, false, false).Step);   // Alt+F4
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(K, true, false, false, true).Step);     // с Win
+        Assert.Equal(RecordStep.Ignore, HotkeyCombo.Record(0xA2, true, false, false, false).Step); // сам Ctrl
+    }
+
+    [Fact]
+    public void EscCancels() => Assert.Equal(RecordStep.Cancel, HotkeyCombo.Record(Esc, false, false, false, false).Step);
+
+    [Fact]
+    public void MatchesExactModifiers()
+    {
+        var c = new Hotkey.Combo(K, true, true, false);
+        Assert.True(c.Matches(K, ctrl: true, alt: true, shift: false, win: false));
+        Assert.False(c.Matches(K, true, true, true, false));    // лишний Shift
+        Assert.False(c.Matches(K, true, false, false, false));  // нет Alt
+        Assert.False(c.Matches(T, true, true, false, false));
+        Assert.False(c.Matches(K, true, true, false, true));    // с Win
+    }
+
+    [Fact]
+    public void ComboTitleAndSavedInSettings()
+    {
+        var c = new Hotkey.Combo(K, true, true, false);
+        Assert.Equal("Ctrl+Alt+K", c.Title);
+        Assert.Equal("Нажмите Ctrl+Alt+K", c.PressInstruction);
+        var s = new AppSettings { HotkeyConvert = c };
+        var back = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(s));
+        Assert.Equal(c, back!.HotkeyConvert);
+    }
+
+    [Fact]
+    public void RecordedComboGoesToSettingsUnlessTaken()
+    {
+        var c = new Hotkey.Combo(K, true, true, false);
+        var (s, err) = SettingsPage.SetRecorded(new AppSettings(), "correct", c);
+        Assert.Null(err);
+        Assert.Equal(c, s.HotkeyCorrect);
+        // то же сочетание для раскладки — нельзя
+        var (same, err2) = SettingsPage.SetRecorded(s, "convert", c);
+        Assert.Same(s, same);
+        Assert.Equal(new HotkeyError("convert", "Это сочетание уже исправляет текст"), err2);
+        var st = SettingsPage.State(s, false, "0.3", null, e => e, recording: "convert", hotkeyError: err2);
+        Assert.True((bool)st["canRecordHotkey"]!);
+        Assert.Equal("convert", (string?)st["recording"]);
+        Assert.Equal("Это сочетание уже исправляет текст", (string?)st["hotkeyError"]!["text"]);
+        Assert.Equal("custom", (string?)st["correct"]!["hotkey"]);
+        Assert.Equal("Ctrl+Alt+K", (string?)st["correct"]!["hotkeyTitle"]);
+    }
+}
