@@ -46,11 +46,11 @@ public static class SettingsPage
             },
             ["correct"] = new JsonObject
             {
-                // опечатки, «ё» и запятые на Windows — следующая очередь: страница прячет их строки
-                ["available"] = true, ["typosAvailable"] = false,
+                // запятых на Windows пока нет — страница прячет «Заглавную букву и точку» и модель
+                ["available"] = true, ["typosAvailable"] = true, ["commasAvailable"] = false,
                 ["hotkey"] = s.HotkeyCorrect is { } hc ? HotkeyId(hc) : "off", ["hotkeyTitle"] = s.HotkeyCorrect?.Title ?? "",
-                ["capitalize"] = false, ["typography"] = s.TypographyLive, ["typos"] = false, ["yo"] = false,
-                ["apps"] = Apps(s.TypographyExcludedApps), ["words"] = new JsonArray(),
+                ["capitalize"] = false, ["typography"] = s.TypographyLive, ["typos"] = s.TyposLive, ["yo"] = s.YoLive,
+                ["apps"] = Apps(s.TypographyExcludedApps), ["words"] = new JsonArray(s.TypoIgnoredWords.Select(w => (JsonNode?)w).ToArray()),
                 ["emoji"] = new JsonObject { ["preset"] = s.EmojiPreset, ["custom"] = custom },
             },
             ["hotkeyOptions"] = options,
@@ -87,6 +87,12 @@ public static class SettingsPage
                 return ParseHotkey(value.GetString()) is { } hc && hc != s.HotkeyConvert ? s with { HotkeyCorrect = hc } : s;
             case "typography" when IsBool(value):
                 return s with { TypographyLive = value.GetBoolean() };
+            case "typos" when IsBool(value):
+                return s with { TyposLive = value.GetBoolean() };
+            case "yo" when IsBool(value):
+                return s with { YoLive = value.GetBoolean() };
+            case "words.correct" when Strings(value) is { } twords:
+                return s with { TypoIgnoredWords = twords };
             case "apps.correct" when Strings(value) is { } tapps:
                 return s with { TypographyExcludedApps = tapps.Select(a => a.ToLowerInvariant()).Distinct().ToArray() };
             case "emoji.preset" when value.ValueKind == JsonValueKind.String
@@ -113,12 +119,14 @@ public static class SettingsPage
         return combo == s.HotkeyConvert ? (s, new HotkeyError(action, "Это сочетание уже меняет раскладку")) : (s with { HotkeyCorrect = combo }, null);
     }
 
-    /// Слово в «Не переключать», набранное руками.
-    public static AppSettings AddWord(AppSettings s, string raw)
+    /// Слово в «Не переключать» (`list` "layout") или «Не исправлять» ("correct") — набранное руками
+    /// или отменённое Backspace.
+    public static AppSettings AddWord(AppSettings s, string raw, string list = "layout")
     {
         var w = Lexicon.Normalize(raw.Trim());
-        if (w.Length == 0 || s.LearnedWords.Contains(w)) return s;
-        return s with { LearnedWords = [.. s.LearnedWords, w] };
+        var current = list == "correct" ? s.TypoIgnoredWords : s.LearnedWords;
+        if (w.Length == 0 || current.Contains(w)) return s;
+        return list == "correct" ? s with { TypoIgnoredWords = [.. current, w] } : s with { LearnedWords = [.. current, w] };
     }
 
     /// Имя exe из выбранного файла — так их хранит список исключений. `list` — "layout" или "correct".

@@ -3,8 +3,12 @@ namespace Vallo.Core;
 /// Правка на экране: стереть `Delete` символов перед курсором (как их видит человек) и вставить `Insert`.
 public readonly record struct TypoEdit(int Delete, string Insert);
 
-/// Что делать на лету: типографика и смайлики (опечатки и «ё» на Windows — следующая очередь).
-public sealed record LiveOptions(bool Typography, EmojiBrackets? Emoji = null);
+/// Что делать на лету: типографика, опечатки, «ё», смайлики — каждое включается отдельно (null — выключено).
+public sealed record LiveOptions(bool Typography, EmojiBrackets? Emoji = null, TypoCorrector? Typos = null, Yoficator? Yo = null)
+{
+    /// Хоть что-то включено — свитчеру есть смысл следить за набором.
+    public bool Any => Typography || Emoji is not null || Typos is not null || Yo is not null;
+}
 
 /// Типографика на лету: помнит последние набранные символы, на каждый новый прогоняет `Typographer.Format`
 /// (`final: false`) и превращает разницу в правку. Backspace сразу после правки возвращает набранное.
@@ -17,10 +21,15 @@ public sealed class LiveTypographer
     List<string> context = [];
     /// Что слева от контекста, неизвестно: правила начала строки и слова не срабатывают.
     bool leftUnknown = true;
+    /// Контекст начинается посреди слова (свитчер исправил раскладку посреди слова) — первое слово не исправляем.
+    bool startsMidWord;
     /// Столько первых символов контекста не трогаем: человек отменил правку — значит, хотел именно так.
     int frozen;
     /// Последняя правка: что показали и что человек набрал на самом деле.
-    (List<string> Shown, List<string> Typed)? undo;
+    (List<string> Shown, List<string> Typed, string? TypoWord)? undo;
+
+    /// После `Backspace()`: слово, исправление которого человек отменил (нормализованное) — в «Не исправлять слова».
+    public string? UndoneTypoWord { get; private set; }
 
     /// Длина текста на экране изменилась (… вместо ...) — свитчеру надо сбросить память.
     public bool LastEditChangedLength { get; private set; }
@@ -29,11 +38,13 @@ public sealed class LiveTypographer
     public TypoEdit? Typed(string ch, Language hint, LiveOptions options)
     {
         undo = null;
+        UndoneTypoWord = null;
         LastEditChangedLength = false;
         var raw = new List<string>(context) { ch };
-        var corrected = raw;
+        // сначала опечатка в только что законченном слове, потом типографика
+        var (corrected, typoWord) = FixTypo(raw, options);
         // смайлики — до типографики: она чистит пробелы у скобок
-        if (options.Emoji?.Apply(raw, frozen) is { } withEmoji) corrected = withEmoji;
+        if (options.Emoji?.Apply(corrected, frozen) is { } withEmoji) corrected = withEmoji;
         List<string> Style(List<string> chars, bool unknown) => options.Typography ? Format(chars, unknown, hint) : chars;
         var formatted = Style(corrected, leftUnknown);
         var p = CommonPrefix(raw, formatted);
@@ -49,7 +60,7 @@ public sealed class LiveTypographer
             return null;
         }
         var edit = new TypoEdit(context.Count - p, string.Concat(formatted.Skip(p)));
-        undo = (formatted.Skip(p).ToList(), raw.Skip(p).ToList());
+        undo = (formatted.Skip(p).ToList(), raw.Skip(p).ToList(), typoWord);
         LastEditChangedLength = formatted.Count != raw.Count;
         SetContext(formatted);
         return edit;
@@ -63,7 +74,7 @@ public sealed class LiveTypographer
         var inserted = TextElements.Split(insert);
         if (inserted.Count == 0 || delete > context.Count - frozen)
         {
-            Reset();
+            Reset(midWord: false);
             return null;
         }
         context = [.. context.Take(context.Count - delete), .. inserted.Take(inserted.Count - 1)];
@@ -82,6 +93,7 @@ public sealed class LiveTypographer
             return null;
         }
         undo = null;
+        UndoneTypoWord = u.TypoWord;
         LastEditChangedLength = u.Shown.Count != u.Typed.Count;
         context = [.. context.Take(context.Count - u.Shown.Count), .. u.Typed];
         frozen = context.Count;
@@ -89,9 +101,11 @@ public sealed class LiveTypographer
     }
 
     /// `knownLineStart` — перед контекстом точно начало строки (для тестов и пустого поля).
-    public void Reset(bool knownLineStart = false)
+    /// `midWord` — сброс посреди слова (свитчер исправил раскладку): в памяти дальше будет хвост слова.
+    public void Reset(bool knownLineStart = false, bool midWord = false)
     {
         leftUnknown = !knownLineStart;
+        startsMidWord = midWord;
         context = [];
         frozen = 0;
         undo = null;
@@ -103,7 +117,38 @@ public sealed class LiveTypographer
         var extra = Math.Max(0, chars.Count - ContextLimit);
         context = chars.Skip(extra).ToList();
         frozen = Math.Max(0, frozen - extra);
-        if (extra > 0) leftUnknown = true;
+        if (extra > 0) { leftUnknown = true; startsMidWord = true; }
+    }
+
+    static bool IsLetter(string s) => s.Length > 0 && char.IsLetter(s, 0);
+
+    /// Набран символ-граница (не буква) — исправить опечатку в слове перед ним, поставить «ё», дефис частицы.
+    /// Отменённое место (`frozen`) не трогаем. Возвращает текст и исходное слово, если в нём была опечатка
+    /// (только «ё» — не ошибка, такое слово в «Не исправлять слова» при отмене не попадает).
+    (List<string> Text, string? TypoWord) FixTypo(List<string> raw, LiveOptions options)
+    {
+        if ((options.Typos is null && options.Yo is null) || raw.Count == 0 || IsLetter(raw[^1])) return (raw, null);
+        var boundary = raw[^1];
+        var bodyCount = raw.Count - 1;
+        var start = bodyCount;
+        while (start > 0 && IsLetter(raw[start - 1])) start--;
+        if (start < frozen || start >= bodyCount) return (raw, null);
+        // контекст начался посреди слова — это хвост, не трогаем
+        if (start == 0 && startsMidWord) return (raw, null);
+        var word = string.Concat(raw.GetRange(start, bodyCount - start));
+        string? typoWord = null;
+        var fixedWord = word;
+        if (options.Typos?.Correct(word) is { } corrected)
+        {
+            fixedWord = corrected;
+            typoWord = Lexicon.Normalize(word);
+        }
+        // «ё» — после опечатки: «далекйи» → «далекий» → «далёкий»
+        if (options.Yo?.Fix(fixedWord) is { } withYo) fixedWord = withYo;
+        List<string> result = [.. raw.GetRange(0, start), .. TextElements.Split(fixedWord), boundary];
+        if (options.Typos is not { } typos) return (result, typoWord);
+        var joined = TextElements.Split(typos.JoinParticles(string.Concat(result), live: true));
+        return (joined.Count == result.Count ? joined : result, typoWord);
     }
 
     static int CommonPrefix(List<string> a, List<string> b)

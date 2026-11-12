@@ -205,7 +205,8 @@ sealed class SettingsWindow : IDisposable
                 }
                 break;
             case "addWord" when arg.ValueKind == JsonValueKind.Object && arg.TryGetProperty("word", out var word):
-                store.Update(s => SettingsPage.AddWord(s, word.GetString() ?? ""));
+                var wordList = arg.TryGetProperty("list", out var l) && l.GetString() == "correct" ? "correct" : "layout";
+                store.Update(s => SettingsPage.AddWord(s, word.GetString() ?? "", wordList));
                 changed();
                 break;
             case "emojiPanel":

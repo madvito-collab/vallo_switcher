@@ -61,8 +61,13 @@ sealed class SwitcherService : IHookSink, IDisposable
     Fired armed;
     /// Идёт запись «Своего сочетания…» в настройках: первое подходящее нажатие (или Esc) — сюда, и запись кончилась.
     volatile Action<Hotkey.Combo?>? recorder;
-    /// Типографика и смайлики на лету — память последних символов на экране. Только под `gate`.
+    /// Типографика, опечатки, «ё» и смайлики на лету — память последних символов на экране. Только под `gate`.
     readonly LiveTypographer live = new();
+    /// Опечатки и «ё»; null — словари не открылись (свитчер работает и без них). «Не исправлять слова» — в `typos.Ignored`.
+    readonly TypoCorrector? typos;
+    readonly Yoficator? yo;
+    /// Отменили исправление опечатки Backspace — слово ушло в «Не исправлять слова»: обновить окно настроек.
+    public Action? TypoWordsChanged { get; set; }
     const uint VK_BACK = 0x08, VK_RETURN = 0x0D;
     /// В окне настроек сменили сочетание — поток перехвата пересоберёт детектор при следующем модификаторе.
     volatile bool hotkeyChanged;
@@ -70,9 +75,11 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Клавиши, чьё нажатие проглотили, — отпускание глотаем тоже.
     readonly HashSet<uint> swallowed = new();
 
-    SwitcherService(SettingsStore store, SystemLayouts layouts, Engine engine)
+    SwitcherService(SettingsStore store, SystemLayouts layouts, Engine engine, TypoCorrector? typos, Yoficator? yo)
     {
         this.store = store;
+        this.typos = typos;
+        this.yo = yo;
         this.layouts = layouts;
         this.engine = engine;
         sender = new InputSender(layouts, store, MarkSwitch);
@@ -115,7 +122,8 @@ sealed class SwitcherService : IHookSink, IDisposable
             return null;
         }
         var judge = new Judge(en, ru, learned: new HashSet<string>(store.Current.LearnedWords));
-        try { WarmUp(layouts.Pair, en, ru); }
+        var (typos, yo) = LoadSpelling(data, store.Current.TypoIgnoredWords);
+        try { WarmUp(layouts.Pair, en, ru, typos, yo); }
         catch { } // прогрев не удался — первое нажатие будет медленнее, но свитчер работает
         var hkl = SystemLayouts.Current();
         var current = SystemLayouts.LanguageOf(hkl);
@@ -125,7 +133,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         };
         if (current is null) engine.ExternalLayoutChange(null);
 
-        var service = new SwitcherService(store, layouts, engine) { lastHkl = hkl };
+        var service = new SwitcherService(store, layouts, engine, typos, yo) { lastHkl = hkl };
         service.WarmUpHookPath();
         service.guard.Start();
         service.worker.Start();
@@ -137,6 +145,28 @@ sealed class SwitcherService : IHookSink, IDisposable
         }
         service.watcher.Start();
         return service;
+    }
+
+    /// Словари опечаток и «ё», как на Маке. Не открылись — без них: раскладка и типографика работают.
+    static (TypoCorrector?, Yoficator?) LoadSpelling(string data, IEnumerable<string> ignored)
+    {
+        try
+        {
+            var yo = Yoficator.Load(Path.Combine(data, "ru-yo.txt"));
+            var typos = TypoCorrector.Load(Path.Combine(data, "ru-typos.txt"), ignored);
+            typos.YoWords = yo;
+            typos.ModernWords = WordForms.Load(Path.Combine(data, "ru-modern.txt")).Select(Lexicon.Normalize).ToHashSet();
+            // все формы слов: без них «иконка» → «икона». Нет файла — исправлятор осторожнее, но работает
+            var forms = Path.Combine(data, "ru-forms.txt");
+            if (File.Exists(forms)) typos.Forms = SortedWordFile.Load(forms);
+            Log.Write(() => $"опечатки: словари открыты{(typos.Forms is null ? ", без словаря форм" : "")}");
+            return (typos, yo);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Log.Write(() => $"опечатки: словари не открылись — {e.GetType().Name}");
+            return (null, null);
+        }
     }
 
     /// Проснулись или разблокировали сеанс — перехват мог тихо пропасть.
@@ -162,7 +192,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     // ---- Прогрев: первое нажатие не должно ждать JIT, иначе Windows снимет перехват по таймауту
 
     /// Отдельный движок на тех же словарях — живой не трогаем.
-    static void WarmUp(LayoutPair pair, Lexicon en, Lexicon ru)
+    static void WarmUp(LayoutPair pair, Lexicon en, Lexicon ru, TypoCorrector? typos, Yoficator? yo)
     {
         var dummy = new Engine(pair, new Judge(en, ru, new HashSet<string>()), Language.En);
         // «ghbdtn » и «,eltn » — исправление посреди и на границе слова; Backspace, Enter, двойной Shift
@@ -175,8 +205,8 @@ sealed class SwitcherService : IHookSink, IDisposable
         // типографика: регулярные выражения собираются при первом вызове — не на первом нажатии человека
         var live = new LiveTypographer();
         live.Reset(knownLineStart: true);
-        var options = new LiveOptions(Typography: true, Emoji: EmojiBrackets.Millennial);
-        foreach (var c in TextElements.Split("раз - \"да\" 340000 89161234567 ок)) ")) live.Typed(c, Language.Ru, options);
+        var options = new LiveOptions(Typography: true, Emoji: EmojiBrackets.Millennial, Typos: typos, Yo: yo);
+        foreach (var c in TextElements.Split("раз - \"да\" 340000 89161234567 ок)) приввет еще какой то ")) live.Typed(c, Language.Ru, options);
         live.Backspace();
         Typographer.Format("раз - \"да\" 5000р 89161234567");
     }
@@ -247,8 +277,10 @@ sealed class SwitcherService : IHookSink, IDisposable
         }
         var stroke = new KeyStroke((ushort)k.Vk, lShift || rShift, (GetKeyState(VK_CAPITAL) & 1) != 0);
         var settings = store.Current;
-        var options = new LiveOptions(settings.TypographyLive, settings.EmojiBrackets());
-        var liveOn = (options.Typography || options.Emoji is not null) && guard.TypographyAllowed();
+        var options = new LiveOptions(settings.TypographyLive, settings.EmojiBrackets(),
+                                      settings.TyposLive ? typos : null, settings.YoLive ? yo : null);
+        var liveOn = options.Any && guard.TypographyAllowed();
+        string? undoneTypo = null;
         EngineOutput output;
         IReadOnlyList<EngineAction>? typography = null;
         lock (gate)
@@ -257,6 +289,12 @@ sealed class SwitcherService : IHookSink, IDisposable
             if (k.Vk == VK_BACK && liveOn && live.Backspace() is { } undo)
             {
                 engine.Reset();
+                // отменили исправление опечатки — человек хотел именно так: больше это слово не трогаем (как на Маке)
+                if (live.UndoneTypoWord is { } w && typos is not null)
+                {
+                    typos.Ignored = new HashSet<string>(typos.Ignored) { w };
+                    undoneTypo = w;
+                }
                 typography = [new EngineAction.Delete(undo.Delete), new EngineAction.Insert(undo.Insert)];
             }
             if (typography is null)
@@ -271,7 +309,8 @@ sealed class SwitcherService : IHookSink, IDisposable
                     // «850he,» → «850руб » → «850 ₽ ». Иначе свитчер правил текст сам — память типографики начинаем заново
                     if (liveOn && AfterSwitchEdit(stroke, c.Actions, options) is { } afterSwitch)
                         output = new EngineOutput.Consume([.. c.Actions, .. afterSwitch]);
-                    else live.Reset();
+                    // свитчер исправил слово посреди (на букве) — дальше в памяти хвост слова: его опечатки не трогаем
+                    else live.Reset(midWord: TypedLetter(stroke));
                 }
                 else if (k.Vk != VK_BACK)
                 {
@@ -280,6 +319,16 @@ sealed class SwitcherService : IHookSink, IDisposable
                 }
             }
             else output = EngineOutput.PassThrough;
+        }
+        if (undoneTypo is { } undone)
+        {
+            Log.Write("опечатка: исправление отменили — слово в «Не исправлять слова»");
+            // запись файла настроек — не на потоке перехвата
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                store.Update(s => SettingsPage.AddWord(s, undone, "correct"));
+                TypoWordsChanged?.Invoke();
+            });
         }
         if (typography is not null)
         {
@@ -299,14 +348,20 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// по исправленному слову. null — править нечего. Только под `gate`.
     IReadOnlyList<EngineAction>? AfterSwitchEdit(KeyStroke stroke, IReadOnlyList<EngineAction> actions, LiveOptions options)
     {
-        static bool IsLetter(string? s) => !string.IsNullOrEmpty(s) && char.IsLetter(s[0]);
-        if (IsLetter(layouts.Pair.En.Character(stroke)) || IsLetter(layouts.Pair.Ru.Character(stroke))) return null;
+        if (TypedLetter(stroke)) return null;
         if (actions.Count < 2 || actions[0] is not EngineAction.Delete d || actions[1] is not EngineAction.Insert ins
             || ins.Text.Length == 0 || char.IsLetter(ins.Text[^1])) return null;
         if (live.Replaced(d.N, ins.Text, engine.CurrentLanguage, options) is not { } edit) return null;
         // длина текста изменилась (руб → ₽) — память свитчера больше не совпадает с экраном
         if (live.LastEditChangedLength) engine.Reset();
         return [new EngineAction.Delete(edit.Delete), new EngineAction.Insert(edit.Insert)];
+    }
+
+    /// Буква хотя бы в одной раскладке: «,» в EN — это «б» в RU.
+    bool TypedLetter(KeyStroke stroke)
+    {
+        static bool IsLetter(string? s) => !string.IsNullOrEmpty(s) && char.IsLetter(s[0]);
+        return IsLetter(layouts.Pair.En.Character(stroke)) || IsLetter(layouts.Pair.Ru.Character(stroke));
     }
 
     /// Символ нажатия → правка типографики на лету (или null — пропустить нажатие как есть). Только под `gate`.
@@ -351,6 +406,8 @@ sealed class SwitcherService : IHookSink, IDisposable
     public void SettingsChanged()
     {
         lock (gate) engine.Judge.Learned = new HashSet<string>(store.Current.LearnedWords);
+        // «Не исправлять слова» поменяли в настройках
+        if (typos is not null) typos.Ignored = store.Current.TypoIgnoredWords.Select(Lexicon.Normalize).ToHashSet();
         hotkeyChanged = true;
     }
 

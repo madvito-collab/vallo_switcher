@@ -18,9 +18,10 @@ public class SettingsPageTests
     {
         var st = State(new AppSettings());
         Assert.Equal("windows", (string?)st["platform"]);
-        // исправления есть (типографика и смайлики), опечаток пока нет
+        // исправления есть (типографика, смайлики, опечатки и «ё»), запятых пока нет
         Assert.True((bool)st["correct"]!["available"]!);
-        Assert.False((bool)st["correct"]!["typosAvailable"]!);
+        Assert.True((bool)st["correct"]!["typosAvailable"]!);
+        Assert.False((bool)st["correct"]!["commasAvailable"]!);
         Assert.Equal("double:rightShift", (string?)st["correct"]!["hotkey"]);
         Assert.True((bool)st["correct"]!["typography"]!);
         Assert.Equal("millennial", (string?)st["correct"]!["emoji"]!["preset"]);

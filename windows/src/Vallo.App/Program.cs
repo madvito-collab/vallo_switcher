@@ -53,7 +53,12 @@ static class Program
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;
-            try { Volatile.Write(ref switcher, SwitcherService.Start(store, out problem)); }
+            try
+            {
+                var started = SwitcherService.Start(store, out problem);
+                if (started is not null) started.TypoWordsChanged = () => tray.Post(settings.Refresh);
+                Volatile.Write(ref switcher, started);
+            }
             catch { problem = StartProblem.Unknown; }
             // без свитчера трей всё равно работает — но человек должен знать, что свитчер не запущен
             if (Volatile.Read(ref switcher) is null) tray.ShowProblem(StartProblems.MenuText(problem));

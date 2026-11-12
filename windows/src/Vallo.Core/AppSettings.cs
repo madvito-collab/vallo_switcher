@@ -24,6 +24,13 @@ public sealed record AppSettings
     public bool FirstRunDone { get; init; }
     /// Типографика на лету (тире, кавычки, неразрывные пробелы, телефоны, разряды).
     public bool TypographyLive { get; init; } = true;
+    /// Опечатки на лету: «првет» → «привет» (как на Маке).
+    public bool TyposLive { get; init; } = true;
+    /// Буква «ё» на лету, где без вариантов: «еще» → «ещё».
+    public bool YoLive { get; init; } = true;
+    /// «Не исправлять слова»: опечатки их не трогают. Нормализованы (строчные, ё → е).
+    /// Сюда же попадает слово, исправление которого отменили Backspace.
+    public IReadOnlyList<string> TypoIgnoredWords { get; init; } = [];
     /// Сочетание «исправить выделенный текст» (типографика); null — выключено.
     public Hotkey? HotkeyCorrect { get; init; } = Hotkey.DefaultTypography;
     /// Где не работает исправление на лету (имена exe в нижнем регистре).
@@ -61,6 +68,7 @@ public sealed record AppSettings
                 ExcludedApps = s.ExcludedApps ?? d.ExcludedApps,
                 SilentApps = s.SilentApps ?? d.SilentApps,
                 LearnedWords = s.LearnedWords ?? d.LearnedWords,
+                TypoIgnoredWords = s.TypoIgnoredWords ?? d.TypoIgnoredWords,
                 HotkeyConvert = s.HotkeyConvert ?? d.HotkeyConvert,
                 TypographyExcludedApps = s.TypographyExcludedApps ?? d.TypographyExcludedApps,
                 EmojiPreset = s.EmojiPreset ?? d.EmojiPreset,
