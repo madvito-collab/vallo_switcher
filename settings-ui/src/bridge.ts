@@ -27,6 +27,8 @@ export interface State {
     emoji: { preset: EmojiPreset; custom: EmojiPair[] }
     /** опечатки, «ё» и запятые есть (на Windows пока нет — false); нет поля — есть */
     typosAvailable?: boolean
+    /** запятые (модель SAGE) и «Заглавная буква и точка» есть (на Windows пока нет — false); нет поля — есть */
+    commasAvailable?: boolean
   }
   hotkeyOptions: HotkeyOption[]
   /** можно записать своё сочетание (на Windows пока нет) */

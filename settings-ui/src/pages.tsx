@@ -68,8 +68,12 @@ const subs: Record<"words" | "apps", Record<ListId, { title: string; desc: strin
 }
 const backTitle: Record<ListId, string> = { layout: "Раскладка", correct: "Исправления" }
 
+/** Подпись списка «Не исправлять слова»: пока запятых нет (Windows) — только про опечатки */
+const wordsDesc = (s: State, list: ListId) =>
+  list === "correct" && s.correct.commasAvailable === false ? "Опечатки их не тронут" : subs.words[list].desc
+
 export function SubPage({ s, sub, back }: { s: State; sub: Sub; back: () => void }) {
-  const t = subs[sub.kind][sub.list]
+  const t = { ...subs[sub.kind][sub.list], ...(sub.kind === "words" ? { desc: wordsDesc(s, sub.list) } : {}) }
   const data = sub.list === "layout" ? s.layout : s.correct
   return (
     <>
@@ -93,7 +97,7 @@ function Exclusions({ s, list, open }: { s: State; list: ListId; open: (sub: Sub
         <LinkRow title={subs.apps[list].title} desc={subs.apps[list].desc} count={data.apps.length}
                  onClick={() => open({ kind: "apps", list })} />
         {(list === "layout" || s.correct.typosAvailable !== false) &&
-          <LinkRow title={subs.words[list].title} desc={subs.words[list].desc} count={data.words.length}
+          <LinkRow title={subs.words[list].title} desc={wordsDesc(s, list)} count={data.words.length}
                    onClick={() => open({ kind: "words", list })} />}
       </Card>
     </>
@@ -120,18 +124,20 @@ export function LayoutPage({ s, open }: { s: State; open: (sub: Sub) => void }) 
 
 export function CorrectPage({ s, open }: { s: State; open: (sub: Sub) => void }) {
   const c = s.correct
-  // на Windows пока только типографика и смайлики — строк про опечатки, «ё» и запятые не показываем
+  // на Windows запятых пока нет — строки «Заглавная буква и точка» нет, в подписях про запятые молчим
   const typos = c.typosAvailable !== false
+  const commas = typos && c.commasAvailable !== false
   return (
     <>
       <PageTitle>Исправления</PageTitle>
       <SectionTitle title="По сочетанию клавиш" first />
       <Card>
         <Row title="Исправить выделенный текст"
-             desc={hotkeyDesc(s, "correct", typos ? "Опечатки, «ё», запятые и типографика разом" : "Тире, кавычки, неразрывные пробелы, телефоны")}>
+             desc={hotkeyDesc(s, "correct", commas ? "Опечатки, «ё», запятые и типографика разом"
+                                      : typos ? "Опечатки, «ё» и типографика разом" : "Тире, кавычки, неразрывные пробелы, телефоны")}>
           <HotkeySelect state={s} which="correct" />
         </Row>
-        {typos && <ToggleRow title="Заглавная буква и точка" desc="Для писем и документов, в чатах лучше выключить"
+        {commas && <ToggleRow title="Заглавная буква и точка" desc="Для писем и документов, в чатах лучше выключить"
                              value={c.capitalize} setting="capitalize" />}
       </Card>
 
@@ -209,10 +215,14 @@ export function HelpPage({ s }: { s: State }) {
           <Card>
             <Examples pairs={s.correct.typosAvailable === false
               ? [["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["ок))", "ок😄"]]
+              : s.correct.commasAvailable === false
+              ? [["првет", "привет"], ["еще", "ещё"], ["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["ок))", "ок😄"]]
               : [["првет", "привет"], ["еще", "ещё"], ["\"текст\" - тут", "«текст» — тут"], ["89161234567", "+7 916 123-45-67"], ["5000р", "5 000 ₽"], ["короче я хз", "короче, я хз"]]} />
           </Card>
           <Note>{s.correct.typosAvailable === false
             ? <>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — расставится типографика</>
+            : s.correct.commasAvailable === false
+            ? <>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — исправится всё разом</>
             : <>Выделите текст и дважды нажмите правый <Kbd>Shift</Kbd> — исправится всё разом, вместе с запятыми</>}</Note>
         </>
       )}
@@ -327,7 +337,7 @@ export function AboutPage({ s }: { s: State }) {
       )}
 
       {/* на Windows запятых пока нет — кнопка «Скачать» там ничего бы не делала */}
-      {s.correct.available && s.correct.typosAvailable !== false && (
+      {s.correct.available && s.correct.typosAvailable !== false && s.correct.commasAvailable !== false && (
         <>
           <SectionTitle title="Модель запятых" />
           <Card>
