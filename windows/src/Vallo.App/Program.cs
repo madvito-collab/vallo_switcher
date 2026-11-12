@@ -50,6 +50,9 @@ static class Program
         updater.Restarting = tray.Hide;
         settings.Updater = updater;
         settings.Switcher = () => Volatile.Read(ref switcher);
+        using var models = new ModelStore();
+        models.Changed = () => tray.Post(settings.Refresh);
+        settings.Models = models;
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;

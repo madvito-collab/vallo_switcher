@@ -27,6 +27,8 @@ sealed class SettingsWindow : IDisposable
 
     /// Обновления (раздел в «О программе»). Нет — свитчер не из установщика.
     public Updater? Updater { get; set; }
+    /// Модель запятых: скачать, отменить, удалить.
+    public ModelStore? Models { get; set; }
     /// Свитчер: запись своего сочетания идёт через его перехват клавиатуры. null — свитчер ещё не запущен.
     public Func<SwitcherService?>? Switcher { get; set; }
     /// Идёт запись своего сочетания: "convert" или "correct".
@@ -225,6 +227,15 @@ sealed class SettingsWindow : IDisposable
             case "checkUpdates":
                 Updater?.CheckNow();
                 break;
+            case "model.download":
+                Models?.Download();
+                break;
+            case "model.cancel":
+                Models?.Cancel();
+                break;
+            case "model.delete":
+                Models?.Delete();
+                break;
             case "installUpdate":
                 Updater?.InstallNow();
                 break;
@@ -303,7 +314,8 @@ sealed class SettingsWindow : IDisposable
         var version = Updater.Short(Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "");
         var state = SettingsPage.State(store.Current, Autostart.IsEnabled, version, pendingPage, AppName,
                                        updates: Updater?.Supported == true, recording: recording, hotkeyError: hotkeyError,
-                                       update: Updater is { } u ? Updates.PageState(u.Activity, u.Pending) : null);
+                                       update: Updater is { } u ? Updates.PageState(u.Activity, u.Pending) : null,
+                                       model: Models?.State);
         pendingPage = null;
         _ = web.CoreWebView2.ExecuteScriptAsync($"window.vallo && window.vallo.receive({state.ToJsonString()})");
     }

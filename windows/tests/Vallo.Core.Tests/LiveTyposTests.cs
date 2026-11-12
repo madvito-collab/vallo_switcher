@@ -154,12 +154,12 @@ public class TypoSettingsTests
     }
 
     [Fact]
-    public void PageShowsTyposButNotCommas()
+    public void PageShowsTyposAndCommas()
     {
         var page = SettingsPage.State(new AppSettings { TypoIgnoredWords = ["приввет"] }, false, "0.4", null, e => e);
         var c = page["correct"]!;
         Assert.True((bool)c["typosAvailable"]!);
-        Assert.False((bool)c["commasAvailable"]!);
+        Assert.True((bool)c["commasAvailable"]!);
         Assert.True((bool)c["typos"]!);
         Assert.True((bool)c["yo"]!);
         Assert.Equal("приввет", (string?)c["words"]![0]);

@@ -31,6 +31,8 @@ public sealed record AppSettings
     /// «Не исправлять слова»: опечатки их не трогают. Нормализованы (строчные, ё → е).
     /// Сюда же попадает слово, исправление которого отменили Backspace.
     public IReadOnlyList<string> TypoIgnoredWords { get; init; } = [];
+    /// «Заглавная буква и точка» при исправлении выделенного (вместе с запятыми). Как на Маке — по умолчанию выключено.
+    public bool Capitalize { get; init; }
     /// Сочетание «исправить выделенный текст» (типографика); null — выключено.
     public Hotkey? HotkeyCorrect { get; init; } = Hotkey.DefaultTypography;
     /// Где не работает исправление на лету (имена exe в нижнем регистре).

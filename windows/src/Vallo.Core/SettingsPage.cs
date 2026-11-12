@@ -13,7 +13,7 @@ public static class SettingsPage
     /// `recording` — идёт запись своего сочетания ("convert"/"correct"), `hotkeyError` — почему записанное не подошло.
     public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName,
                                    bool updates = false, string? recording = null, HotkeyError? hotkeyError = null,
-                                   (string State, string Version, double Progress)? update = null)
+                                   (string State, string Version, double Progress)? update = null, ModelState? model = null)
     {
         JsonArray Apps(IEnumerable<string> list)
         {
@@ -35,7 +35,7 @@ public static class SettingsPage
             ["version"] = version,
             ["page"] = page,
             ["general"] = new JsonObject { ["launchAtLogin"] = launchAtLogin, ["debugMode"] = s.DebugMode },
-            ["attention"] = new JsonObject { ["modelMissing"] = false, ["macAutocorrect"] = false },
+            ["attention"] = new JsonObject { ["modelMissing"] = (model ?? new ModelState.NotDownloaded()).Missing, ["macAutocorrect"] = false },
             ["layout"] = new JsonObject
             {
                 ["autoSwitch"] = s.AutoSwitchEnabled,
@@ -46,10 +46,9 @@ public static class SettingsPage
             },
             ["correct"] = new JsonObject
             {
-                // запятых на Windows пока нет — страница прячет «Заглавную букву и точку» и модель
-                ["available"] = true, ["typosAvailable"] = true, ["commasAvailable"] = false,
+                ["available"] = true, ["typosAvailable"] = true, ["commasAvailable"] = true,
                 ["hotkey"] = s.HotkeyCorrect is { } hc ? HotkeyId(hc) : "off", ["hotkeyTitle"] = s.HotkeyCorrect?.Title ?? "",
-                ["capitalize"] = false, ["typography"] = s.TypographyLive, ["typos"] = s.TyposLive, ["yo"] = s.YoLive,
+                ["capitalize"] = s.Capitalize, ["typography"] = s.TypographyLive, ["typos"] = s.TyposLive, ["yo"] = s.YoLive,
                 ["apps"] = Apps(s.TypographyExcludedApps), ["words"] = new JsonArray(s.TypoIgnoredWords.Select(w => (JsonNode?)w).ToArray()),
                 ["emoji"] = new JsonObject { ["preset"] = s.EmojiPreset, ["custom"] = custom },
             },
@@ -63,8 +62,18 @@ public static class SettingsPage
                 ["updates"] = updates, ["autoUpdate"] = s.AutoUpdate,
                 ["lastCheck"] = s.LastUpdateCheck?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
                 ["update"] = update is { } u ? new JsonObject { ["state"] = u.State, ["version"] = u.Version, ["progress"] = u.Progress } : null,
-                ["model"] = new JsonObject { ["state"] = "notDownloaded", ["progress"] = 0, ["message"] = "", ["size"] = "", ["disk"] = "" },
+                ["model"] = ModelJson(model ?? new ModelState.NotDownloaded()),
             },
+        };
+    }
+
+    static JsonObject ModelJson(ModelState m)
+    {
+        var (state, progress, message) = m.Wire;
+        return new JsonObject
+        {
+            ["state"] = state, ["progress"] = progress, ["message"] = message,
+            ["size"] = CommaModelInfo.DownloadSize, ["disk"] = CommaModelInfo.DiskSize,
         };
     }
 
@@ -87,6 +96,8 @@ public static class SettingsPage
                 return ParseHotkey(value.GetString()) is { } hc && hc != s.HotkeyConvert ? s with { HotkeyCorrect = hc } : s;
             case "typography" when IsBool(value):
                 return s with { TypographyLive = value.GetBoolean() };
+            case "capitalize" when IsBool(value):
+                return s with { Capitalize = value.GetBoolean() };
             case "typos" when IsBool(value):
                 return s with { TyposLive = value.GetBoolean() };
             case "yo" when IsBool(value):

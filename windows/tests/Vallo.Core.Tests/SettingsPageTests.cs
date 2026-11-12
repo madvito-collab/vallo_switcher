@@ -18,17 +18,17 @@ public class SettingsPageTests
     {
         var st = State(new AppSettings());
         Assert.Equal("windows", (string?)st["platform"]);
-        // исправления есть (типографика, смайлики, опечатки и «ё»), запятых пока нет
+        // исправления есть все: типографика, смайлики, опечатки, «ё», запятые
         Assert.True((bool)st["correct"]!["available"]!);
         Assert.True((bool)st["correct"]!["typosAvailable"]!);
-        Assert.False((bool)st["correct"]!["commasAvailable"]!);
+        Assert.True((bool)st["correct"]!["commasAvailable"]!);
         Assert.Equal("double:rightShift", (string?)st["correct"]!["hotkey"]);
         Assert.True((bool)st["correct"]!["typography"]!);
         Assert.Equal("millennial", (string?)st["correct"]!["emoji"]!["preset"]);
         Assert.False((bool)st["integrations"]!["figma"]!);
         Assert.False((bool)st["about"]!["updates"]!);
         Assert.True((bool)st["canRecordHotkey"]!);   // «Своё сочетание…» есть и на Windows
-        Assert.False((bool)st["attention"]!["modelMissing"]!);
+        Assert.True((bool)st["attention"]!["modelMissing"]!);   // модель не скачана — предупреждение, как на Маке
         Assert.True((bool)st["general"]!["launchAtLogin"]!);
     }
 
