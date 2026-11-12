@@ -173,6 +173,14 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
 
     EngineOutput HandleBoundary(KeyStroke stroke)
     {
+        // цвет в русской раскладке: «№аааааа» + пробел → «#ffffff »; цифра — ещё часть цвета, не конец
+        var boundaryShown = layouts.Layout(CurrentLanguage).Character(stroke) ?? "";
+        if (AutoSwitchEnabled && boundaryShown.Length > 0 && !char.IsNumber(boundaryShown[0]) && HexColorTyped() is { } hex)
+        {
+            LastDecision = $"«{hex.Shown}» — цвет в русской раскладке";
+            Reset();
+            return Out(new EngineAction.Delete(hex.Shown.Length), new EngineAction.Insert(hex.Fixed + boundaryShown));
+        }
         try
         {
             var word = Strokes(wordStart, buffer.Count);
@@ -231,6 +239,11 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
     {
         try
         {
+            if (AutoSwitchEnabled && HexColorTyped() is { } hex)
+            {
+                LastDecision = $"«{hex.Shown}» — цвет в русской раскладке";
+                return Out(new EngineAction.Delete(hex.Shown.Length), new EngineAction.Insert(hex.Fixed), new EngineAction.PressKey(keyCode));
+            }
             var word = Strokes(wordStart, buffer.Count);
             if (!AutoSwitchEnabled || wordLocked || autoSwitchedFrom != null || word.Count == 0)
                 return EngineOutput.PassThrough;
@@ -424,6 +437,19 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
         if (before.Length > 0 && char.IsNumber(before[0])) return true;
         var previous = new string(before.TakeWhile(char.IsLetter).Reverse().ToArray());
         return SwitcherRules.Shared.UnitsBeforeUnit.Contains(previous.ToLowerInvariant());
+    }
+
+    /// Набранное с последних «#» или «№» (не дальше 9 нажатий) — цвет в русской раскладке? Тогда как исправить.
+    (string Shown, string Fixed)? HexColorTyped()
+    {
+        for (var i = buffer.Count - 1; i >= Math.Max(0, buffer.Count - 9); i--)
+        {
+            var ch = Display(i, i + 1);
+            if (ch != "#" && ch != "№") continue;
+            var shown = Display(i, buffer.Count);
+            return HexColor.Fix(shown, requireHash: true) is { } fixedColor ? (shown, fixedColor) : null;
+        }
+        return null;
     }
 
     /// Граница слова — клавиша, которая ни в одной раскладке не даёт букву.
