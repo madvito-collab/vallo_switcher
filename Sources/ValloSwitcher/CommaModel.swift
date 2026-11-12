@@ -1,6 +1,7 @@
 import Foundation
 import OnnxRuntimeBindings
 import Tokenizers
+import ValloCore
 
 /// Модель запятых SAGE (ONNX): энкодер + декодер без кэша, жадная генерация.
 /// Запускается на Маке без интернета, ~30 мс на фразу. Ответ потом проходит через `CommaFilter`.
@@ -40,24 +41,35 @@ final class CommaModel: @unchecked Sendable {
     }
 
     /// Ответ модели на фразу (как есть, без фильтра). Вызывать не на главном потоке.
+    /// Жадная генерация, но продолжение угадывается по входу (`DraftLookup`) и проверяется пачкой:
+    /// один прогон декодера принимает сразу несколько токенов — ответ тот же, прогонов в 2–3 раза меньше.
     func run(_ text: String) throws -> String {
         let ids = tokenizer.encode(text: text).map(Int64.init)
         let mask = try Self.int64Tensor(Array(repeating: 1, count: ids.count))
         let encoded = try encoder.run(withInputs: ["input_ids": try Self.int64Tensor(ids), "attention_mask": mask],
                                       outputNames: ["last_hidden_state"], runOptions: nil)
         guard let hidden = encoded["last_hidden_state"] else { return text }
-        var out: [Int64] = [Self.decoderStart]
-        for _ in 0..<Self.maxTokens {
-            let result = try decoder.run(withInputs: ["input_ids": try Self.int64Tensor(out),
+        var out: [Int64] = []
+        generation: while out.count < Self.maxTokens {
+            let draft = DraftLookup.draft(output: out, source: ids)
+            let input = [Self.decoderStart] + out + draft
+            let result = try decoder.run(withInputs: ["input_ids": try Self.int64Tensor(input),
                                                       "encoder_hidden_states": hidden,
                                                       "encoder_attention_mask": mask],
                                          outputNames: ["logits"], runOptions: nil)
             guard let logits = result["logits"] else { break }
-            let next = try Self.argmaxLast(logits, rows: out.count, vocab: vocab)
-            if next == Self.endOfText { break }
-            out.append(next)
+            let data = try logits.tensorData() as Data
+            // строка logits № base + j предсказывает токен ответа № base + j
+            let base = out.count
+            for j in 0...draft.count {
+                let next = Self.argmax(data, row: base + j, vocab: vocab)
+                if next == Self.endOfText { break generation }
+                out.append(next)
+                if out.count >= Self.maxTokens { break generation }
+                if j == draft.count || next != draft[j] { break }
+            }
         }
-        let tokens = out.dropFirst().map(Int.init).filter { !Self.special.contains($0) }
+        let tokens = out.map(Int.init).filter { !Self.special.contains($0) }
         return tokenizer.decode(tokens: tokens)
     }
 
@@ -67,12 +79,11 @@ final class CommaModel: @unchecked Sendable {
         return try ORTValue(tensorData: data, elementType: .int64, shape: [1, NSNumber(value: v.count)])
     }
 
-    /// Самый вероятный следующий токен — по последней строке logits.
-    private static func argmaxLast(_ logits: ORTValue, rows: Int, vocab: Int) throws -> Int64 {
-        let data = try logits.tensorData() as Data
-        return data.withUnsafeBytes { raw in
+    /// Самый вероятный токен в строке `row` таблицы logits.
+    private static func argmax(_ data: Data, row: Int, vocab: Int) -> Int64 {
+        data.withUnsafeBytes { raw in
             let f = raw.bindMemory(to: Float.self)
-            let base = (rows - 1) * vocab
+            let base = row * vocab
             var best = 0
             for i in 1..<vocab where f[base + i] > f[base + best] { best = i }
             return Int64(best)

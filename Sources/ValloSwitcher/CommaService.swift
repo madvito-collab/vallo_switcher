@@ -21,7 +21,10 @@ final class CommaService: @unchecked Sendable {
         FileManager.default.fileExists(atPath: modelDirectory.appendingPathComponent("decoder_model.onnx").path)
     }
 
+    /// Загрузка и выгрузка модели — по одной.
     private let queue = DispatchQueue(label: "com.vallo.switcher.commas")
+    /// Сам прогон — параллельно: модель неизменяемая, несколько текстов читаются одновременно.
+    private let runQueue = DispatchQueue(label: "com.vallo.switcher.commas.run", attributes: .concurrent)
     /// Модель есть на диске, но не загрузилась (битые файлы) — на главном потоке.
     var onLoadFailed: (() -> Void)?
     private var model: CommaModel? {
@@ -65,7 +68,7 @@ final class CommaService: @unchecked Sendable {
                 DispatchQueue.main.async { self.onLoadFailed?() }
                 return finish(nil)
             }
-            do {
+            runQueue.async {
                 let lines = text.components(separatedBy: "\n").map { line -> String in
                     // пустые строки и строки без букв модели не нужны
                     guard line.contains(where: \.isLetter) else { return line }

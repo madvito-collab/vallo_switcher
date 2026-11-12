@@ -76,17 +76,30 @@ function onPress(id) {
                texts: usable.map((n) => ({ id: n.id, text: n.characters })) });
 }
 
-async function applyEdits(node, original, edits) {
-  if (node.removed || node.hasMissingFont || node.characters !== original) return false;
-  const fonts = node.getStyledTextSegments(["fontName"]).map((s) => s.fontName);
-  await Promise.all(fonts.map((f) => figma.loadFontAsync(f)));
+// Оформление, по которому слой может быть неоднородным. Однородный слой пишем целиком —
+// одной операцией (быстро), неоднородный — точечными правками, чтобы не слетело жирное слово или ссылка.
+const STYLE_FIELDS = ["fontName", "fontSize", "fills", "textDecoration", "textCase", "letterSpacing",
+                      "lineHeight", "hyperlink", "fillStyleId", "textStyleId", "listOptions", "indentation"];
+
+function styleSegments(node) {
+  try { return node.getStyledTextSegments(STYLE_FIELDS); }
+  catch (e) { return node.getStyledTextSegments(["fontName"]); }   // старая Фигма — не все поля
+}
+
+function applied(text, edits) {
+  let out = "", pos = 0;
+  for (const { start, end, insert } of edits) { out += text.slice(pos, start) + insert; pos = end; }
+  return out + text.slice(pos);
+}
+
+function writeEdits(node, original, edits, uniform) {
+  if (uniform) { node.characters = applied(original, edits); return; }
   // с конца — смещения правок считаны по исходному тексту
   for (let i = edits.length - 1; i >= 0; i--) {
     const { start, end, insert } = edits[i];
     if (insert.length > 0) node.insertCharacters(end, insert, end > 0 ? "BEFORE" : "AFTER");
     if (end > start) node.deleteCharacters(start, end);
   }
-  return true;
 }
 
 async function onResult(message) {
@@ -94,13 +107,25 @@ async function onResult(message) {
   pending.delete(message.id);
   if (!nodes) return;
   let failed = 0;
+  // сначала — что можно писать и какие шрифты нужны; все шрифты грузим разом, а не по слою
+  const jobs = [];
+  const fonts = new Map();
   for (const item of message.edits) {
     const entry = nodes.get(item.id);
+    const node = entry && entry.node;
+    if (!node || node.removed || node.hasMissingFont || node.characters !== entry.text) { failed++; continue; }
     try {
-      if (!entry || !(await applyEdits(entry.node, entry.text, item.edits))) failed++;
+      const segments = styleSegments(node);
+      for (const s of segments) fonts.set(JSON.stringify(s.fontName), s.fontName);
+      jobs.push({ node, text: entry.text, edits: item.edits, uniform: segments.length === 1 });
     } catch (e) {
       failed++;
     }
+  }
+  await Promise.all([...fonts.values()].map((f) => figma.loadFontAsync(f).catch(() => {})));
+  for (const job of jobs) {
+    try { writeEdits(job.node, job.text, job.edits, job.uniform); }
+    catch (e) { failed++; }
   }
   figma.commitUndo();   // один запуск — один шаг ⌘Z
   if (progress) { progress.cancel(); progress = null; }
