@@ -25,10 +25,39 @@
   </ItemGroup>
   <!-- Рядом с exe: словари, правила, картинки «ё» для трея. Раскладки снимаются с системы на ходу. -->
   <ItemGroup>
-    <None Include="../../../Data/wordlists/en.txt;../../../Data/wordlists/ru.txt;../../../Data/wordlists/ru-modern.txt" LinkBase="Data/wordlists" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../../Data/wordlists/en.txt;../../../Data/wordlists/ru.txt;../../../Data/wordlists/ru-modern.txt;../../../Data/wordlists/ru-typos.txt;../../../Data/wordlists/ru-yo.txt" LinkBase="Data/wordlists" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../../Data/switcher-rules.json" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- страница окна настроек — общая с Маком (исходники settings-ui/) -->
     <None Include="../../../Support/SettingsUI/index.html" LinkBase="Settings" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../../Support/Icons/Windows/yo_*.png;../../../Support/Icons/Windows/ValloSwitcher.ico" LinkBase="Icons" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Все формы слов для опечаток: в репозитории сжаты (9 МБ), рядом с exe нужны распакованными (72 МБ) —
+       свитчер ищет по файлу, не читая его в память. Распаковываем при сборке, как build-app.sh на Маке. -->
+  <UsingTask TaskName="GunzipFile" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Destination));
+        using (var src = System.IO.File.OpenRead(Source))
+        using (var gz = new System.IO.Compression.GZipStream(src, System.IO.Compression.CompressionMode.Decompress))
+        using (var dst = System.IO.File.Create(Destination)) gz.CopyTo(dst);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <!-- в obj/, не рядом с исходниками: файл в 72 МБ не должен попасть в git -->
+  <PropertyGroup>
+    <RuFormsGz>$(MSBuildThisFileDirectory)../../../Data/wordlists/ru-forms.txt.gz</RuFormsGz>
+    <RuFormsTxt>$(MSBuildThisFileDirectory)obj/wordlists/ru-forms.txt</RuFormsTxt>
+  </PropertyGroup>
+  <Target Name="UnpackRuForms" BeforeTargets="AssignTargetPaths" Inputs="$(RuFormsGz)" Outputs="$(RuFormsTxt)">
+    <GunzipFile Source="$(RuFormsGz)" Destination="$(RuFormsTxt)" />
+  </Target>
+  <Target Name="IncludeRuForms" BeforeTargets="AssignTargetPaths" DependsOnTargets="UnpackRuForms">
+    <ItemGroup>
+      <None Include="$(RuFormsTxt)" Link="Data/wordlists/ru-forms.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>

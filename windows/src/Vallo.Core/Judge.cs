@@ -115,7 +115,7 @@ public sealed class Judge(Lexicon en, Lexicon ru, ISet<string> learned)
     public static bool IsKnownAbbreviation(string word, Language language) =>
         Rules.Abbreviations[language].Contains(Core(word).ToLowerInvariant());
 
-    static bool IsSlang(string word, Language language) =>
+    public static bool IsSlang(string word, Language language) =>
         Rules.Slang[language].Contains(word.ToLowerInvariant());
 
     /// Обрезает небуквенные символы в начале и в конце.
