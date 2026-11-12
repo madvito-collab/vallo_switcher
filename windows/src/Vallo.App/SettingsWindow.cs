@@ -224,6 +224,9 @@ sealed class SettingsWindow : IDisposable
             case "checkUpdates":
                 Updater?.CheckNow();
                 break;
+            case "installUpdate":
+                Updater?.InstallNow();
+                break;
             case "openGitHub":
                 Open("https://github.com/madvito-collab/vallo_switcher/issues");
                 break;
@@ -298,7 +301,8 @@ sealed class SettingsWindow : IDisposable
         if (!ready || web?.CoreWebView2 is null) return;
         var version = Updater.Short(Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "");
         var state = SettingsPage.State(store.Current, Autostart.IsEnabled, version, pendingPage, AppName,
-                                       updates: Updater?.Supported == true, recording: recording, hotkeyError: hotkeyError);
+                                       updates: Updater?.Supported == true, recording: recording, hotkeyError: hotkeyError,
+                                       update: Updater is { } u ? Updates.PageState(u.Activity, u.Pending) : null);
         pendingPage = null;
         _ = web.CoreWebView2.ExecuteScriptAsync($"window.vallo && window.vallo.receive({state.ToJsonString()})");
     }

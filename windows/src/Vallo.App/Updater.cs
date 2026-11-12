@@ -24,7 +24,9 @@ sealed class Updater : IDisposable
 
     /// Что ждёт человека. Пишется и читается на потоке трея.
     public PendingUpdate? Pending { get; private set; }
-    /// Ждущее обновление поменялось или сходили проверить. На потоке трея.
+    /// Что делаем прямо сейчас (проверяем, качаем с процентом) или чем кончилась проверка по кнопке. На потоке трея.
+    public UpdateActivity? Activity { get; private set; }
+    /// Ждущее обновление или работа поменялись. На потоке трея.
     public Action? Changed { get; set; }
     /// Сказать человеку (заголовок, текст, по клику — поставить обновление). На потоке трея.
     public Action<string, string, bool>? Notify { get; set; }
@@ -61,11 +63,14 @@ sealed class Updater : IDisposable
         if (manager is null || Interlocked.Exchange(ref busy, 1) == 1) return;
         try
         {
+            Show(new UpdateActivity(UpdateStage.Checking));
             UpdateInfo? info;
             try { info = await manager.CheckForUpdatesAsync().ConfigureAwait(false); }
             catch (Exception e)
             {
                 DebugLog.Shared.Write(() => $"обновления: проверить не вышло — {e.GetType().Name}");
+                // фоновая проверка не удалась — молчим, как раньше; по кнопке — говорим и показываем в «О программе»
+                Show(userAsked ? new UpdateActivity(UpdateStage.Failed) : null);
                 if (userAsked) post(() => Notify?.Invoke(Updates.FailedTitle, Updates.FailedBody, false));
                 return;
             }
@@ -73,56 +78,85 @@ sealed class Updater : IDisposable
             DebugLog.Shared.Write(() => info is null ? "обновления: новых нет" : $"обновления: есть {info.TargetFullRelease.Version}");
             if (info is null)
             {
-                post(() =>
-                {
-                    Changed?.Invoke();
-                    if (userAsked) Notify?.Invoke(Updates.UpToDateTitle, Updates.UpToDateBody(Short(manager.CurrentVersion?.ToString() ?? "")), false);
-                });
+                Show(userAsked ? new UpdateActivity(UpdateStage.UpToDate) : null);
+                if (userAsked) post(() => Notify?.Invoke(Updates.UpToDateTitle, Updates.UpToDateBody(Short(manager.CurrentVersion?.ToString() ?? "")), false));
                 return;
             }
             var version = Short(info.TargetFullRelease.Version.ToString());
-            // уже скачано и ждёт — не скачиваем и не напоминаем каждый день заново
-            if (Pending is PendingUpdate.Ready ready && ready.Version == version && !userAsked) return;
+            // уже скачано и ждёт — не качаем заново; по кнопке — напоминаем, что можно перезапустить
+            if (Pending is PendingUpdate.Ready ready && ready.Version == version)
+            {
+                Show(null);
+                if (userAsked) post(() => Notify?.Invoke(Updates.ReadyTitle(version), Updates.ReadyBody, true));
+                return;
+            }
             found = info;
             if (!store.Current.AutoUpdate && !userAsked)
             {
+                Show(null);
                 post(() => Set(new PendingUpdate.Available(version)));
                 return;
             }
-            await Download(info, version, announce: true).ConfigureAwait(false);
+            // по кнопке — сразу говорим, что качаем: 57 МБ идут минуту-другую, без отклика кажется, что ничего не происходит
+            await Download(info, version, announceStart: userAsked).ConfigureAwait(false);
         }
         finally { Volatile.Write(ref busy, 0); }
     }
 
-    async Task<bool> Download(UpdateInfo info, string version, bool announce)
+    /// Скачать с процентом в меню и в «О программе». Готово — уведомление «Обновление готово» (если не перезапускаемся сразу).
+    async Task<bool> Download(UpdateInfo info, string version, bool announceStart, bool announceReady = true)
     {
-        try { await manager!.DownloadUpdatesAsync(info).ConfigureAwait(false); }
+        Show(new UpdateActivity(UpdateStage.Downloading, version));
+        if (announceStart) post(() => Notify?.Invoke(Updates.DownloadingTitle(version), Updates.DownloadingBody, false));
+        var shown = 0;
+        void Progress(int percent)
+        {
+            // Велопак зовёт часто — показываем только новые проценты
+            var p = Math.Clamp(percent, 0, 100);
+            if (Interlocked.Exchange(ref shown, p) != p) Show(new UpdateActivity(UpdateStage.Downloading, version, p));
+        }
+        try { await manager!.DownloadUpdatesAsync(info, Progress).ConfigureAwait(false); }
         catch (Exception e)
         {
             DebugLog.Shared.Write(() => $"обновления: скачать {version} не вышло — {e.GetType().Name}");
+            Show(new UpdateActivity(UpdateStage.Failed));
             post(() => Notify?.Invoke(Updates.FailedTitle, Updates.FailedBody, false));
             return false;
         }
+        DebugLog.Shared.Write(() => $"обновления: {version} скачана");
         post(() =>
         {
+            Activity = null;
             Set(new PendingUpdate.Ready(version));
-            if (announce) Notify?.Invoke(Updates.ReadyTitle(version), Updates.ReadyBody, true);
+            if (announceReady) Notify?.Invoke(Updates.ReadyTitle(version), Updates.ReadyBody, true);
         });
         return true;
     }
 
-    /// Строка в меню или клик по уведомлению: скачано — перезапуск с новой версией; нет — скачать и перезапустить.
+    /// Строка в меню, кнопка в «О программе» или клик по уведомлению: скачано — перезапуск с новой версией; нет — скачать и перезапустить.
     public void InstallNow()
     {
         if (manager is null || found is null || Pending is null) return;
         if (Pending is PendingUpdate.Ready) { Apply(); return; }
+        if (Interlocked.Exchange(ref busy, 1) == 1) return;
         var info = found;
         var version = Pending.Version;
         _ = Task.Run(async () =>
         {
-            if (await Download(info, version, announce: false).ConfigureAwait(false)) post(Apply);
+            try
+            {
+                if (await Download(info, version, announceStart: true, announceReady: false).ConfigureAwait(false)) post(Apply);
+            }
+            finally { Volatile.Write(ref busy, 0); }
         });
     }
+
+    /// Новое состояние работы — на поток трея, и обновить меню/окно.
+    void Show(UpdateActivity? a) => post(() =>
+    {
+        Activity = a;
+        Changed?.Invoke();
+    });
 
     void Apply()
     {

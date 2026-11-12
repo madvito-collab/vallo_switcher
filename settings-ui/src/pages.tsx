@@ -1,5 +1,5 @@
 // Страницы окна настроек. Тексты — по утверждённому мокапу docs/mockups/settings.html
-import { ArrowRight, CircleCheck, Download, ExternalLink, Trash2, TriangleAlert } from "lucide-react"
+import { ArrowRight, CircleCheck, Download, ExternalLink, LoaderCircle, Trash2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { action, set, type ListId, type PageId, type State } from "./bridge"
@@ -242,6 +242,62 @@ function checked(iso: string | null) {
   return `Проверено ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`
 }
 
+/** Строка «Проверить»: что сейчас с обновлением — проверяем, качаем (с процентом), готово к перезапуску */
+function UpdateRow({ s }: { s: State }) {
+  const u = s.about.update
+  const pct = Math.round((u?.progress ?? 0) * 100)
+  switch (u?.state) {
+    case "checking":
+      return (
+        <Row title={checked(s.about.lastCheck)} desc="Свитчер проверяет раз в день">
+          <Button disabled><LoaderCircle className="animate-spin" />Проверяю…</Button>
+        </Row>
+      )
+    case "upToDate":
+      return (
+        <Row title={checked(s.about.lastCheck)} desc={`У вас последняя версия — ${s.version}`}>
+          <Button onClick={() => action("checkUpdates")}>Проверить</Button>
+        </Row>
+      )
+    case "downloading":
+      return (
+        <Row title={`Скачиваю версию ${u.version}`} desc="Можно пользоваться свитчером, это не мешает">
+          <div className="flex items-center gap-2.5">
+            <div className="h-1.5 w-[120px] overflow-hidden rounded-full bg-hover">
+              <div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="w-9 text-[13px] tabular-nums text-muted-foreground">{pct}%</span>
+          </div>
+        </Row>
+      )
+    case "available":
+      return (
+        <Row title={`Вышла версия ${u.version}`} desc="Скачается и поставится за пару минут">
+          <Button variant="default" onClick={() => action("installUpdate")}><Download />Обновить</Button>
+        </Row>
+      )
+    case "ready":
+      return (
+        <Row title={`Версия ${u.version} готова`} desc="Перезапуск займёт пару секунд">
+          <Button variant="default" onClick={() => action("installUpdate")}>Перезапустить</Button>
+        </Row>
+      )
+    case "failed":
+      return (
+        <Row title={checked(s.about.lastCheck)}
+             desc={<span className="text-destructive">Не получилось проверить обновления. Проверьте интернет</span>}>
+          <Button onClick={() => action("checkUpdates")}>Повторить</Button>
+        </Row>
+      )
+    default:
+      return (
+        <Row title={checked(s.about.lastCheck)} desc="Свитчер проверяет раз в день">
+          <Button onClick={() => action("checkUpdates")}>Проверить</Button>
+        </Row>
+      )
+  }
+}
+
 export function AboutPage({ s }: { s: State }) {
   const m = s.about.model
   return (
@@ -265,14 +321,13 @@ export function AboutPage({ s }: { s: State }) {
             <Row title="Обновлять автоматически" desc="Новые версии ставятся сами при перезапуске">
               <Switch checked={s.about.autoUpdate} onCheckedChange={v => set("autoUpdate", v)} aria-label="Обновлять автоматически" />
             </Row>
-            <Row title={checked(s.about.lastCheck)} desc="Свитчер проверяет раз в день">
-              <Button onClick={() => action("checkUpdates")}>Проверить</Button>
-            </Row>
+            <UpdateRow s={s} />
           </Card>
         </>
       )}
 
-      {s.correct.available && (
+      {/* на Windows запятых пока нет — кнопка «Скачать» там ничего бы не делала */}
+      {s.correct.available && s.correct.typosAvailable !== false && (
         <>
           <SectionTitle title="Модель запятых" />
           <Card>

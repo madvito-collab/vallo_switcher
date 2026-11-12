@@ -111,3 +111,49 @@ public class UpdateFeedTests
         Assert.Null(UpdateFeed.AssetUrl(Release, "https://evil.example/x.nupkg"));
     }
 }
+
+/// Отклик на «Проверить»: серая строка меню и строка в «О программе», пока проверяем и качаем.
+public class UpdateActivityTests
+{
+    [Fact]
+    public void MenuShowsCheckingAndPercent()
+    {
+        Assert.Equal("Проверяю обновления…", Updates.BusyMenuTitle(new UpdateActivity(UpdateStage.Checking)));
+        Assert.Equal("Скачиваю 0.3.1 — 42%", Updates.BusyMenuTitle(new UpdateActivity(UpdateStage.Downloading, "0.3.1", 42)));
+        Assert.Null(Updates.BusyMenuTitle(new UpdateActivity(UpdateStage.UpToDate)));
+        Assert.Null(Updates.BusyMenuTitle(null));
+    }
+
+    [Fact]
+    public void OnlyCheckingAndDownloadingAreBusy()
+    {
+        Assert.True(new UpdateActivity(UpdateStage.Checking).Busy);
+        Assert.True(new UpdateActivity(UpdateStage.Downloading, "0.3.1").Busy);
+        Assert.False(new UpdateActivity(UpdateStage.Failed).Busy);
+        Assert.False(new UpdateActivity(UpdateStage.UpToDate).Busy);
+    }
+
+    [Fact]
+    public void PageStateWorkBeatsPendingBeatsLastResult()
+    {
+        Assert.Null(Updates.PageState(null, null));
+        Assert.Equal(("checking", "", 0.0), Updates.PageState(new UpdateActivity(UpdateStage.Checking), new PendingUpdate.Available("0.3.1")));
+        Assert.Equal(("downloading", "0.3.1", 0.42), Updates.PageState(new UpdateActivity(UpdateStage.Downloading, "0.3.1", 42), new PendingUpdate.Available("0.3.1")));
+        Assert.Equal(("ready", "0.3.1", 1.0), Updates.PageState(new UpdateActivity(UpdateStage.UpToDate), new PendingUpdate.Ready("0.3.1")));
+        Assert.Equal(("available", "0.3.1", 0.0), Updates.PageState(null, new PendingUpdate.Available("0.3.1")));
+        Assert.Equal(("upToDate", "", 0.0), Updates.PageState(new UpdateActivity(UpdateStage.UpToDate), null));
+        Assert.Equal(("failed", "", 0.0), Updates.PageState(new UpdateActivity(UpdateStage.Failed), null));
+    }
+
+    [Fact]
+    public void SettingsPageCarriesUpdateState()
+    {
+        var page = SettingsPage.State(new AppSettings(), false, "0.3", null, e => e, updates: true,
+                                      update: ("downloading", "0.3.1", 0.42));
+        var u = page["about"]!["update"]!;
+        Assert.Equal("downloading", (string?)u["state"]);
+        Assert.Equal("0.3.1", (string?)u["version"]);
+        Assert.Equal(0.42, (double)u["progress"]!);
+        Assert.Null(SettingsPage.State(new AppSettings(), false, "0.3", null, e => e)["about"]!["update"]);
+    }
+}

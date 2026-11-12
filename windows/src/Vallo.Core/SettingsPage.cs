@@ -12,7 +12,8 @@ public static class SettingsPage
     /// `updates` — свитчер поставлен установщиком и умеет обновляться (из архива — нет).
     /// `recording` — идёт запись своего сочетания ("convert"/"correct"), `hotkeyError` — почему записанное не подошло.
     public static JsonObject State(AppSettings s, bool launchAtLogin, string version, string? page, Func<string, string> appName,
-                                   bool updates = false, string? recording = null, HotkeyError? hotkeyError = null)
+                                   bool updates = false, string? recording = null, HotkeyError? hotkeyError = null,
+                                   (string State, string Version, double Progress)? update = null)
     {
         JsonArray Apps(IEnumerable<string> list)
         {
@@ -61,6 +62,7 @@ public static class SettingsPage
             {
                 ["updates"] = updates, ["autoUpdate"] = s.AutoUpdate,
                 ["lastCheck"] = s.LastUpdateCheck?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                ["update"] = update is { } u ? new JsonObject { ["state"] = u.State, ["version"] = u.Version, ["progress"] = u.Progress } : null,
                 ["model"] = new JsonObject { ["state"] = "notDownloaded", ["progress"] = 0, ["message"] = "", ["size"] = "", ["disk"] = "" },
             },
         };

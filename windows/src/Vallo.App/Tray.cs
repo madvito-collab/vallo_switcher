@@ -202,8 +202,14 @@ sealed unsafe class Tray : IDisposable
                 AppendMenu(menu, MF_STRING | MF_GRAYED, 0, p);
                 AppendMenu(menu, MF_SEPARATOR, 0, null);
             }
-            // вышло обновление — первой строкой, как на Маке
-            if (Updater?.Pending is { } pending)
+            var busy = Updates.BusyMenuTitle(Updater?.Activity);
+            // вышло обновление — первой строкой, как на Маке; качается — там же серая строка с процентом
+            if (Updater?.Activity is { Stage: UpdateStage.Downloading })
+            {
+                AppendMenu(menu, MF_STRING | MF_GRAYED, 0, busy);
+                AppendMenu(menu, MF_SEPARATOR, 0, null);
+            }
+            else if (Updater?.Pending is { } pending)
             {
                 AppendMenu(menu, MF_STRING, CmdUpdate, Updates.MenuTitle(pending));
                 AppendMenu(menu, MF_SEPARATOR, 0, null);
@@ -212,7 +218,10 @@ sealed unsafe class Tray : IDisposable
             AppendMenu(menu, autoFlags, CmdAutoSwitch, "Автопереключение");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdSettings, "Настройки…");
-            if (Updater?.Supported == true) AppendMenu(menu, MF_STRING, CmdCheckUpdates, "Проверить обновления…");
+            // идёт проверка или загрузка — пункт серый, второй раз не нажать
+            if (Updater?.Supported == true)
+                AppendMenu(menu, Updater.Activity?.Busy == true ? MF_STRING | MF_GRAYED : MF_STRING, CmdCheckUpdates,
+                           Updater.Activity?.Stage == UpdateStage.Checking ? busy : "Проверить обновления…");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdHelp, "Справка");
             AppendMenu(menu, MF_STRING, CmdAbout, "О программе");

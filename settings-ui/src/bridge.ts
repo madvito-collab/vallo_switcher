@@ -9,6 +9,8 @@ export interface HotkeyOption { id: string; title: string }
 export type EmojiPreset = "off" | "millennial" | "zoomer" | "custom"
 export interface EmojiPair { trigger: string; emoji: string }
 export type ModelState = "notDownloaded" | "downloading" | "ready" | "failed"
+/** Что сейчас с обновлением (Windows; на Маке это показывает своё окно Sparkle) */
+export type UpdateState = "checking" | "upToDate" | "downloading" | "available" | "ready" | "failed"
 
 export interface State {
   platform: "mac" | "windows"
@@ -36,6 +38,8 @@ export interface State {
     /** автообновление есть (на Windows пока нет) */
     updates: boolean
     autoUpdate: boolean; lastCheck: string | null
+    /** нет поля — как раньше: только «Проверено …» и «Проверить» */
+    update?: { state: UpdateState; version: string; progress: number } | null
     model: { state: ModelState; progress: number; message: string; size: string; disk: string }
   }
 }
