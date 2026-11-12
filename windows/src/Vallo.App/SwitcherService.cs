@@ -251,8 +251,11 @@ sealed class SwitcherService : IHookSink, IDisposable
                 if (output is EngineOutput.Consume c)
                 {
                     if (HasSwitch(c.Actions)) lastSwitchTick = Environment.TickCount64;
-                    // свитчер правил текст сам — на этом нажатии типографика молчит, память начинаем заново
-                    live.Reset();
+                    // слово исправлено на конце (пробел, запятая…) — типографика видит его уже исправленным:
+                    // «850he,» → «850руб » → «850 ₽ ». Иначе свитчер правил текст сам — память типографики начинаем заново
+                    if (liveOn && AfterSwitchEdit(stroke, c.Actions, options) is { } afterSwitch)
+                        output = new EngineOutput.Consume([.. c.Actions, .. afterSwitch]);
+                    else live.Reset();
                 }
                 else if (k.Vk != VK_BACK)
                 {
@@ -272,6 +275,20 @@ sealed class SwitcherService : IHookSink, IDisposable
         swallowed.Add(k.Vk);
         Enqueue(new Run(consume.Actions));
         return true;
+    }
+
+    /// Свитчер исправил слово на границе (не на букве, не Enter/Tab — они жмутся отдельно): прогнать типографику
+    /// по исправленному слову. null — править нечего. Только под `gate`.
+    IReadOnlyList<EngineAction>? AfterSwitchEdit(KeyStroke stroke, IReadOnlyList<EngineAction> actions, LiveOptions options)
+    {
+        static bool IsLetter(string? s) => !string.IsNullOrEmpty(s) && char.IsLetter(s[0]);
+        if (IsLetter(layouts.Pair.En.Character(stroke)) || IsLetter(layouts.Pair.Ru.Character(stroke))) return null;
+        if (actions.Count < 2 || actions[0] is not EngineAction.Delete d || actions[1] is not EngineAction.Insert ins
+            || ins.Text.Length == 0 || char.IsLetter(ins.Text[^1])) return null;
+        if (live.Replaced(d.N, ins.Text, engine.CurrentLanguage, options) is not { } edit) return null;
+        // длина текста изменилась (руб → ₽) — память свитчера больше не совпадает с экраном
+        if (live.LastEditChangedLength) engine.Reset();
+        return [new EngineAction.Delete(edit.Delete), new EngineAction.Insert(edit.Insert)];
     }
 
     /// Символ нажатия → правка типографики на лету (или null — пропустить нажатие как есть). Только под `gate`.

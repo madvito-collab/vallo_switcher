@@ -208,7 +208,7 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
                 buffer.Add(new Entry(stroke, CurrentLanguage));
                 return EngineOutput.PassThrough;
             }
-            if (Judge.WordEnd(current, alternative, CurrentLanguage) is not Verdict.SwitchLanguage sw)
+            if (WordEndVerdict(current, alternative) is not Verdict.SwitchLanguage sw)
             {
                 // короткое слово оставили, но его можно прочитать как слово другого языка — решит следующее слово
                 var start = wordStart;
@@ -250,7 +250,7 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
             var current = Converter.Render(word, layouts.Layout(CurrentLanguage));
             var alternative = Converter.Render(word, layouts.Layout(CurrentLanguage.Other()));
             if (IsUnitAfterNumber(current)
-                || Judge.WordEnd(current, alternative, CurrentLanguage) is not Verdict.SwitchLanguage sw)
+                || WordEndVerdict(current, alternative) is not Verdict.SwitchLanguage sw)
                 return EngineOutput.PassThrough;
             LastDecision = sw.Reason;
             CurrentLanguage = CurrentLanguage.Other();
@@ -437,6 +437,24 @@ public sealed class Engine(LayoutPair layouts, Judge judge, Language current)
         if (before.Length > 0 && char.IsNumber(before[0])) return true;
         var previous = new string(before.TakeWhile(char.IsLetter).Reverse().ToArray());
         return SwitcherRules.Shared.UnitsBeforeUnit.Contains(previous.ToLowerInvariant());
+    }
+
+    /// Решение на конце слова: единица слитно с числом («850he,» — это «850руб») или как решит судья.
+    Verdict WordEndVerdict(string current, string alternative)
+    {
+        if (IsUnitGluedToNumber(alternative))
+            return new Verdict.SwitchLanguage($"«{alternative}» слитно с числом — единица {CurrentLanguage.Other().Code().ToUpperInvariant()}");
+        return Judge.WordEnd(current, alternative, CurrentLanguage);
+    }
+
+    /// В другой раскладке слово — единица из 3+ букв («руб», «мин», «млн») и стоит сразу за цифрой, без пробела.
+    /// С пробелом это может быть английский текст («at 20 he, said»), а короткие («24h», «5in») — английские единицы.
+    bool IsUnitGluedToNumber(string alternative)
+    {
+        if (wordStart == 0 || Judge.Core(alternative).Length < 3
+            || !Judge.IsUnitAfterNumber(alternative, CurrentLanguage.Other())) return false;
+        var before = Display(wordStart - 1, wordStart);
+        return before.Length > 0 && char.IsNumber(before[^1]);
     }
 
     /// Набранное с последних «#» или «№» (не дальше 9 нажатий) — цвет в русской раскладке? Тогда как исправить.

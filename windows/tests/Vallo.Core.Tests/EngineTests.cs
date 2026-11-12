@@ -462,6 +462,22 @@ public class UnitsAfterNumberTests
     }
 
     [Fact]
+    public void UnitGluedToNumberSwitches()
+    {
+        // «850руб» в английской раскладке — «850he,»: «he» — английское слово, «б» — запятая. Слитно с числом — это рубли
+        foreach (var s in new[] { "850руб ", "20руб, ", "5мин ", "2млн " })
+            Assert.Equal(s, AbbreviationTests.Typed(s, Language.En));
+    }
+
+    [Fact]
+    public void UnitWithSpaceOrShortStaysEnglish()
+    {
+        // с пробелом это может быть английский текст, а «24h» — «24 часа»
+        foreach (var s in new[] { "at 20 he, said ", "24h ", "5in " })
+            Assert.Equal(s, AbbreviationTests.Typed(s, Language.En));
+    }
+
+    [Fact]
     public void WithoutNumberStillSwitches()
     {
         // «in», набранное в русской раскладке, по-прежнему исправляется

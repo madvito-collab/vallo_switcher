@@ -55,6 +55,23 @@ public sealed class LiveTypographer
         return edit;
     }
 
+    /// Свитчер исправил раскладку слова на его конце: стёр `delete` символов и напечатал `insert` (слово + граница).
+    /// Причёсываем так, будто человек набрал исправленное («850he,» + пробел → «850руб » → «850 ₽ »).
+    /// Правка — относительно экрана уже после вставки. null — править нечего или слово в памяти не целиком.
+    public TypoEdit? Replaced(int delete, string insert, Language hint, LiveOptions options)
+    {
+        var inserted = TextElements.Split(insert);
+        if (inserted.Count == 0 || delete > context.Count - frozen)
+        {
+            Reset();
+            return null;
+        }
+        context = [.. context.Take(context.Count - delete), .. inserted.Take(inserted.Count - 1)];
+        if (Typed(inserted[^1], hint, options) is not { } edit) return null;
+        // граница уже на экране — её тоже стираем
+        return new TypoEdit(edit.Delete + 1, edit.Insert);
+    }
+
     /// Backspace. Сразу после правки — правка-отмена (вернуть набранное), иначе null (обычный Backspace).
     public TypoEdit? Backspace()
     {
