@@ -11,7 +11,13 @@ static class Program
         // скачанное, но не поставленное обновление ставит здесь же
         Velopack.VelopackApp.Build().Run();
         using var single = SingleInstance.TryAcquire();
-        if (single is null) return 0; // уже запущен
+        if (single is null)
+        {
+            // уже запущен — значок в трее, скорее всего, не нашли: пусть первый откроет настройки
+            SingleInstance.RequestShow();
+            return 0;
+        }
+        using var showSignal = SingleInstance.CreateShowSignal();
 
         var store = new SettingsStore(AppSettings.DefaultPath);
         DebugLog.Shared.Enabled = store.Current.DebugMode;
@@ -27,6 +33,11 @@ static class Program
         tray.Resumed = () => Volatile.Read(ref switcher)?.ReinstallHooks();
         using var settings = new SettingsWindow(store, () => Volatile.Read(ref switcher)?.SettingsChanged());
         tray.OpenSettings = page => settings.Show(page);
+        SingleInstance.Listen(showSignal, () => tray.Post(() =>
+        {
+            DebugLog.Shared.Write("повторный запуск → настройки");
+            settings.Show("general");
+        }));
         using var updater = new Updater(store, tray.Post);
         tray.Updater = updater;
         tray.BeforeQuit = updater.BeforeExit;
