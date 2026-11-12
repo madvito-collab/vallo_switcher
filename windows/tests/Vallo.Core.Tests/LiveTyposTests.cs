@@ -192,3 +192,29 @@ public class TypoSettingsTests
         File.Delete(path);
     }
 }
+
+/// Двойной правый Shift по выделенному: опечатки → «ё» → типографика, как на Маке (запятые — позже).
+public class SelectionCorrectorTests
+{
+    [Fact]
+    public void TyposYoAndTypographyAtOnce() =>
+        Assert.Equal("Привет, ещё «текст»\u00A0— тут какой-то",
+            SelectionCorrector.Fix("Првет, еще \"текст\" - тут какой то", Spelling.App, Spelling.Yo, Language.Ru));
+
+    [Fact]
+    public void YoOffKeepsE() =>
+        Assert.Equal("Привет, еще", SelectionCorrector.Fix("Првет, еще", Spelling.App, null, Language.Ru));
+
+    [Fact]
+    public void WithoutDictionariesOnlyTypography() =>
+        Assert.Equal("раз\u00A0— два", SelectionCorrector.Fix("раз - два", null, null, Language.Ru));
+
+    [Fact]
+    public void CorrectTextUntouched()
+    {
+        // правильный текст с жаргоном: опечатки и «ё» его не трогают — остаётся только типографика (неразрывный пробел после «в»)
+        const string text = "Привет! Как дела? Скинь макет в фигме, созвонимся завтра.";
+        Assert.Equal(Typographer.Format(text, final: true, hint: Language.Ru),
+                     SelectionCorrector.Fix(text, Spelling.App, Spelling.Yo, Language.Ru));
+    }
+}

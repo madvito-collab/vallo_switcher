@@ -5,7 +5,7 @@
 <p align="center">Забыли переключить раскладку — свитчер исправит сам<br>
 Бесплатно, без рекламы, с открытым кодом</p>
 
-<p align="center"><b><a href="https://github.com/madvito-collab/vallo_switcher/releases/latest">⬇ Скачать для macOS</a></b> · <b><a href="https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.3.1/ValloSwitcher-win-Setup.exe">⬇ Скачать для Windows</a></b></p>
+<p align="center"><b><a href="https://github.com/madvito-collab/vallo_switcher/releases/latest">⬇ Скачать для macOS</a></b> · <b><a href="https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.4/ValloSwitcher-win-Setup.exe">⬇ Скачать для Windows</a></b></p>
 
 ---
 
@@ -68,9 +68,9 @@ xattr -dr com.apple.quarantine "/Applications/Vallo Switcher.app"
 
 ## Установка на Windows
 
-Версия для Windows умеет переключать раскладку, расставлять типографику, оформлять телефоны и числа, превращать скобки в смайлики. Опечатки, «ё» и запятые появятся в следующих версиях.
+Версия для Windows умеет переключать раскладку, исправлять опечатки и ставить «ё», расставлять типографику, оформлять телефоны и числа, превращать скобки в смайлики. Запятые появятся в следующих версиях.
 
-1. [Скачайте](https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.3.1/ValloSwitcher-win-Setup.exe) `ValloSwitcher-win-Setup.exe` и запустите.
+1. [Скачайте](https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.4/ValloSwitcher-win-Setup.exe) `ValloSwitcher-win-Setup.exe` и запустите.
 2. Windows может предупредить, что программа незнакомая: нажмите **«Подробнее» → «Выполнить в любом случае»**. Так нужно один раз.
 
 Готово: в трее у часов появится значок «ё». Свитчер запускается вместе с Windows и обновляется сам. Удалить его можно в «Параметры → Приложения».
@@ -93,7 +93,7 @@ xattr -dr com.apple.quarantine "/Applications/Vallo Switcher.app"
 Пока только русский и английский. Остальные раскладки свитчер не трогает.
 
 **А что умеет версия для Windows?**
-Переключать раскладку, расставлять типографику, оформлять телефоны и числа, ставить смайлики из скобок. Опечатки, «ё» и запятые догоняют Мак следующими версиями.
+Переключать раскладку, исправлять опечатки, ставить «ё» и типографику, оформлять телефоны и числа, ставить смайлики из скобок. Запятые догоняют Мак следующими версиями.
 
 ## Нашли ошибку или есть идея?
 

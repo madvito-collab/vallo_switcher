@@ -695,13 +695,15 @@ sealed class SwitcherService : IHookSink, IDisposable
         return sender.Perform(actions) && ok;
     }
 
-    /// Только исполнитель. Типографика выделенного текста; править нечего — буфер возвращаем как был.
+    /// Только исполнитель. Выделенный текст: опечатки → «ё» → типографика (как на Маке, пока без запятых);
+    /// править нечего — буфер возвращаем как был.
     bool FormatSelectionNow()
     {
         var text = selection.Copy();
         if (text is null) { Log.Write("Ctrl+C: выделения нет"); return true; }
-        var formatted = Typographer.Format(text, final: true, hint: engine.CurrentLanguage);
-        Log.Write(() => $"типографика выделенного: {TextElements.Count(text)} → {TextElements.Count(formatted)} chars");
+        // опечатки по выделенному — всегда (переключатель «Опечатки» — про набор на лету), «ё» — по своему переключателю
+        var formatted = SelectionCorrector.Fix(text, typos, store.Current.YoLive ? yo : null, engine.CurrentLanguage);
+        Log.Write(() => $"исправление выделенного: {TextElements.Count(text)} → {TextElements.Count(formatted)} chars");
         if (formatted == text)
         {
             selection.Restore();
