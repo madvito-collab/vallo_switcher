@@ -13,5 +13,7 @@
     <None Include="../../../Data/**" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" />
     <!-- настоящие опечатки из переписки — общие с маковскими тестами -->
     <None Include="../../../Tests/Data/typos-real.tsv" Link="TestData/typos-real.tsv" CopyToOutputDirectory="PreserveNewest" />
+    <!-- эталон модели запятых (официальный токенайзер) — сверяется, если модель скачана -->
+    <None Include="../../../Tests/Data/comma-golden.tsv" Link="TestData/comma-golden.tsv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

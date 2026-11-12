@@ -23,6 +23,8 @@ scripts/render-guide.sh # пересобрать «Как установить.p
 
 Версия для Windows лежит в `windows/` (.NET), как собрать — [windows/README.md](../windows/README.md). Пакет `ValloSwitcher-win-x64` собирает GitHub Actions на каждый пуш.
 
+Модель запятых на Windows — та же SAGE, что на Маке (`CommaModel`, `Gpt2Tokenizer`, `CommaFilter`, `CommaService` в `Vallo.Core`; ONNX Runtime). Модели в репозитории нет, поэтому тесты с ней идут, только если указать папку скачанной модели: `VALLO_MODEL_DIR=<папка sage-fredt5-95m> dotnet test windows/Vallo.sln`. Тесты сверяют токены и ответы с эталоном `Tests/Data/comma-golden.tsv` (официальный токенайзер HuggingFace + onnxruntime).
+
 Выпуск для Windows: написать «что нового» в `windows/Releases/<версия>.md` и запушить метку `win-v<версия>` (например, `win-v0.2`). GitHub Actions (`.github/workflows/windows-release.yml`) соберёт установщик Velopack (`ValloSwitcher-win-Setup.exe`) и выложит выпуск, а маковский выпуск останется «последним» — на него ведёт ссылка в README. Заодно CI кладёт список версий (`releases.win.json` с адресом папки выпуска) на служебную ветку `win-updates`: свитчеры на винде раз в день читают этот файл (`Updater.cs`, `UpdateFeed`), а если он не открылся — смотрят выпуски через API GitHub. Ветку `win-updates` руками не трогать: CI перезаписывает её при каждом выпуске. Версии у винды свои: `win-v0.1`, `win-v0.2`… Ссылки «Скачать для Windows» в README ведут на конкретный выпуск — после выпуска поменять в них номер.
 
 ## Устройство

@@ -17,8 +17,8 @@ public sealed class TypoCorrector
     const string Alphabet = "абвгдежзийклмнопрстуфхцчшщъыьэюя";
 
     /// Частицы, которые пишутся через дефис, и слова, после которых они частицы, а не союз «то».
-    static readonly string[] Particles = ["то", "нибудь", "либо", "таки"];
-    static readonly HashSet<string> ParticleStems =
+    public static readonly string[] Particles = ["то", "нибудь", "либо", "таки"];
+    public static readonly HashSet<string> ParticleStems =
     [
         "кто", "что", "какой", "какая", "какое", "какие", "какого", "какому", "каким", "каком", "какую", "какими", "каких",
         "где", "куда", "когда", "как", "почему", "зачем", "откуда", "сколько", "чей", "чья", "чье", "чьи",

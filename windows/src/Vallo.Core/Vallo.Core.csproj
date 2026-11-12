@@ -4,4 +4,7 @@
     <!-- SortedWordFile: поиск прямо по отображённому в память словарю форм (72 МБ), без копии в памяти -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
+  </ItemGroup>
 </Project>
