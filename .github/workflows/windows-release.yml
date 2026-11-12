@@ -1,7 +1,7 @@
 name: windows-release
 
 # Выпуск для Windows: пушим метку win-v0.1 (win-v0.2, …) — здесь собирается установщик
-# и выкладывается в GitHub Releases. Свитчеры на винде находят его сами (Updater.cs).
+# и выкладывается в GitHub Releases, а список версий — на ветку win-updates. Свитчеры на винде находят его сами (Updater.cs).
 on:
   push:
     tags: ['win-v*']
@@ -37,6 +37,21 @@ jobs:
           vpk pack -r win-x64 -u ValloSwitcher -v ${{ env.VERSION }} -p publish -e ValloSwitcher.exe --packTitle "Vallo Switcher" --packAuthors "Vallo" -i Support/Icons/Windows/ValloSwitcher.ico --shortcuts StartMenuRoot --noPortable --releaseNotes windows/Releases/${{ env.SHORT }}.md
       - name: Upload to GitHub Releases
         run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "Vallo Switcher для Windows ${{ env.SHORT }}" --tag ${{ github.ref_name }}
+      - name: Publish update feed
+        # Список версий обычным файлом (UpdateFeed в Updates.cs): ветка win-updates, только этот файл.
+        # Свитчеры читают его с raw.githubusercontent.com — без лимита API GitHub; сборки качают из папки выпуска (baseUrl).
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          base="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
+          mkdir feed
+          jq --arg base "$base" '. + {baseUrl: $base}' Releases/releases.win.json > feed/releases.win.json
+          cd feed
+          git init -q -b win-updates
+          git add releases.win.json
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Windows ${{ env.SHORT }}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" win-updates
       - name: Keep the Mac release as Latest
         # ссылка «скачать последнюю версию» в README ведёт на маковский DMG
         shell: bash

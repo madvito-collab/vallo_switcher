@@ -73,3 +73,41 @@ public class UpdatesTests
         Assert.False(s.AutoUpdate);
     }
 }
+
+/// Список версий — обычным файлом (как маковский appcast.xml), а не через API GitHub с его лимитом.
+public class UpdateFeedTests
+{
+    const string Release = "https://github.com/madvito-collab/vallo_switcher/releases/download/win-v0.3/";
+
+    [Fact]
+    public void FeedFileLivesOnServiceBranchNotApi()
+    {
+        Assert.StartsWith("https://raw.githubusercontent.com/madvito-collab/vallo_switcher/win-updates/", UpdateFeed.FeedUrls[0]);
+        Assert.DoesNotContain(UpdateFeed.FeedUrls, u => u.Contains("api.github.com"));
+    }
+
+    [Fact]
+    public void BaseUrlReadFromFeed()
+    {
+        var json = $$"""{"baseUrl":"{{Release}}","Assets":[{"FileName":"ValloSwitcher-0.3.0-full.nupkg"}]}""";
+        Assert.Equal(Release, UpdateFeed.BaseUrl(json));
+    }
+
+    [Theory]
+    [InlineData("""{"Assets":[]}""")]                                  // старый формат без адреса
+    [InlineData("""{"baseUrl":"http://example.com/","Assets":[]}""")]  // только https
+    [InlineData("""{"baseUrl":"https://example.com/x","Assets":[]}""")] // адрес папки — со слешем на конце
+    [InlineData("не json")]
+    public void BadFeedHasNoBaseUrl(string json) => Assert.Null(UpdateFeed.BaseUrl(json));
+
+    [Fact]
+    public void AssetUrlJoinsBaseAndFileName() =>
+        Assert.Equal(Release + "ValloSwitcher-0.3.0-full.nupkg", UpdateFeed.AssetUrl(Release, "ValloSwitcher-0.3.0-full.nupkg"));
+
+    [Fact]
+    public void AssetFileNameCannotEscapeFolder()
+    {
+        Assert.Null(UpdateFeed.AssetUrl(Release, "../evil.nupkg"));
+        Assert.Null(UpdateFeed.AssetUrl(Release, "https://evil.example/x.nupkg"));
+    }
+}

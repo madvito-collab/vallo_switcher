@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Velopack;
+using Velopack.Logging;
 using Velopack.Sources;
 using Vallo.Core;
 
 namespace Vallo.App;
 
-/// Автообновление, как на Маке: раз в день смотрим выпуски на GitHub; включено «Обновлять автоматически» —
+/// Автообновление, как на Маке: раз в день смотрим список версий (файл на ветке win-updates, не открылся — API GitHub); включено «Обновлять автоматически» —
 /// скачиваем сами, и новая версия ставится при выходе (или сразу по кнопке); выключено — только говорим, что вышла.
 /// Работает, только если свитчер поставлен установщиком: в распакованном архиве обновлять нечего.
 /// Сетевые вызовы — в пуле потоков; всё, что трогает значок и окно, — через `post` на поток трея.
@@ -38,7 +39,7 @@ sealed class Updater : IDisposable
         this.post = post;
         try
         {
-            var m = new UpdateManager(new WindowsReleases(Repo));
+            var m = new UpdateManager(new FallbackSource([new FeedFileSource(), new WindowsReleases(Repo)]));
             if (m.IsInstalled) manager = m;
         }
         catch (Exception) { /* не установлен (архив, отладка) — без обновлений */ }
@@ -146,7 +147,69 @@ sealed class Updater : IDisposable
 
     public void Dispose() => timer?.Dispose();
 
-    /// Выпуски на GitHub: Велопак смотрит только 10 последних, а маковских выходит больше —
+    /// Список версий обычным файлом (UpdateFeed): без лимита API. Сборки — из папки выпуска, адрес которой в самом файле.
+    sealed class FeedFileSource : IUpdateSource
+    {
+        readonly HttpClientFileDownloader downloader = new();
+        string? baseUrl;
+
+        public async Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel,
+            Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
+        {
+            Exception? last = null;
+            foreach (var url in UpdateFeed.FeedUrls)
+            {
+                try
+                {
+                    var json = await downloader.DownloadString(url, new Dictionary<string, string>(), 30).ConfigureAwait(false);
+                    var b = UpdateFeed.BaseUrl(json) ?? throw new InvalidDataException("в списке версий нет baseUrl");
+                    var feed = VelopackAssetFeed.FromJson(json);
+                    baseUrl = b;
+                    return feed;
+                }
+                catch (Exception e) { last = e; }
+            }
+            throw last ?? new InvalidOperationException("нет адресов списка версий");
+        }
+
+        public Task DownloadReleaseEntry(IVelopackLogger logger, VelopackAsset releaseEntry, string localFile,
+            Action<int> progress, CancellationToken cancelToken = default)
+        {
+            var url = baseUrl is null ? null : UpdateFeed.AssetUrl(baseUrl, releaseEntry.FileName);
+            if (url is null) throw new InvalidOperationException("не знаем, откуда качать " + releaseEntry.FileName);
+            return downloader.DownloadFile(url, localFile, progress, new Dictionary<string, string>(), 30, cancelToken);
+        }
+    }
+
+    /// Пробуем источники по порядку; качаем из того, что дал список версий.
+    sealed class FallbackSource(IUpdateSource[] sources) : IUpdateSource
+    {
+        IUpdateSource? used;
+
+        public async Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel,
+            Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
+        {
+            Exception? last = null;
+            foreach (var s in sources)
+            {
+                try
+                {
+                    var feed = await s.GetReleaseFeed(logger, appId, channel, stagingId, latestLocalRelease).ConfigureAwait(false);
+                    used = s;
+                    return feed;
+                }
+                catch (Exception e) { last = e; }
+            }
+            throw last!;
+        }
+
+        public Task DownloadReleaseEntry(IVelopackLogger logger, VelopackAsset releaseEntry, string localFile,
+            Action<int> progress, CancellationToken cancelToken = default) =>
+            (used ?? throw new InvalidOperationException("список версий ещё не получен"))
+                .DownloadReleaseEntry(logger, releaseEntry, localFile, progress, cancelToken);
+    }
+
+    /// Запасной путь (как было до 0.3) — выпуски на GitHub через API: Велопак смотрит только 10 последних, а маковских выходит больше —
     /// берём до 100 и оставляем только те, где есть список виндовой версии (releases.win.json).
     sealed class WindowsReleases(string repo) : GithubSource(repo, null, false)
     {
