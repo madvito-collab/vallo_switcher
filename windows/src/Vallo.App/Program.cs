@@ -53,12 +53,16 @@ static class Program
         using var models = new ModelStore();
         models.Changed = () => tray.Post(settings.Refresh);
         settings.Models = models;
+        // модель запятых: удалили или заменили — выгрузить; не загрузилась (битые файлы) — предложить скачать заново
+        using var commas = new CommaService(models.Directory);
+        models.ModelReplaced = commas.Unload;
+        commas.LoadFailed = models.MarkBroken;
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;
             try
             {
-                var started = SwitcherService.Start(store, out problem);
+                var started = SwitcherService.Start(store, commas, out problem);
                 if (started is not null) started.TypoWordsChanged = () => tray.Post(settings.Refresh);
                 Volatile.Write(ref switcher, started);
             }

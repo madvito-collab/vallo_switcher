@@ -120,3 +120,28 @@ public class CommaServiceTests
         Directory.Delete(dir, true);
     }
 }
+
+/// Двойной правый Shift целиком: опечатки → «ё» → запятые → типографика.
+public class SelectionWithCommasTests
+{
+    static readonly string? Dir = Environment.GetEnvironmentVariable("VALLO_MODEL_DIR") is { } d && CommaModelInfo.IsInstalled(d) ? d : null;
+
+    [Fact]
+    public async Task WithoutModelSameAsBefore()
+    {
+        using var none = new CommaService(Path.Combine(Path.GetTempPath(), "vallo-no-model-" + Guid.NewGuid().ToString("N")));
+        Assert.Equal(SelectionCorrector.Fix("Првет, еще \"текст\" - тут", Spelling.App, Spelling.Yo, Language.Ru),
+            await SelectionCorrector.FixAsync("Првет, еще \"текст\" - тут", Spelling.App, Spelling.Yo, none, false, Language.Ru));
+    }
+
+    [Fact]
+    public async Task AllAtOnce()
+    {
+        if (Dir is null) return;
+        using var commas = new CommaService(Dir);
+        Assert.Equal("короче, я ещё думаю, что это хорошая идея",
+            await SelectionCorrector.FixAsync("короче я еще думаю что это хорошая идея", Spelling.App, Spelling.Yo, commas, false, Language.Ru));
+        Assert.Equal("Привет, как дела.",
+            await SelectionCorrector.FixAsync("првет как дела", Spelling.App, Spelling.Yo, commas, true, Language.Ru));
+    }
+}

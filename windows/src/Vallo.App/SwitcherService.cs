@@ -36,6 +36,8 @@ sealed class SwitcherService : IHookSink, IDisposable
     sealed record ConvertSelection : Work;
     /// Сочетание «исправить выделенный текст»: типографика выделения (Ctrl+C → правка → Ctrl+V).
     sealed record FormatSelection : Work;
+    /// Модель запятых подумала в фоне — вставить исправленное (или вернуть буфер, если человек уже ушёл дальше).
+    sealed record PasteSelection(string Original, string Fixed, int Generation) : Work;
 
     readonly BlockingCollection<Work> queue = new();
     /// Сколько работы в очереди и в исполнении.
@@ -66,6 +68,12 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Опечатки и «ё»; null — словари не открылись (свитчер работает и без них). «Не исправлять слова» — в `typos.Ignored`.
     readonly TypoCorrector? typos;
     readonly Yoficator? yo;
+    /// Запятые моделью (в фоне, с таймаутом). null — без запятых.
+    readonly CommaService? commas;
+    /// Растёт на каждое нажатие, клик и смену окна: пока модель думала, человек начал печатать — не вставляем.
+    int inputGeneration;
+    /// Модель думает над выделенным: буфер обмена занят, новые Ctrl+C не шлём.
+    volatile bool selectionBusy;
     /// Отменили исправление опечатки Backspace — слово ушло в «Не исправлять слова»: обновить окно настроек.
     public Action? TypoWordsChanged { get; set; }
     const uint VK_BACK = 0x08, VK_RETURN = 0x0D;
@@ -75,11 +83,12 @@ sealed class SwitcherService : IHookSink, IDisposable
     /// Клавиши, чьё нажатие проглотили, — отпускание глотаем тоже.
     readonly HashSet<uint> swallowed = new();
 
-    SwitcherService(SettingsStore store, SystemLayouts layouts, Engine engine, TypoCorrector? typos, Yoficator? yo)
+    SwitcherService(SettingsStore store, SystemLayouts layouts, Engine engine, TypoCorrector? typos, Yoficator? yo, CommaService? commas)
     {
         this.store = store;
         this.typos = typos;
         this.yo = yo;
+        this.commas = commas;
         this.layouts = layouts;
         this.engine = engine;
         sender = new InputSender(layouts, store, MarkSwitch);
@@ -92,7 +101,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     }
 
     /// null — свитчер не запустить, `problem` — почему (покажем в меню трея). Трей живёт и без него.
-    public static SwitcherService? Start(SettingsStore store, out StartProblem problem)
+    public static SwitcherService? Start(SettingsStore store, CommaService? commas, out StartProblem problem)
     {
         problem = StartProblem.Unknown;
         var data = Path.Combine(AppContext.BaseDirectory, "Data", "wordlists");
@@ -133,7 +142,7 @@ sealed class SwitcherService : IHookSink, IDisposable
         };
         if (current is null) engine.ExternalLayoutChange(null);
 
-        var service = new SwitcherService(store, layouts, engine, typos, yo) { lastHkl = hkl };
+        var service = new SwitcherService(store, layouts, engine, typos, yo, commas) { lastHkl = hkl };
         service.WarmUpHookPath();
         service.guard.Start();
         service.worker.Start();
@@ -392,6 +401,7 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     public void OnForegroundChanged()
     {
+        Interlocked.Increment(ref inputGeneration);
         ResyncModifiers();
         // отпускание проглоченной клавиши могло потеряться — иначе однажды проглотим настоящее отпускание
         swallowed.Clear();
@@ -492,6 +502,7 @@ sealed class SwitcherService : IHookSink, IDisposable
 
     void OtherInputForTaps()
     {
+        Interlocked.Increment(ref inputGeneration);
         if (hasTap) tap.OtherInput();
         if (hasCorrectTap) correctTap.OtherInput();
     }
@@ -531,6 +542,7 @@ sealed class SwitcherService : IHookSink, IDisposable
     void CorrectHotkey()
     {
         if (!guard.ManualAllowed()) { Log.Write("исправить выделенное: молчим (игра или пароль)"); return; }
+        if (selectionBusy) { Log.Write("исправить выделенное: модель ещё думает над прошлым"); return; }
         if (!SelectionPolicy.MayCopy(false, guard.ExeName, guard.WindowClass, false))
         {
             Log.Write(() => $"исправить выделенное: Ctrl+C здесь не шлём ({guard.ExeName})");
@@ -554,7 +566,8 @@ sealed class SwitcherService : IHookSink, IDisposable
             // (в VS Code Ctrl+C без выделения копирует всю строку)
             var nothingTyped = !engine.CanUndo && !engine.HasTypedText;
             // в терминалах и редакторах (исключения), в консоли, в Excel, на третьей раскладке Ctrl+C вслепую не шлём
-            readSelection = nothingTyped
+            // модель запятых думает над выделенным — буфер занят, второй Ctrl+C не шлём
+            readSelection = nothingTyped && !selectionBusy
                 && SelectionPolicy.MayCopy(guard.InExcludedApp, guard.ExeName, guard.WindowClass, engine.IsForeignLayout);
             if (!nothingTyped)
             {
@@ -650,6 +663,9 @@ sealed class SwitcherService : IHookSink, IDisposable
                     case FormatSelection:
                         delivered = FormatSelectionNow();
                         break;
+                    case PasteSelection p:
+                        delivered = PasteSelectionNow(p);
+                        break;
                 }
                 // система приняла не всё (UIPI, блокировка ввода) — экран и память движка разошлись
                 if (!delivered)
@@ -695,12 +711,32 @@ sealed class SwitcherService : IHookSink, IDisposable
         return sender.Perform(actions) && ok;
     }
 
-    /// Только исполнитель. Выделенный текст: опечатки → «ё» → типографика (как на Маке, пока без запятых);
+    /// Только исполнитель. Выделенный текст: опечатки → «ё» → запятые → типографика, как на Маке;
     /// править нечего — буфер возвращаем как был.
     bool FormatSelectionNow()
     {
         var text = selection.Copy();
         if (text is null) { Log.Write("Ctrl+C: выделения нет"); return true; }
+        // модель скачана — думает в фоне (до 3 с), исполнитель не держим: набор идёт дальше без задержек
+        if (commas is { IsInstalled: true } && typos is not null)
+        {
+            var generation = Volatile.Read(ref inputGeneration);
+            var settings = store.Current;
+            var hint = engine.CurrentLanguage;
+            selectionBusy = true;
+            _ = Task.Run(async () =>
+            {
+                string result;
+                try { result = await SelectionCorrector.FixAsync(text, typos, settings.YoLive ? yo : null, commas, settings.Capitalize, hint).ConfigureAwait(false); }
+                catch (Exception e)
+                {
+                    Log.Write(() => $"исправление выделенного: {e.GetType().Name}");
+                    result = text;
+                }
+                Enqueue(new PasteSelection(text, result, generation));
+            });
+            return true;
+        }
         // опечатки по выделенному — всегда (переключатель «Опечатки» — про набор на лету), «ё» — по своему переключателю
         var formatted = SelectionCorrector.Fix(text, typos, store.Current.YoLive ? yo : null, engine.CurrentLanguage);
         Log.Write(() => $"исправление выделенного: {TextElements.Count(text)} → {TextElements.Count(formatted)} chars");
@@ -710,6 +746,26 @@ sealed class SwitcherService : IHookSink, IDisposable
             return true;
         }
         return selection.Paste(formatted);
+    }
+
+    /// Только исполнитель. Модель подумала: человек всё ещё здесь — вставляем; начал печатать или ушёл — буфер обратно.
+    bool PasteSelectionNow(PasteSelection p)
+    {
+        selectionBusy = false;
+        if (Volatile.Read(ref inputGeneration) != p.Generation)
+        {
+            Log.Write("исправление выделенного: пока модель думала, был набор или клик — не вставляем");
+            selection.Restore();
+            return true;
+        }
+        Log.Write(() => $"исправление выделенного (с запятыми): {TextElements.Count(p.Original)} → {TextElements.Count(p.Fixed)} chars");
+        if (p.Fixed == p.Original)
+        {
+            selection.Restore();
+            return true;
+        }
+        lock (gate) { engine.Reset(); live.Reset(); }
+        return selection.Paste(p.Fixed);
     }
 
     // ---- Слежение за раскладкой
