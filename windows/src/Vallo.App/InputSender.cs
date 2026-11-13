@@ -77,22 +77,14 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Acti
         Add(vk, scan, KEYEVENTF_KEYUP);
     }
 
-    /// Символами Юникода (VK_PACKET) — от раскладки не зависит. Суррогатная пара: обе половины вниз, потом обе вверх.
+    /// Символами Юникода (VK_PACKET) — от раскладки не зависит. Смайлик — две половины (суррогатная пара):
+    /// каждая нажимается и отпускается по очереди. Порядок «обе вниз, потом обе вверх» Телеграм (Qt) не понимает.
     void Text(string s)
     {
-        for (var i = 0; i < s.Length; i++)
+        foreach (var c in s)
         {
-            if (char.IsHighSurrogate(s[i]) && i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]))
-            {
-                Add(0, s[i], KEYEVENTF_UNICODE);
-                Add(0, s[i + 1], KEYEVENTF_UNICODE);
-                Add(0, s[i], KEYEVENTF_UNICODE | KEYEVENTF_KEYUP);
-                Add(0, s[i + 1], KEYEVENTF_UNICODE | KEYEVENTF_KEYUP);
-                i++;
-                continue;
-            }
-            Add(0, s[i], KEYEVENTF_UNICODE);
-            Add(0, s[i], KEYEVENTF_UNICODE | KEYEVENTF_KEYUP);
+            Add(0, c, KEYEVENTF_UNICODE);
+            Add(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP);
         }
     }
 
