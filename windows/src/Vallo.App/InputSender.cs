@@ -9,6 +9,8 @@ namespace Vallo.App;
 sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Action switchPosted)
 {
     const ushort VK_BACK = 0x08;
+    /// Пауза между стиранием и печатью. В Телеграме 10 мс уже хватает, 30 — с запасом и глазу незаметно.
+    const int EraseToTypeDelayMs = 30;
 
     readonly List<INPUT> batch = new();
     /// Все ли события текущего Perform/Replay система приняла.
@@ -18,14 +20,23 @@ sealed unsafe class InputSender(SystemLayouts layouts, SettingsStore store, Acti
     public bool Perform(IReadOnlyList<EngineAction> actions)
     {
         delivered = true;
+        var erased = false;
         foreach (var action in actions)
         {
             switch (action)
             {
                 case EngineAction.Delete d:
                     for (var i = 0; i < d.N; i++) Key(VK_BACK);
+                    erased |= d.N > 0;
                     break;
                 case EngineAction.Insert ins:
+                    // Телеграм (Qt): стирание и символы одной пачкой теряет — сначала стираем, ждём, потом печатаем
+                    if (erased)
+                    {
+                        Flush();
+                        Thread.Sleep(EraseToTypeDelayMs);
+                        erased = false;
+                    }
                     Text(ins.Text);
                     break;
                 case EngineAction.PressKey p:
