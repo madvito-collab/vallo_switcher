@@ -56,7 +56,7 @@ public static class SettingsPage
             ["canRecordHotkey"] = true,
             ["recording"] = recording,
             ["hotkeyError"] = hotkeyError is { } he ? new JsonObject { ["action"] = he.Action, ["text"] = he.Text } : null,
-            ["integrations"] = new JsonObject { ["figma"] = false, ["figmaPublished"] = false },
+            ["integrations"] = new JsonObject { ["figma"] = true, ["figmaPublished"] = false },
             ["about"] = new JsonObject
             {
                 ["updates"] = updates, ["autoUpdate"] = s.AutoUpdate,

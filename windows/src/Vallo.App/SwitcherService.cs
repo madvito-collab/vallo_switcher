@@ -539,6 +539,13 @@ sealed class SwitcherService : IHookSink, IDisposable
     }
 
     /// «Исправить выделенный текст»: типографика выделения. В игре и в поле пароля молчим.
+    /// Опечатки и «ё» для слоёв Фигмы; null — словари не загрузились.
+    public (TypoCorrector Typos, Yoficator Yo, bool YoEnabled)? FigmaSpelling =>
+        typos is not null && yo is not null ? (typos, yo, store.Current.YoLive) : null;
+
+    /// Плагин Фигмы сказал «человек редактирует текст» — исправить выделенное, как по сочетанию.
+    public void FixSelectionFromFigma() => CorrectHotkey();
+
     void CorrectHotkey()
     {
         if (!guard.ManualAllowed()) { Log.Write("исправить выделенное: молчим (игра или пароль)"); return; }

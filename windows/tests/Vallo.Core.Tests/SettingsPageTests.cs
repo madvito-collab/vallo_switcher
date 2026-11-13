@@ -25,7 +25,8 @@ public class SettingsPageTests
         Assert.Equal("double:rightShift", (string?)st["correct"]!["hotkey"]);
         Assert.True((bool)st["correct"]!["typography"]!);
         Assert.Equal("millennial", (string?)st["correct"]!["emoji"]!["preset"]);
-        Assert.False((bool)st["integrations"]!["figma"]!);
+        Assert.True((bool)st["integrations"]!["figma"]!);
+        Assert.False((bool)st["integrations"]!["figmaPublished"]!);
         Assert.False((bool)st["about"]!["updates"]!);
         Assert.True((bool)st["canRecordHotkey"]!);   // «Своё сочетание…» есть и на Windows
         Assert.True((bool)st["attention"]!["modelMissing"]!);   // модель не скачана — предупреждение, как на Маке

@@ -10,7 +10,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- окно настроек: форма WinForms со встроенным Edge (WebView2); остальное — чистый Win32 -->
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>0.5.2</Version>
+    <Version>0.6.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
@@ -29,6 +29,8 @@
     <None Include="../../../Data/switcher-rules.json" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- страница окна настроек — общая с Маком (исходники settings-ui/) -->
     <None Include="../../../Support/SettingsUI/index.html" LinkBase="Settings" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- плагин для Фигмы — общий с Маком; при запуске копируется в %LOCALAPPDATA%\Vallo Switcher\Figma Plugin -->
+    <None Include="../../../figma-plugin/manifest.json;../../../figma-plugin/code.js;../../../figma-plugin/ui.html" LinkBase="FigmaPlugin" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../../Support/Icons/Windows/yo_*.png;../../../Support/Icons/Windows/ValloSwitcher.ico" LinkBase="Icons" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- Все формы слов для опечаток: в репозитории сжаты (9 МБ), рядом с exe нужны распакованными (72 МБ) —

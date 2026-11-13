@@ -57,6 +57,15 @@ static class Program
         using var commas = new CommaService(models.Directory);
         models.ModelReplaced = commas.Unload;
         commas.LoadFailed = models.MarkBroken;
+        // плагин для Фигмы: копия файлов для «Import plugin from manifest» и сервер, к которому он подключается
+        FigmaPluginFiles.Install(Path.Combine(AppContext.BaseDirectory, "FigmaPlugin"), FigmaPluginFiles.Folder);
+        using var figma = new FigmaBridge();
+        var figmaController = new FigmaController(figma, commas)
+        {
+            Spelling = () => Volatile.Read(ref switcher)?.FigmaSpelling,
+            TextMode = () => Volatile.Read(ref switcher)?.FixSelectionFromFigma(),
+        };
+        figma.Start();
         var starting = Task.Run(() =>
         {
             var problem = StartProblem.Unknown;
